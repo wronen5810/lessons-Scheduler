@@ -58,7 +58,7 @@ export interface OneTimeBooking {
   created_at: string;
 }
 
-export type SlotState = 'available' | 'blocked' | 'pending' | 'confirmed' | 'unavailable';
+export type SlotState = 'available' | 'blocked' | 'pending' | 'confirmed' | 'completed' | 'paid' | 'unavailable';
 
 export interface ComputedSlot {
   date: string;

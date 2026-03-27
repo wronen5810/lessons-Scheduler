@@ -9,24 +9,17 @@ interface Props {
 }
 
 const STATE_STYLES: Record<string, string> = {
-  available: 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100 cursor-pointer',
+  available:   'bg-green-50 border-green-300 text-green-800 hover:bg-green-100 cursor-pointer',
   unavailable: 'bg-gray-100 border-gray-200 text-gray-400 cursor-default',
-  blocked: 'bg-gray-100 border-gray-200 text-gray-500 cursor-pointer hover:bg-gray-200',
-  pending: 'bg-amber-50 border-amber-300 text-amber-800 cursor-pointer hover:bg-amber-100',
-  confirmed: '',
+  blocked:     'bg-gray-100 border-gray-200 text-gray-500 cursor-pointer hover:bg-gray-200',
+  pending:     'bg-amber-50 border-amber-300 text-amber-800 cursor-pointer hover:bg-amber-100',
+  confirmed:   'bg-blue-50 border-blue-300 text-blue-800 cursor-pointer hover:bg-blue-100',
+  completed:   'bg-teal-50 border-teal-300 text-teal-800 cursor-pointer hover:bg-teal-100',
+  paid:        'bg-emerald-50 border-emerald-300 text-emerald-800 cursor-pointer hover:bg-emerald-100',
 };
 
-function confirmedStyle(bookingType?: string) {
-  return bookingType === 'one_time'
-    ? 'bg-purple-50 border-purple-300 text-purple-800 cursor-pointer hover:bg-purple-100'
-    : 'bg-blue-50 border-blue-300 text-blue-800 cursor-pointer hover:bg-blue-100';
-}
-
 export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
-  const style =
-    slot.state === 'confirmed'
-      ? confirmedStyle(slot.booking_type)
-      : STATE_STYLES[slot.state] ?? STATE_STYLES.unavailable;
+  const style = STATE_STYLES[slot.state] ?? STATE_STYLES.unavailable;
 
   const handleClick = () => {
     if (onClick) onClick(slot);
@@ -49,13 +42,11 @@ export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
         <div className="mt-0.5 truncate">{slot.student_name}</div>
       )}
 
-      {isTeacher && slot.state === 'blocked' && (
-        <div className="mt-0.5 text-gray-400">Blocked</div>
-      )}
-
-      {isTeacher && slot.state === 'pending' && (
-        <div className="mt-0.5 text-amber-600 font-medium">Pending</div>
-      )}
+      {isTeacher && slot.state === 'blocked' && <div className="mt-0.5 text-gray-400">Blocked</div>}
+      {isTeacher && slot.state === 'pending' && <div className="mt-0.5 font-medium">Pending</div>}
+      {isTeacher && slot.state === 'confirmed' && <div className="mt-0.5 font-medium">Approved</div>}
+      {isTeacher && slot.state === 'completed' && <div className="mt-0.5 font-medium">Completed</div>}
+      {isTeacher && slot.state === 'paid' && <div className="mt-0.5 font-medium">Paid</div>}
     </div>
   );
 }

@@ -10,6 +10,13 @@ import type {
   SlotTemplate,
 } from './types';
 
+function bookingToState(status: string): import('./types').SlotState {
+  if (status === 'approved') return 'confirmed';
+  if (status === 'completed') return 'completed';
+  if (status === 'paid') return 'paid';
+  return 'pending';
+}
+
 export async function computeWeekSlots(
   weekStartStr: string,
   supabase: SupabaseClient,
@@ -87,7 +94,7 @@ export async function computeWeekSlots(
         start_time: startTime,
         end_time: endTime,
         duration_minutes: duration,
-        state: forTeacher ? (booking.status === 'approved' ? 'confirmed' : 'pending') : 'unavailable',
+        state: forTeacher ? bookingToState(booking.status) : 'unavailable',
         template_id: template.id,
         booking_type: otBooking ? 'one_time' : 'recurring',
         booking_id: booking.id,
@@ -129,7 +136,7 @@ export async function computeWeekSlots(
       start_time: startTime,
       end_time: endTime,
       duration_minutes: duration,
-      state: forTeacher ? (booking.status === 'approved' ? 'confirmed' : 'pending') : 'unavailable',
+      state: forTeacher ? bookingToState(booking.status) : 'unavailable',
       one_time_slot_id: otSlot.id,
       booking_type: 'one_time',
       booking_id: booking.id,

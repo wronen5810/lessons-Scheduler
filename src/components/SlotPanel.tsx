@@ -18,7 +18,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
 
   const dayOfWeek = parseISO(slot.date).getDay();
 
-  async function patchBooking(action: 'approve' | 'reject' | 'cancel') {
+  async function patchBooking(action: 'approve' | 'reject' | 'cancel' | 'complete' | 'pay') {
     if (!slot.booking_id || !slot.booking_type) return;
     setLoading(true);
     await fetch(`/api/bookings/${slot.booking_id}?type=${slot.booking_type}&action=${action}`, {
@@ -70,8 +70,8 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {/* Student info for pending/confirmed */}
-          {(slot.state === 'pending' || slot.state === 'confirmed') && slot.student_name && (
+          {/* Student info for pending/confirmed/completed/paid */}
+          {(['pending', 'confirmed', 'completed', 'paid'] as const).includes(slot.state as never) && slot.student_name && (
             <div className="bg-gray-50 rounded-lg p-3 text-sm">
               <div className="font-medium text-gray-900">{slot.student_name}</div>
               <div className="text-gray-500">{slot.student_email}</div>
@@ -142,15 +142,42 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
             </div>
           )}
 
-          {/* Confirmed slot */}
+          {/* Confirmed (approved) slot */}
           {slot.state === 'confirmed' && (
+            <div className="space-y-2">
+              <button
+                onClick={() => patchBooking('complete')}
+                disabled={loading}
+                className="w-full py-2 px-3 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
+              >
+                Mark as Completed
+              </button>
+              <button
+                onClick={() => patchBooking('cancel')}
+                disabled={loading}
+                className="w-full py-2 px-3 rounded-lg border border-red-300 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors"
+              >
+                Cancel booking
+              </button>
+            </div>
+          )}
+
+          {/* Completed slot */}
+          {slot.state === 'completed' && (
             <button
-              onClick={() => patchBooking('cancel')}
+              onClick={() => patchBooking('pay')}
               disabled={loading}
-              className="w-full py-2 px-3 rounded-lg border border-red-300 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors"
+              className="w-full py-2 px-3 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
             >
-              Cancel booking
+              Mark as Paid
             </button>
+          )}
+
+          {/* Paid slot */}
+          {slot.state === 'paid' && (
+            <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-center font-medium">
+              Paid
+            </div>
           )}
         </div>
       </div>
