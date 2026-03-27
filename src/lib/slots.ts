@@ -35,8 +35,8 @@ export async function computeWeekSlots(
   ] = await Promise.all([
     supabase.from('slot_templates').select('*').eq('is_active', true).order('day_of_week').order('start_time'),
     supabase.from('slot_overrides').select('*').gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
-    supabase.from('recurring_bookings').select('*').in('status', ['pending', 'approved']).lte('started_date', weekEndStr),
-    supabase.from('one_time_bookings').select('*').in('status', ['pending', 'approved']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('recurring_bookings').select('*').in('status', ['pending', 'approved', 'completed', 'paid']).lte('started_date', weekEndStr),
+    supabase.from('one_time_bookings').select('*').in('status', ['pending', 'approved', 'completed', 'paid']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
     supabase.from('one_time_slots').select('*').eq('is_active', true).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
   ]);
 
