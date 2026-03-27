@@ -38,9 +38,9 @@ export function formatTime(time: string): string {
   return time.slice(0, 5);
 }
 
-export function getEndTime(startTime: string): string {
+export function getEndTime(startTime: string, durationMinutes = 45): string {
   const [h, m] = startTime.slice(0, 5).split(':').map(Number);
-  const total = h * 60 + m + 45;
+  const total = h * 60 + m + durationMinutes;
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 

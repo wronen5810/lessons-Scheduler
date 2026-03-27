@@ -1,7 +1,14 @@
 import { addDays, parseISO } from 'date-fns';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatDate, formatTime, getEndTime, getWeekDates } from './dates';
-import type { ComputedSlot, OneTimeBooking, RecurringBooking, SlotOverride, SlotTemplate } from './types';
+import type {
+  ComputedSlot,
+  OneTimeBooking,
+  OneTimeSlot,
+  RecurringBooking,
+  SlotOverride,
+  SlotTemplate,
+} from './types';
 
 export async function computeWeekSlots(
   weekStartStr: string,
@@ -12,39 +19,29 @@ export async function computeWeekSlots(
   const weekDates = getWeekDates(weekStart);
   const weekEndStr = formatDate(addDays(weekStart, 6));
 
-  const [{ data: templates }, { data: overrides }, { data: recurring }, { data: oneTime }] =
-    await Promise.all([
-      supabase
-        .from('slot_templates')
-        .select('*')
-        .eq('is_active', true)
-        .order('day_of_week')
-        .order('start_time'),
-      supabase
-        .from('slot_overrides')
-        .select('*')
-        .gte('specific_date', weekStartStr)
-        .lte('specific_date', weekEndStr),
-      supabase
-        .from('recurring_bookings')
-        .select('*')
-        .in('status', ['pending', 'approved'])
-        .lte('started_date', weekEndStr),
-      supabase
-        .from('one_time_bookings')
-        .select('*')
-        .in('status', ['pending', 'approved'])
-        .gte('specific_date', weekStartStr)
-        .lte('specific_date', weekEndStr),
-    ]);
+  const [
+    { data: templates },
+    { data: overrides },
+    { data: recurring },
+    { data: oneTimeBookings },
+    { data: oneTimeSlots },
+  ] = await Promise.all([
+    supabase.from('slot_templates').select('*').eq('is_active', true).order('day_of_week').order('start_time'),
+    supabase.from('slot_overrides').select('*').gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('recurring_bookings').select('*').in('status', ['pending', 'approved']).lte('started_date', weekEndStr),
+    supabase.from('one_time_bookings').select('*').in('status', ['pending', 'approved']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('one_time_slots').select('*').eq('is_active', true).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+  ]);
 
   const templateList: SlotTemplate[] = templates || [];
   const overrideList: SlotOverride[] = overrides || [];
   const recurringList: RecurringBooking[] = recurring || [];
-  const oneTimeList: OneTimeBooking[] = oneTime || [];
+  const otBookingList: OneTimeBooking[] = oneTimeBookings || [];
+  const otSlotList: OneTimeSlot[] = oneTimeSlots || [];
 
   const slots: ComputedSlot[] = [];
 
+  // ── Recurring template slots ──────────────────────────────────────
   for (const date of weekDates) {
     const dateStr = formatDate(date);
     const dayOfWeek = date.getDay();
@@ -52,7 +49,8 @@ export async function computeWeekSlots(
 
     for (const template of dayTemplates) {
       const startTime = formatTime(template.start_time);
-      const endTime = getEndTime(startTime);
+      const duration = template.duration_minutes ?? 45;
+      const endTime = getEndTime(startTime, duration);
 
       const override = overrideList.find(
         (o) => o.template_id === template.id && o.specific_date === dateStr
@@ -60,20 +58,13 @@ export async function computeWeekSlots(
 
       if (override?.is_blocked) {
         if (forTeacher) {
-          slots.push({
-            date: dateStr,
-            start_time: startTime,
-            end_time: endTime,
-            state: 'blocked',
-            template_id: template.id,
-            override_id: override.id,
-          });
+          slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'blocked', template_id: template.id, override_id: override.id });
         }
         continue;
       }
 
-      // One-time booking takes priority over recurring for a specific date
-      const otBooking = oneTimeList.find(
+      // One-time booking on this date takes priority over recurring
+      const otBooking = otBookingList.find(
         (o) => o.specific_date === dateStr && formatTime(o.start_time) === startTime
       );
 
@@ -87,32 +78,18 @@ export async function computeWeekSlots(
       const booking = otBooking || recBooking;
 
       if (!booking) {
-        slots.push({
-          date: dateStr,
-          start_time: startTime,
-          end_time: endTime,
-          state: 'available',
-          template_id: template.id,
-        });
+        slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'available', template_id: template.id });
         continue;
-      }
-
-      const isRecurring = !otBooking;
-
-      let state: ComputedSlot['state'];
-      if (forTeacher) {
-        state = booking.status === 'approved' ? 'confirmed' : 'pending';
-      } else {
-        state = 'unavailable';
       }
 
       const slot: ComputedSlot = {
         date: dateStr,
         start_time: startTime,
         end_time: endTime,
-        state,
+        duration_minutes: duration,
+        state: forTeacher ? (booking.status === 'approved' ? 'confirmed' : 'pending') : 'unavailable',
         template_id: template.id,
-        booking_type: isRecurring ? 'recurring' : 'one_time',
+        booking_type: otBooking ? 'one_time' : 'recurring',
         booking_id: booking.id,
         booking_status: booking.status,
       };
@@ -127,5 +104,47 @@ export async function computeWeekSlots(
     }
   }
 
+  // ── Teacher-created one-time slots ───────────────────────────────
+  for (const otSlot of otSlotList) {
+    const startTime = formatTime(otSlot.start_time);
+    const duration = otSlot.duration_minutes ?? 45;
+    const endTime = getEndTime(startTime, duration);
+    const dateStr = otSlot.specific_date;
+
+    // Skip if a template slot already occupies this date+time
+    const alreadyCovered = slots.some((s) => s.date === dateStr && s.start_time === startTime);
+    if (alreadyCovered) continue;
+
+    const booking = otBookingList.find(
+      (o) => o.one_time_slot_id === otSlot.id
+    );
+
+    if (!booking) {
+      slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'available', one_time_slot_id: otSlot.id });
+      continue;
+    }
+
+    const slot: ComputedSlot = {
+      date: dateStr,
+      start_time: startTime,
+      end_time: endTime,
+      duration_minutes: duration,
+      state: forTeacher ? (booking.status === 'approved' ? 'confirmed' : 'pending') : 'unavailable',
+      one_time_slot_id: otSlot.id,
+      booking_type: 'one_time',
+      booking_id: booking.id,
+      booking_status: booking.status,
+    };
+
+    if (forTeacher) {
+      slot.student_name = booking.student_name;
+      slot.student_email = booking.student_email;
+      slot.cancel_token = booking.cancel_token;
+    }
+
+    slots.push(slot);
+  }
+
+  slots.sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time));
   return slots;
 }

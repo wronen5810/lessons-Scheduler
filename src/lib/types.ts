@@ -2,6 +2,16 @@ export interface SlotTemplate {
   id: string;
   day_of_week: number;
   start_time: string;
+  duration_minutes: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface OneTimeSlot {
+  id: string;
+  specific_date: string;
+  start_time: string;
+  duration_minutes: number;
   is_active: boolean;
   created_at: string;
 }
@@ -33,6 +43,7 @@ export interface RecurringBooking {
 export interface OneTimeBooking {
   id: string;
   template_id: string | null;
+  one_time_slot_id: string | null;
   specific_date: string;
   start_time: string;
   student_name: string;
@@ -53,8 +64,10 @@ export interface ComputedSlot {
   date: string;
   start_time: string;
   end_time: string;
+  duration_minutes: number;
   state: SlotState;
-  template_id: string;
+  template_id?: string;
+  one_time_slot_id?: string;
   override_id?: string;
   booking_type?: 'recurring' | 'one_time';
   booking_id?: string;
