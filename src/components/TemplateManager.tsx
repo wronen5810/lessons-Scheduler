@@ -1,0 +1,174 @@
+'use client';
+
+import { useState } from 'react';
+import { DAY_NAMES, formatTime } from '@/lib/dates';
+import type { SlotTemplate } from '@/lib/types';
+
+interface Props {
+  templates: SlotTemplate[];
+  onUpdate: () => void;
+}
+
+const DAY_OPTIONS = DAY_NAMES.map((name, i) => ({ value: i, label: name }));
+
+export default function TemplateManager({ templates, onUpdate }: Props) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newDay, setNewDay] = useState(0);
+  const [newTime, setNewTime] = useState('16:00');
+  const [addError, setAddError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setAddError('');
+    setSaving(true);
+
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ day_of_week: newDay, start_time: newTime }),
+    });
+
+    setSaving(false);
+
+    if (!res.ok) {
+      const data = await res.json();
+      setAddError(data.error || 'Failed to add slot');
+      return;
+    }
+
+    setShowAdd(false);
+    onUpdate();
+  }
+
+  async function toggleActive(template: SlotTemplate) {
+    await fetch(`/api/templates/${template.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: !template.is_active }),
+    });
+    onUpdate();
+  }
+
+  async function deleteTemplate(id: string) {
+    if (!confirm('Delete this slot? All future occurrences will be removed from the schedule.')) return;
+    await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+    onUpdate();
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-gray-500">
+          These slots repeat every week. Add or remove as needed.
+        </p>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          + Add slot
+        </button>
+      </div>
+
+      {showAdd && (
+        <form
+          onSubmit={handleAdd}
+          className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 space-y-3"
+        >
+          <h3 className="text-sm font-medium text-blue-900">New recurring slot</h3>
+
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-600 mb-1">Day</label>
+              <select
+                value={newDay}
+                onChange={(e) => setNewDay(Number(e.target.value))}
+                className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {DAY_OPTIONS.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label className="block text-xs text-gray-600 mb-1">Start time</label>
+              <input
+                type="time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {addError && <p className="text-xs text-red-600">{addError}</p>}
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowAdd(false); setAddError(''); }}
+              className="px-4 py-1.5 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {templates.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-8">No slots defined yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {templates.map((t) => (
+            <li
+              key={t.id}
+              className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
+                t.is_active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'
+              }`}
+            >
+              <div>
+                <span className="text-sm font-medium text-gray-900">
+                  {DAY_NAMES[t.day_of_week]}
+                </span>
+                <span className="text-sm text-gray-500 ml-2">
+                  {formatTime(t.start_time)} &ndash; {/* end time */}
+                  {(() => {
+                    const [h, m] = formatTime(t.start_time).split(':').map(Number);
+                    const total = h * 60 + m + 45;
+                    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                  })()}
+                </span>
+                {!t.is_active && (
+                  <span className="ml-2 text-xs text-gray-400">(inactive)</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleActive(t)}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  {t.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+                <button
+                  onClick={() => deleteTemplate(t.id)}
+                  className="text-xs text-red-500 hover:text-red-700 underline"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

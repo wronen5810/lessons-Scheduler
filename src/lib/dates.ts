@@ -1,0 +1,66 @@
+import { addDays, addWeeks, format, parseISO, startOfWeek } from 'date-fns';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+
+export const TZ = 'Asia/Jerusalem';
+
+export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export function nowInIsrael(): Date {
+  return toZonedTime(new Date(), TZ);
+}
+
+export function todayInIsrael(): string {
+  return format(toZonedTime(new Date(), TZ), 'yyyy-MM-dd');
+}
+
+export function getWeekStart(date: Date): Date {
+  return startOfWeek(date, { weekStartsOn: 0 }); // Sunday
+}
+
+export function getWeekDates(weekStart: Date): Date[] {
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+}
+
+export function formatDate(date: Date): string {
+  return format(date, 'yyyy-MM-dd');
+}
+
+export function formatDisplayDate(dateStr: string): string {
+  return format(parseISO(dateStr), 'EEE, MMM d');
+}
+
+export function formatDisplayDateLong(dateStr: string): string {
+  return format(parseISO(dateStr), 'EEEE, MMMM d, yyyy');
+}
+
+export function formatTime(time: string): string {
+  return time.slice(0, 5);
+}
+
+export function getEndTime(startTime: string): string {
+  const [h, m] = startTime.slice(0, 5).split(':').map(Number);
+  const total = h * 60 + m + 45;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+export function addWeeksToDate(dateStr: string, weeks: number): string {
+  return formatDate(addWeeks(parseISO(dateStr), weeks));
+}
+
+export function maxBookingDate(): string {
+  return formatDate(addWeeks(new Date(), 4));
+}
+
+/** Returns true if the lesson's cancellation window has already closed (< 24h away) */
+export function isCancellationWindowClosed(dateStr: string, startTime: string): boolean {
+  const lessonUtc = fromZonedTime(`${dateStr}T${startTime.slice(0, 5)}:00`, TZ);
+  const diffMs = lessonUtc.getTime() - Date.now();
+  return diffMs < 24 * 60 * 60 * 1000;
+}
+
+/** Returns true if the lesson is in the past */
+export function isLessonInPast(dateStr: string, startTime: string): boolean {
+  const lessonUtc = fromZonedTime(`${dateStr}T${startTime.slice(0, 5)}:00`, TZ);
+  return lessonUtc.getTime() < Date.now();
+}

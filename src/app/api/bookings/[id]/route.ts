@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireTeacher } from '@/lib/auth';
+import { createServiceSupabase } from '@/lib/supabase-server';
+import {
+  emailStudentApproved,
+  emailStudentCancelledByTeacher,
+  emailStudentRejected,
+} from '@/lib/email';
+import { getEndTime } from '@/lib/dates';
+
+// PATCH /api/bookings/[id]?type=recurring|one_time&action=approve|reject|cancel
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireTeacher();
+  if (auth.error) return auth.error;
+
+  const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const type = searchParams.get('type') as 'recurring' | 'one_time';
+  const action = searchParams.get('action') as 'approve' | 'reject' | 'cancel';
+
+  if (!type || !action) {
+    return NextResponse.json({ error: 'Missing type or action' }, { status: 400 });
+  }
+
+  const supabase = createServiceSupabase();
+  const table = type === 'recurring' ? 'recurring_bookings' : 'one_time_bookings';
+
+  const { data: booking } = await supabase.from(table).select('*').eq('id', id).single();
+  if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+
+  const newStatus = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'cancelled';
+
+  const updatePayload: Record<string, unknown> = { status: newStatus };
+  if (action === 'cancel') {
+    updatePayload.cancelled_at = new Date().toISOString();
+    updatePayload.cancelled_by = 'teacher';
+  }
+
+  const { error } = await supabase.from(table).update(updatePayload).eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Fetch template to get day_of_week and start_time
+  let dayOfWeek: number | undefined;
+  let startTime: string;
+  let date: string;
+
+  if (type === 'recurring') {
+    const { data: template } = await supabase
+      .from('slot_templates')
+      .select('day_of_week, start_time')
+      .eq('id', booking.template_id)
+      .single();
+    dayOfWeek = template?.day_of_week;
+    startTime = template?.start_time?.slice(0, 5) ?? '';
+    date = booking.started_date;
+  } else {
+    startTime = booking.start_time?.slice(0, 5) ?? '';
+    date = booking.specific_date;
+  }
+
+  const endTime = getEndTime(startTime);
+  const emailInfo = {
+    studentName: booking.student_name,
+    studentEmail: booking.student_email,
+    bookingType: type,
+    date,
+    dayOfWeek,
+    startTime,
+    endTime,
+    cancelToken: booking.cancel_token,
+  };
+
+  const sendEmail =
+    action === 'approve' ? emailStudentApproved(emailInfo) :
+    action === 'reject'  ? emailStudentRejected(emailInfo) :
+                           emailStudentCancelledByTeacher(emailInfo);
+  sendEmail.catch((e) => console.error('Email failed:', e));
+
+  return NextResponse.json({ success: true });
+}
