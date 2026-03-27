@@ -48,10 +48,10 @@ export default function TeacherDashboard() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Schedule</h1>
         <div className="flex items-center gap-3">
-          <Link
-            href="/teacher/templates"
-            className="text-sm text-blue-600 hover:underline"
-          >
+          <Link href="/teacher/students" className="text-sm text-blue-600 hover:underline">
+            Students
+          </Link>
+          <Link href="/teacher/templates" className="text-sm text-blue-600 hover:underline">
             Manage slots
           </Link>
           <button

@@ -15,6 +15,20 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const endTime = getEndTime(start_time);
 
+  // Verify student is on the active list
+  const { data: student } = await supabase
+    .from('students')
+    .select('id, is_active')
+    .eq('email', student_email.toLowerCase().trim())
+    .single();
+
+  if (!student) {
+    return NextResponse.json({ error: 'Your email is not registered. Please contact the teacher.' }, { status: 403 });
+  }
+  if (!student.is_active) {
+    return NextResponse.json({ error: 'Your account is currently inactive. Please contact the teacher.' }, { status: 403 });
+  }
+
   // Verify template exists
   const { data: template } = await supabase
     .from('slot_templates')
