@@ -6,9 +6,9 @@ import { formatDate, getEndTime, todayInIsrael } from '@/lib/dates';
 // POST /api/bookings — student submits a lesson request
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { booking_type, template_id, date, start_time, student_name, student_email } = body;
+  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name, student_email } = body;
 
-  if (!booking_type || !template_id || !date || !start_time || !student_name || !student_email) {
+  if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
   const { data: booking, error } = await supabase
     .from('one_time_bookings')
     .insert({
-      template_id,
+      template_id: template_id || null,
+      one_time_slot_id: one_time_slot_id || null,
       specific_date: date,
       start_time,
       student_name,

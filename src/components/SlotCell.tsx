@@ -41,6 +41,10 @@ export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
         {slot.start_time} &ndash; {slot.end_time}
       </div>
 
+      {!isTeacher && slot.one_time_slot_id && slot.state === 'available' && (
+        <div className="mt-0.5 text-green-600 font-medium">One-time</div>
+      )}
+
       {isTeacher && slot.state !== 'available' && slot.state !== 'blocked' && slot.student_name && (
         <div className="mt-0.5 truncate">{slot.student_name}</div>
       )}

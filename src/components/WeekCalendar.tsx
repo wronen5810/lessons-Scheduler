@@ -24,9 +24,11 @@ export default function WeekCalendar({ slots, weekStart, today }: Props) {
 
   function handleSlotClick(slot: ComputedSlot) {
     if (slot.state !== 'available') return;
-    router.push(
-      `/request?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}`
-    );
+    if (slot.one_time_slot_id) {
+      router.push(`/request?oneTimeSlotId=${slot.one_time_slot_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}`);
+    } else {
+      router.push(`/request?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}`);
+    }
   }
 
   return (

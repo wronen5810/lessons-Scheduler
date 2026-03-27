@@ -9,20 +9,25 @@ export default function RequestForm() {
   const router = useRouter();
   const params = useSearchParams();
   const templateId = params.get('templateId') ?? '';
+  const oneTimeSlotId = params.get('oneTimeSlotId') ?? '';
   const date = params.get('date') ?? '';
   const time = params.get('time') ?? '';
+  const duration = Number(params.get('duration') ?? 45);
+  const isOneTimeSlot = !!oneTimeSlotId;
 
-  const endTime = getEndTime(time);
+  const endTime = getEndTime(time, duration);
   const dayOfWeek = parseISO(date).getDay();
 
-  const [bookingType, setBookingType] = useState<'recurring' | 'one_time'>('recurring');
+  const [bookingType, setBookingType] = useState<'recurring' | 'one_time'>(
+    isOneTimeSlot ? 'one_time' : 'recurring'
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
-  if (!templateId || !date || !time) {
+  if ((!templateId && !oneTimeSlotId) || !date || !time) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-500">Invalid booking link.</p>
@@ -39,8 +44,10 @@ export default function RequestForm() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        booking_type: bookingType,
-        template_id: templateId,
+        booking_type: 'one_time',
+        ...(isOneTimeSlot
+          ? { one_time_slot_id: oneTimeSlotId }
+          : { template_id: templateId, booking_type: bookingType }),
         date,
         start_time: time,
         student_name: name,
@@ -94,12 +101,17 @@ export default function RequestForm() {
 
       <main className="max-w-md mx-auto px-4 py-8">
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-6 text-sm">
-          <div className="font-medium text-blue-800">
-            {DAY_NAMES[dayOfWeek]}s &middot; {time} &ndash; {endTime}
-          </div>
-          <div className="text-blue-600 mt-0.5">
-            Starting {formatDisplayDateLong(date)}
-          </div>
+          {isOneTimeSlot ? (
+            <>
+              <div className="font-medium text-blue-800">One-time slot &middot; {time} &ndash; {endTime}</div>
+              <div className="text-blue-600 mt-0.5">{formatDisplayDateLong(date)}</div>
+            </>
+          ) : (
+            <>
+              <div className="font-medium text-blue-800">{DAY_NAMES[dayOfWeek]}s &middot; {time} &ndash; {endTime}</div>
+              <div className="text-blue-600 mt-0.5">Starting {formatDisplayDateLong(date)}</div>
+            </>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -127,44 +139,27 @@ export default function RequestForm() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Booking type</label>
-            <div className="space-y-2">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="type"
-                  value="recurring"
-                  checked={bookingType === 'recurring'}
-                  onChange={() => setBookingType('recurring')}
-                  className="mt-0.5"
-                />
-                <div>
-                  <div className="text-sm font-medium text-gray-900">Every week</div>
-                  <div className="text-xs text-gray-500">
-                    Reserve every {DAY_NAMES[dayOfWeek]} at {time} on an ongoing basis
+          {!isOneTimeSlot && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Booking type</label>
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="type" value="recurring" checked={bookingType === 'recurring'} onChange={() => setBookingType('recurring')} className="mt-0.5" />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">Every week</div>
+                    <div className="text-xs text-gray-500">Reserve every {DAY_NAMES[dayOfWeek]} at {time} on an ongoing basis</div>
                   </div>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="type"
-                  value="one_time"
-                  checked={bookingType === 'one_time'}
-                  onChange={() => setBookingType('one_time')}
-                  className="mt-0.5"
-                />
-                <div>
-                  <div className="text-sm font-medium text-gray-900">One time only</div>
-                  <div className="text-xs text-gray-500">
-                    Just this date: {formatDisplayDateLong(date)}
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="type" value="one_time" checked={bookingType === 'one_time'} onChange={() => setBookingType('one_time')} className="mt-0.5" />
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">One time only</div>
+                    <div className="text-xs text-gray-500">Just this date: {formatDisplayDateLong(date)}</div>
                   </div>
-                </div>
-              </label>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
