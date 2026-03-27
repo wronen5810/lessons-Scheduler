@@ -18,5 +18,5 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceSupabase();
   const slots = await computeWeekSlots(weekStr, supabase, false);
 
-  return NextResponse.json(slots);
+  return NextResponse.json(slots.filter((s) => s.state === 'available'));
 }
