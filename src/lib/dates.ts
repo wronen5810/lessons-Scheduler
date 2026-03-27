@@ -44,6 +44,40 @@ export function getEndTime(startTime: string, durationMinutes = 45): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+export function getMonthStr(dateStr: string): string {
+  return dateStr.slice(0, 7); // 'YYYY-MM'
+}
+
+export function formatMonthDisplay(monthStr: string): string {
+  const [year, month] = monthStr.split('-').map(Number);
+  return format(new Date(year, month - 1, 1), 'MMMM yyyy');
+}
+
+export function getMonthWeekStarts(monthStr: string): string[] {
+  const [year, month] = monthStr.split('-').map(Number);
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const weeks: string[] = [];
+  let cur = getWeekStart(firstDay);
+  while (cur <= lastDay) {
+    weeks.push(formatDate(cur));
+    cur = addDays(cur, 7);
+  }
+  return weeks;
+}
+
+export function prevMonth(monthStr: string): string {
+  const [year, month] = monthStr.split('-').map(Number);
+  const d = new Date(year, month - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function nextMonth(monthStr: string): string {
+  const [year, month] = monthStr.split('-').map(Number);
+  const d = new Date(year, month, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function addWeeksToDate(dateStr: string, weeks: number): string {
   return formatDate(addWeeks(parseISO(dateStr), weeks));
 }

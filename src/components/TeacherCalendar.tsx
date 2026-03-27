@@ -7,17 +7,18 @@ import SlotCell from './SlotCell';
 
 interface Props {
   slots: ComputedSlot[];
-  weekStart: string;
+  weekStarts: string[];   // one entry for week view, multiple for month view
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
 }
 
-export default function TeacherCalendar({ slots, weekStart, today, onSelectSlot }: Props) {
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(parseISO(weekStart), i);
-    return formatDate(date);
-  });
-
+function WeekRow({ weekStart, slots, today, onSelectSlot }: {
+  weekStart: string;
+  slots: ComputedSlot[];
+  today: string;
+  onSelectSlot: (slot: ComputedSlot) => void;
+}) {
+  const days = Array.from({ length: 7 }, (_, i) => formatDate(addDays(parseISO(weekStart), i)));
   const slotsByDay = (date: string) => slots.filter((s) => s.date === date);
 
   return (
@@ -28,9 +29,7 @@ export default function TeacherCalendar({ slots, weekStart, today, onSelectSlot 
 
         return (
           <div key={date}>
-            <div
-              className={`text-center mb-2 pb-1 border-b ${isToday ? 'border-blue-400' : 'border-gray-200'}`}
-            >
+            <div className={`text-center mb-2 pb-1 border-b ${isToday ? 'border-blue-400' : 'border-gray-200'}`}>
               <div className="text-xs font-medium text-gray-500">{DAY_NAMES_SHORT[i]}</div>
               <div className={`text-sm font-semibold ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
                 {formatDisplayDate(date).split(',')[1]?.trim() ?? formatDisplayDate(date)}
@@ -52,6 +51,22 @@ export default function TeacherCalendar({ slots, weekStart, today, onSelectSlot 
           </div>
         );
       })}
+    </div>
+  );
+}
+
+export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot }: Props) {
+  return (
+    <div className="space-y-6">
+      {weekStarts.map((weekStart) => (
+        <WeekRow
+          key={weekStart}
+          weekStart={weekStart}
+          slots={slots}
+          today={today}
+          onSelectSlot={onSelectSlot}
+        />
+      ))}
     </div>
   );
 }
