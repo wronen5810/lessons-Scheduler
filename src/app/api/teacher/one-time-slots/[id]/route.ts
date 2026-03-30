@@ -9,7 +9,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   const supabase = createServiceSupabase();
-  const { error } = await supabase.from('one_time_slots').delete().eq('id', id);
+  const { error } = await supabase
+    .from('one_time_slots')
+    .delete()
+    .eq('id', id)
+    .eq('teacher_id', auth.user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });

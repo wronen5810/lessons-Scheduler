@@ -11,6 +11,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('students')
     .select('*')
+    .eq('teacher_id', auth.user.id)
     .order('name');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('students')
-    .insert({ name, email: email.toLowerCase().trim() })
+    .insert({ name, email: email.toLowerCase().trim(), teacher_id: auth.user.id })
     .select()
     .single();
 

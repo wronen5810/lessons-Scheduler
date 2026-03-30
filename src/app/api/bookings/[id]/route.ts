@@ -25,7 +25,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const supabase = createServiceSupabase();
   const table = type === 'recurring' ? 'recurring_bookings' : 'one_time_bookings';
 
-  const { data: booking } = await supabase.from(table).select('*').eq('id', id).single();
+  const { data: booking } = await supabase
+    .from(table)
+    .select('*')
+    .eq('id', id)
+    .eq('teacher_id', auth.user.id)
+    .single();
+
   if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
   const newStatus =

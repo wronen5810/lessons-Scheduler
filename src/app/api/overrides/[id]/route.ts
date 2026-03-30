@@ -10,7 +10,12 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const { id } = await params;
   const supabase = createServiceSupabase();
 
-  const { error } = await supabase.from('slot_overrides').delete().eq('id', id);
+  const { error } = await supabase
+    .from('slot_overrides')
+    .delete()
+    .eq('id', id)
+    .eq('teacher_id', auth.user.id);
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true });

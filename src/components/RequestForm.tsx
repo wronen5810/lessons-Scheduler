@@ -13,6 +13,7 @@ export default function RequestForm() {
   const date = params.get('date') ?? '';
   const time = params.get('time') ?? '';
   const duration = Number(params.get('duration') ?? 45);
+  const teacherId = params.get('teacherId') ?? '';
   const isOneTimeSlot = !!oneTimeSlotId;
 
   const endTime = getEndTime(time, duration);
@@ -52,6 +53,7 @@ export default function RequestForm() {
         start_time: time,
         student_name: name,
         student_email: email,
+        teacher_id: teacherId,
       }),
     });
 
@@ -80,7 +82,7 @@ export default function RequestForm() {
             You&apos;ll receive an email once the teacher confirms your lesson.
           </p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push(teacherId ? `/t/${teacherId}` : '/')}
             className="text-sm text-blue-600 hover:underline"
           >
             Back to schedule

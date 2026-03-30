@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 
-// GET /api/templates — list all slot templates
+// GET /api/templates — list all slot templates for this teacher
 export async function GET() {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
@@ -11,6 +11,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('slot_templates')
     .select('*')
+    .eq('teacher_id', auth.user.id)
     .order('day_of_week')
     .order('start_time');
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('slot_templates')
-    .insert({ day_of_week, start_time, duration_minutes: duration_minutes ?? 45 })
+    .insert({ day_of_week, start_time, duration_minutes: duration_minutes ?? 45, teacher_id: auth.user.id })
     .select()
     .single();
 

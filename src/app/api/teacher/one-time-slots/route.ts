@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from('one_time_slots')
     .select('*')
+    .eq('teacher_id', auth.user.id)
     .gte('specific_date', from)
     .order('specific_date')
     .order('start_time');
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('one_time_slots')
-    .insert({ specific_date, start_time, duration_minutes: duration_minutes ?? 45 })
+    .insert({ specific_date, start_time, duration_minutes: duration_minutes ?? 45, teacher_id: auth.user.id })
     .select()
     .single();
 

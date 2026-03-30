@@ -16,6 +16,7 @@ interface LessonInfo {
   endTime: string;
   cancelToken?: string;
   reason?: string;
+  teacherEmail?: string;
 }
 
 function scheduleText(info: LessonInfo): string {
@@ -33,7 +34,7 @@ function cancelLink(token: string): string {
 export async function emailTeacherNewRequest(info: LessonInfo) {
   await getResend().emails.send({
     from: FROM(),
-    to: TEACHER_EMAIL(),
+    to: info.teacherEmail ?? TEACHER_EMAIL(),
     subject: `New lesson request from ${info.studentName}`,
     html: `
       <h2>New Lesson Request</h2>
@@ -108,7 +109,7 @@ export async function emailStudentReminder(
 export async function emailTeacherCancellation(info: LessonInfo & { reason: string }) {
   await getResend().emails.send({
     from: FROM(),
-    to: TEACHER_EMAIL(),
+    to: info.teacherEmail ?? TEACHER_EMAIL(),
     subject: `Lesson cancellation from ${info.studentName}`,
     html: `
       <h2>Lesson Cancelled by Student</h2>

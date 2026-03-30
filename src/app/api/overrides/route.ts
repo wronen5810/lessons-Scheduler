@@ -16,10 +16,22 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceSupabase();
 
-  // Upsert: create or update the override for this template+date
+  // Verify the template belongs to this teacher
+  const { data: template } = await supabase
+    .from('slot_templates')
+    .select('id')
+    .eq('id', template_id)
+    .eq('teacher_id', auth.user.id)
+    .single();
+
+  if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+
   const { data, error } = await supabase
     .from('slot_overrides')
-    .upsert({ template_id, specific_date, is_blocked }, { onConflict: 'template_id,specific_date' })
+    .upsert(
+      { template_id, specific_date, is_blocked, teacher_id: auth.user.id },
+      { onConflict: 'template_id,specific_date' }
+    )
     .select()
     .single();
 

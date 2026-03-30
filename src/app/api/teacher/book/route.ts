@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     .from('slot_templates')
     .select('*')
     .eq('id', template_id)
+    .eq('teacher_id', auth.user.id)
     .single();
 
   if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
         started_date: date,
         status: 'approved',
         booked_by: 'teacher',
+        teacher_id: auth.user.id,
       })
       .select()
       .single();
@@ -56,6 +58,7 @@ export async function POST(request: NextRequest) {
         student_email,
         status: 'approved',
         booked_by: 'teacher',
+        teacher_id: auth.user.id,
       })
       .select()
       .single();

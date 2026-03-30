@@ -20,7 +20,8 @@ function bookingToState(status: string): import('./types').SlotState {
 export async function computeWeekSlots(
   weekStartStr: string,
   supabase: SupabaseClient,
-  forTeacher = false
+  forTeacher = false,
+  teacherId: string,
 ): Promise<ComputedSlot[]> {
   const weekStart = parseISO(weekStartStr);
   const weekDates = getWeekDates(weekStart);
@@ -33,11 +34,11 @@ export async function computeWeekSlots(
     { data: oneTimeBookings },
     { data: oneTimeSlots },
   ] = await Promise.all([
-    supabase.from('slot_templates').select('*').eq('is_active', true).order('day_of_week').order('start_time'),
-    supabase.from('slot_overrides').select('*').gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
-    supabase.from('recurring_bookings').select('*').in('status', ['pending', 'approved', 'completed', 'paid']).lte('started_date', weekEndStr),
-    supabase.from('one_time_bookings').select('*').in('status', ['pending', 'approved', 'completed', 'paid']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
-    supabase.from('one_time_slots').select('*').eq('is_active', true).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('slot_templates').select('*').eq('teacher_id', teacherId).eq('is_active', true).order('day_of_week').order('start_time'),
+    supabase.from('slot_overrides').select('*').eq('teacher_id', teacherId).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('recurring_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid']).lte('started_date', weekEndStr),
+    supabase.from('one_time_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('one_time_slots').select('*').eq('teacher_id', teacherId).eq('is_active', true).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
   ]);
 
   const templateList: SlotTemplate[] = templates || [];

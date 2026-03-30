@@ -133,6 +133,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     cancellation_reason: reason || null,
   }).eq('id', booking.id);
 
+  // Look up teacher email for notification
+  let teacherEmail: string | undefined;
+  if (booking.teacher_id) {
+    const { data: { user: teacherUser } } = await supabase.auth.admin.getUserById(booking.teacher_id);
+    teacherEmail = teacherUser?.email;
+  }
+
   await emailTeacherCancellation({
     studentName: booking.student_name,
     studentEmail: booking.student_email,
@@ -142,6 +149,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     startTime,
     endTime: getEndTime(startTime),
     reason: reason || '',
+    teacherEmail,
   });
 
   return NextResponse.json({ success: true });

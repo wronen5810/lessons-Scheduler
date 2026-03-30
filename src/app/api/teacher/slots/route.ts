@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceSupabase();
-  const slots = await computeWeekSlots(weekStr, supabase, true);
+  const slots = await computeWeekSlots(weekStr, supabase, true, auth.user.id);
 
   return NextResponse.json(slots);
 }

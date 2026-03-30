@@ -15,6 +15,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .from('slot_templates')
     .update({ is_active: body.is_active })
     .eq('id', id)
+    .eq('teacher_id', auth.user.id)
     .select()
     .single();
 
@@ -30,7 +31,12 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const { id } = await params;
   const supabase = createServiceSupabase();
 
-  const { error } = await supabase.from('slot_templates').delete().eq('id', id);
+  const { error } = await supabase
+    .from('slot_templates')
+    .delete()
+    .eq('id', id)
+    .eq('teacher_id', auth.user.id);
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true });

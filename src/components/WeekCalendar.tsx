@@ -10,9 +10,10 @@ interface Props {
   slots: ComputedSlot[];
   weekStart: string;
   today: string;
+  teacherId: string;
 }
 
-export default function WeekCalendar({ slots, weekStart, today }: Props) {
+export default function WeekCalendar({ slots, weekStart, today, teacherId }: Props) {
   const router = useRouter();
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -24,10 +25,11 @@ export default function WeekCalendar({ slots, weekStart, today }: Props) {
 
   function handleSlotClick(slot: ComputedSlot) {
     if (slot.state !== 'available') return;
+    const base = `/t/${teacherId}/request`;
     if (slot.one_time_slot_id) {
-      router.push(`/request?oneTimeSlotId=${slot.one_time_slot_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}`);
+      router.push(`${base}?oneTimeSlotId=${slot.one_time_slot_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}`);
     } else {
-      router.push(`/request?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}`);
+      router.push(`${base}?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}`);
     }
   }
 

@@ -6,20 +6,21 @@ import { formatDate, getEndTime, todayInIsrael } from '@/lib/dates';
 // POST /api/bookings — student submits a lesson request
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name, student_email } = body;
+  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name, student_email, teacher_id } = body;
 
-  if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email) {
+  if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email || !teacher_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
   const supabase = createServiceSupabase();
   const endTime = getEndTime(start_time);
 
-  // Verify student is on the active list
+  // Verify student is on this teacher's active list
   const { data: student } = await supabase
     .from('students')
     .select('id, is_active')
     .eq('email', student_email.toLowerCase().trim())
+    .eq('teacher_id', teacher_id)
     .single();
 
   if (!student) {
@@ -29,14 +30,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Your account is currently inactive. Please contact the teacher.' }, { status: 403 });
   }
 
-  // Verify template exists
+  // Look up teacher email for notification
+  const { data: { user: teacherUser } } = await supabase.auth.admin.getUserById(teacher_id);
+  const teacherEmail = teacherUser?.email;
+
+  // Verify template exists and belongs to this teacher
   const { data: template } = await supabase
     .from('slot_templates')
     .select('*')
     .eq('id', template_id)
+    .eq('teacher_id', teacher_id)
     .single();
 
-  if (!template) {
+  if (template_id && !template) {
     return NextResponse.json({ error: 'Invalid slot' }, { status: 400 });
   }
 
@@ -46,6 +52,7 @@ export async function POST(request: NextRequest) {
       .from('recurring_bookings')
       .select('id')
       .eq('template_id', template_id)
+      .eq('teacher_id', teacher_id)
       .in('status', ['pending', 'approved'])
       .lte('started_date', date)
       .or(`ended_date.is.null,ended_date.gte.${date}`)
@@ -63,6 +70,7 @@ export async function POST(request: NextRequest) {
         student_email,
         started_date: date,
         booked_by: 'student',
+        teacher_id,
       })
       .select()
       .single();
@@ -77,6 +85,7 @@ export async function POST(request: NextRequest) {
       dayOfWeek: template.day_of_week,
       startTime: start_time,
       endTime,
+      teacherEmail,
     }).catch((e) => console.error('Email failed:', e));
 
     return NextResponse.json(booking, { status: 201 });
@@ -97,6 +106,7 @@ export async function POST(request: NextRequest) {
     .select('id')
     .eq('specific_date', date)
     .eq('start_time', start_time)
+    .eq('teacher_id', teacher_id)
     .in('status', ['pending', 'approved'])
     .limit(1);
 
@@ -114,6 +124,7 @@ export async function POST(request: NextRequest) {
       student_name,
       student_email,
       booked_by: 'student',
+      teacher_id,
     })
     .select()
     .single();
@@ -127,6 +138,7 @@ export async function POST(request: NextRequest) {
     date,
     startTime: start_time,
     endTime,
+    teacherEmail,
   }).catch((e) => console.error('Email failed:', e));
 
   return NextResponse.json(booking, { status: 201 });

@@ -20,6 +20,7 @@ export default function TeacherDashboard() {
   const router = useRouter();
   const today = todayInIsrael();
 
+  const [teacherId, setTeacherId] = useState<string | null>(null);
   const [view, setView] = useState<View>('week');
   const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
   const [month, setMonth] = useState(() => getMonthStr(today));
@@ -42,6 +43,12 @@ export default function TeacherDashboard() {
     setSlots(results.flat());
     setLoading(false);
   }
+
+  useEffect(() => {
+    createBrowserSupabase().auth.getUser().then(({ data }) => {
+      if (data.user) setTeacherId(data.user.id);
+    });
+  }, []);
 
   useEffect(() => {
     if (view === 'week') loadWeek(weekStart);
@@ -69,6 +76,18 @@ export default function TeacherDashboard() {
         <div className="flex items-center gap-3">
           <Link href="/teacher/students" className="text-sm text-blue-600 hover:underline">Students</Link>
           <Link href="/teacher/templates" className="text-sm text-blue-600 hover:underline">Manage slots</Link>
+          {teacherId && (
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/t/${teacherId}`;
+                navigator.clipboard.writeText(url);
+                alert(`Booking link copied:\n${url}`);
+              }}
+              className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-0.5"
+            >
+              Copy booking link
+            </button>
+          )}
           <button onClick={handleSignOut} className="text-sm text-gray-500 hover:text-gray-700">Sign out</button>
         </div>
       </header>
