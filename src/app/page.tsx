@@ -12,17 +12,30 @@ export default function StudentPage() {
   const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teacherId, setTeacherId] = useState<string | null>(null);
 
   const minWeek = formatDate(getWeekStart(parseISO(today)));
   const maxWeek = formatDate(getWeekStart(addWeeks(parseISO(today), 4)));
 
+  // Try to detect a single teacher so the root URL still works
   useEffect(() => {
+    fetch('/api/teachers')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.length === 1) setTeacherId(data[0].id);
+        else setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!teacherId) return;
     setLoading(true);
-    fetch(`/api/slots?week=${weekStart}`)
+    fetch(`/api/slots?week=${weekStart}&teacherId=${teacherId}`)
       .then((r) => r.json())
       .then((data) => { setSlots(data); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [weekStart]);
+  }, [weekStart, teacherId]);
 
   function prevWeek() {
     const prev = formatDate(subWeeks(parseISO(weekStart), 1));
@@ -32,6 +45,17 @@ export default function StudentPage() {
   function nextWeek() {
     const next = formatDate(addWeeks(parseISO(weekStart), 1));
     if (next <= maxWeek) setWeekStart(next);
+  }
+
+  if (!loading && !teacherId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center text-gray-500">
+          <p className="text-lg font-medium mb-2">Please use your teacher&apos;s booking link.</p>
+          <p className="text-sm">The URL should look like: <code>/t/&lt;teacher-id&gt;</code></p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -53,7 +77,7 @@ export default function StudentPage() {
         {loading ? (
           <div className="mt-8 text-center text-gray-400">Loading...</div>
         ) : (
-          <WeekCalendar slots={slots} weekStart={weekStart} today={today} />
+          <WeekCalendar slots={slots} weekStart={weekStart} today={today} teacherId={teacherId ?? ''} />
         )}
 
         <div className="mt-6 flex gap-4 text-sm text-gray-500">
