@@ -37,7 +37,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<StudentBooking[]>([]);
-  const [cancelTarget, setCancelTarget] = useState<StudentBooking | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<StudentBooking | ComputedSlot | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
@@ -79,12 +79,15 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
   async function submitCancelRequest() {
     if (!cancelTarget || !cancelReason.trim()) return;
+    const bookingId = 'booking_id' in cancelTarget ? cancelTarget.booking_id : ('id' in cancelTarget ? (cancelTarget as StudentBooking).id : undefined);
+    const bookingType = 'booking_type' in cancelTarget ? cancelTarget.booking_type : undefined;
+    if (!bookingId || !bookingType) return;
     setCancelLoading(true);
     setCancelError('');
-    const res = await fetch(`/api/student/bookings/${cancelTarget.id}`, {
+    const res = await fetch(`/api/student/bookings/${bookingId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ booking_type: cancelTarget.booking_type, email, reason: cancelReason }),
+      body: JSON.stringify({ booking_type: bookingType, email, reason: cancelReason }),
     });
     setCancelLoading(false);
     if (!res.ok) {
@@ -160,6 +163,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                 today={today}
                 teacherId={teacherId}
                 email={email}
+                onOwnSlotClick={(slot) => { setCancelTarget(slot); setCancelReason(''); setCancelError(''); }}
               />
             ))}
           </div>
@@ -216,39 +220,53 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
       </main>
 
       {/* Cancel modal */}
-      {cancelTarget && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
-            <h3 className="font-semibold text-gray-900">Request Cancellation</h3>
-            <p className="text-sm text-gray-500">
-              Please provide a reason. Your teacher will review and approve the cancellation.
-            </p>
-            <textarea
-              rows={3}
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Reason for cancellation..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {cancelError && <p className="text-sm text-red-600">{cancelError}</p>}
-            <div className="flex gap-2">
-              <button
-                onClick={submitCancelRequest}
-                disabled={cancelLoading || !cancelReason.trim()}
-                className="flex-1 bg-red-600 text-white text-sm font-medium rounded-lg py-2 hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {cancelLoading ? 'Submitting...' : 'Submit request'}
-              </button>
+      {cancelTarget && (() => {
+        const state = 'state' in cancelTarget ? cancelTarget.state : cancelTarget.status;
+        const isPending = state === 'cancellation_requested';
+        return (
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
+              <h3 className="font-semibold text-gray-900">
+                {'date' in cancelTarget && 'start_time' in cancelTarget && 'state' in cancelTarget
+                  ? `${(cancelTarget as ComputedSlot).date} · ${(cancelTarget as ComputedSlot).start_time}`
+                  : 'Lesson'}
+              </h3>
+              {isPending ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
+                  Cancellation request already submitted and pending teacher approval.
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-500">
+                    Please provide a reason. Your teacher will review and approve the cancellation.
+                  </p>
+                  <textarea
+                    rows={3}
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Reason for cancellation..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {cancelError && <p className="text-sm text-red-600">{cancelError}</p>}
+                  <button
+                    onClick={submitCancelRequest}
+                    disabled={cancelLoading || !cancelReason.trim()}
+                    className="w-full bg-red-600 text-white text-sm font-medium rounded-lg py-2 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {cancelLoading ? 'Submitting...' : 'Submit request'}
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => setCancelTarget(null)}
-                className="flex-1 border border-gray-300 text-gray-600 text-sm rounded-lg py-2 hover:bg-gray-50 transition-colors"
+                className="w-full border border-gray-300 text-gray-600 text-sm rounded-lg py-2 hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                Close
               </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

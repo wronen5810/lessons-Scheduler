@@ -12,9 +12,10 @@ interface Props {
   today: string;
   teacherId?: string;
   email?: string;
+  onOwnSlotClick?: (slot: ComputedSlot) => void;
 }
 
-export default function WeekCalendar({ slots, weekStart, today, teacherId, email }: Props) {
+export default function WeekCalendar({ slots, weekStart, today, teacherId, email, onOwnSlotClick }: Props) {
   const router = useRouter();
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -25,13 +26,18 @@ export default function WeekCalendar({ slots, weekStart, today, teacherId, email
   const slotsByDay = (date: string) => slots.filter((s) => s.date === date);
 
   function handleSlotClick(slot: ComputedSlot) {
-    if (slot.state !== 'available') return;
-    const base = `/t/${teacherId}/request`;
-    const emailParam = email ? `&email=${encodeURIComponent(email)}` : '';
-    if (slot.one_time_slot_id) {
-      router.push(`${base}?oneTimeSlotId=${slot.one_time_slot_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}${emailParam}`);
-    } else {
-      router.push(`${base}?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}${emailParam}`);
+    if (slot.state === 'available') {
+      const base = `/t/${teacherId}/request`;
+      const emailParam = email ? `&email=${encodeURIComponent(email)}` : '';
+      if (slot.one_time_slot_id) {
+        router.push(`${base}?oneTimeSlotId=${slot.one_time_slot_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}${emailParam}`);
+      } else {
+        router.push(`${base}?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}${emailParam}`);
+      }
+      return;
+    }
+    if ((slot.state === 'pending' || slot.state === 'confirmed' || slot.state === 'cancellation_requested') && onOwnSlotClick) {
+      onOwnSlotClick(slot);
     }
   }
 
