@@ -23,6 +23,7 @@ export async function computeWeekSlots(
   supabase: SupabaseClient,
   forTeacher = false,
   teacherId: string,
+  studentEmail?: string,
 ): Promise<ComputedSlot[]> {
   const weekStart = parseISO(weekStartStr);
   const weekDates = getWeekDates(weekStart);
@@ -91,19 +92,20 @@ export async function computeWeekSlots(
         continue;
       }
 
+      const isOwnBooking = !!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase();
       const slot: ComputedSlot = {
         date: dateStr,
         start_time: startTime,
         end_time: endTime,
         duration_minutes: duration,
-        state: forTeacher ? bookingToState(booking.status) : 'unavailable',
+        state: forTeacher ? bookingToState(booking.status) : (isOwnBooking ? bookingToState(booking.status) : 'unavailable'),
         template_id: template.id,
         booking_type: otBooking ? 'one_time' : 'recurring',
         booking_id: booking.id,
         booking_status: booking.status,
       };
 
-      if (forTeacher) {
+      if (forTeacher || isOwnBooking) {
         slot.student_name = booking.student_name;
         slot.student_email = booking.student_email;
         slot.cancel_token = booking.cancel_token;
@@ -134,19 +136,20 @@ export async function computeWeekSlots(
       continue;
     }
 
+    const isOwnBooking = !!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase();
     const slot: ComputedSlot = {
       date: dateStr,
       start_time: startTime,
       end_time: endTime,
       duration_minutes: duration,
-      state: forTeacher ? bookingToState(booking.status) : 'unavailable',
+      state: forTeacher ? bookingToState(booking.status) : (isOwnBooking ? bookingToState(booking.status) : 'unavailable'),
       one_time_slot_id: otSlot.id,
       booking_type: 'one_time',
       booking_id: booking.id,
       booking_status: booking.status,
     };
 
-    if (forTeacher) {
+    if (forTeacher || isOwnBooking) {
       slot.student_name = booking.student_name;
       slot.student_email = booking.student_email;
       slot.cancel_token = booking.cancel_token;

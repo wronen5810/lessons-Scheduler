@@ -4,8 +4,8 @@ import { computeWeekSlots } from '@/lib/slots';
 import { formatDate, getWeekStart, todayInIsrael } from '@/lib/dates';
 import { parseISO } from 'date-fns';
 
-// GET /api/slots?week=YYYY-MM-DD&teacherId=<uuid>
-// Returns available slots for the student calendar view (no student details).
+// GET /api/slots?week=YYYY-MM-DD&teacherId=<uuid>&studentEmail=<email>
+// Returns slots for the student calendar view. Own bookings are included with their state.
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const teacherId = searchParams.get('teacherId');
@@ -21,8 +21,10 @@ export async function GET(request: NextRequest) {
     weekStr = formatDate(getWeekStart(parseISO(today)));
   }
 
-  const supabase = createServiceSupabase();
-  const slots = await computeWeekSlots(weekStr, supabase, false, teacherId);
+  const studentEmail = searchParams.get('studentEmail') ?? undefined;
 
-  return NextResponse.json(slots.filter((s) => s.state === 'available'));
+  const supabase = createServiceSupabase();
+  const slots = await computeWeekSlots(weekStr, supabase, false, teacherId, studentEmail);
+
+  return NextResponse.json(slots.filter((s) => s.state !== 'unavailable' && s.state !== 'blocked'));
 }

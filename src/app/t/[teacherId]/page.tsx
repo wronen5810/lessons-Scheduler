@@ -47,16 +47,18 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
   async function loadWeek(week: string) {
     setLoading(true);
-    const res = await fetch(`/api/slots?week=${week}&teacherId=${teacherId}`);
+    const emailParam = email ? `&studentEmail=${encodeURIComponent(email)}` : '';
+    const res = await fetch(`/api/slots?week=${week}&teacherId=${teacherId}${emailParam}`);
     setSlots(res.ok ? await res.json() : []);
     setLoading(false);
   }
 
   async function loadMonth(monthStr: string) {
     setLoading(true);
+    const emailParam = email ? `&studentEmail=${encodeURIComponent(email)}` : '';
     const weeks = getMonthWeekStarts(monthStr);
     const results = await Promise.all(
-      weeks.map((w) => fetch(`/api/slots?week=${w}&teacherId=${teacherId}`).then((r) => r.json()))
+      weeks.map((w) => fetch(`/api/slots?week=${w}&teacherId=${teacherId}${emailParam}`).then((r) => r.json()))
     );
     setSlots(results.flat());
     setLoading(false);
@@ -163,13 +165,20 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
           </div>
         )}
 
-        <div className="mt-6 flex gap-4 text-sm text-gray-500">
+        <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-500">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm bg-green-400 inline-block" /> Available
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm bg-gray-300 inline-block" /> Unavailable
-          </span>
+          {email && (
+            <>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-blue-500 inline-block" /> Pending approval
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block" /> Confirmed
+              </span>
+            </>
+          )}
         </div>
 
         {/* My bookings */}

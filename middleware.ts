@@ -31,18 +31,24 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isTeacherRoute = pathname.startsWith('/teacher') && !pathname.startsWith('/teacher/login');
+  const isAdminRoute = pathname.startsWith('/admin') && !pathname.startsWith('/admin/login');
 
-  if (isTeacherRoute && !user) {
-    return NextResponse.redirect(new URL('/teacher/login', request.url));
+  if ((isTeacherRoute || isAdminRoute) && !user) {
+    const loginPath = isAdminRoute ? '/admin/login' : '/teacher/login';
+    return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   if (pathname === '/teacher/login' && user) {
     return NextResponse.redirect(new URL('/teacher', request.url));
   }
 
+  if (pathname === '/admin/login' && user) {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ['/teacher/:path*'],
+  matcher: ['/teacher/:path*', '/admin/:path*'],
 };
