@@ -18,7 +18,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
 
   const dayOfWeek = parseISO(slot.date).getDay();
 
-  async function patchBooking(action: 'approve' | 'reject' | 'cancel' | 'complete' | 'pay') {
+  async function patchBooking(action: 'approve' | 'reject' | 'cancel' | 'complete' | 'pay' | 'approve-cancellation') {
     if (!slot.booking_id || !slot.booking_type) return;
     setLoading(true);
     await fetch(`/api/bookings/${slot.booking_id}?type=${slot.booking_type}&action=${action}`, {
