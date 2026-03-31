@@ -25,13 +25,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
-  if (booking.status !== 'approved') {
-    return NextResponse.json({ error: 'Only approved bookings can be cancelled' }, { status: 400 });
+  if (booking.status !== 'approved' && booking.status !== 'pending') {
+    return NextResponse.json({ error: 'This booking cannot be cancelled' }, { status: 400 });
   }
+
+  // Pending bookings can be withdrawn immediately; approved ones require teacher approval
+  const newStatus = booking.status === 'pending' ? 'cancelled' : 'cancellation_requested';
 
   const { error } = await supabase
     .from(table)
-    .update({ status: 'cancellation_requested', cancellation_reason: reason.trim() })
+    .update({ status: newStatus, cancellation_reason: reason.trim(), cancelled_by: 'student' })
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
