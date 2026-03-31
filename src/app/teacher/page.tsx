@@ -7,6 +7,7 @@ import {
   getWeekStart, nextMonth, prevMonth, todayInIsrael,
 } from '@/lib/dates';
 import type { ComputedSlot } from '@/lib/types';
+import type { PendingRequest } from '@/app/api/teacher/requests/route';
 import WeekNav from '@/components/WeekNav';
 import TeacherCalendar from '@/components/TeacherCalendar';
 import SlotPanel from '@/components/SlotPanel';
@@ -28,6 +29,9 @@ export default function TeacherDashboard() {
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ComputedSlot | null>(null);
+  const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   async function loadWeek(week: string) {
     setLoading(true);
@@ -55,8 +59,27 @@ export default function TeacherDashboard() {
     else loadMonth(month);
   }, [view, weekStart, month]);
 
+  async function loadRequests() {
+    setRequestsLoading(true);
+    const res = await fetch('/api/teacher/requests');
+    setRequests(res.ok ? await res.json() : []);
+    setRequestsLoading(false);
+  }
+
+  useEffect(() => { loadRequests(); }, []);
+
+  async function handleRequestAction(req: PendingRequest, action: 'approve' | 'reject' | 'approve-cancellation') {
+    setActionLoading(req.id);
+    await fetch(`/api/bookings/${req.id}?type=${req.booking_type}&action=${action}`, { method: 'PATCH' });
+    setActionLoading(null);
+    loadRequests();
+    if (view === 'week') loadWeek(weekStart);
+    else loadMonth(month);
+  }
+
   function handleAction() {
     setSelected(null);
+    loadRequests();
     if (view === 'week') loadWeek(weekStart);
     else loadMonth(month);
   }
@@ -130,6 +153,61 @@ export default function TeacherDashboard() {
           )}
         </div>
 
+        {/* Pending requests panel */}
+        {!requestsLoading && requests.length > 0 && (
+          <div className="mb-6 bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <h2 className="text-sm font-semibold text-gray-900">
+                Pending Requests <span className="ml-1.5 bg-red-100 text-red-700 text-xs font-medium px-1.5 py-0.5 rounded-full">{requests.length}</span>
+              </h2>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {requests.map((req) => {
+                const isCancel = req.request_type === 'cancellation_request';
+                const isRecurring = req.booking_type === 'recurring';
+                const busy = actionLoading === req.id;
+                return (
+                  <div key={req.id} className="px-4 py-3 flex items-start gap-4">
+                    <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${isCancel ? 'bg-orange-400' : 'bg-amber-400'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-gray-900">{req.student_name}</span>
+                        <span className="text-xs text-gray-500">{req.student_email}</span>
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${isCancel ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {isCancel ? 'Cancel request' : 'Lesson request'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {req.date} &middot; {req.start_time}–{req.end_time}
+                        {isRecurring && !isCancel && ' · Recurring'}
+                      </div>
+                      {isCancel && req.cancellation_reason && (
+                        <div className="text-xs text-gray-500 mt-0.5 italic">&ldquo;{req.cancellation_reason}&rdquo;</div>
+                      )}
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleRequestAction(req, isCancel ? 'approve-cancellation' : 'approve')}
+                        disabled={busy}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        {isCancel ? 'Approve' : 'Approve'}
+                      </button>
+                      <button
+                        onClick={() => handleRequestAction(req, isCancel ? 'approve' : 'reject')}
+                        disabled={busy}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                      >
+                        {isCancel ? 'Deny' : 'Reject'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="mt-8 text-center text-gray-400">Loading...</div>
         ) : (
@@ -148,6 +226,7 @@ export default function TeacherDashboard() {
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-400 inline-block" /> Approved</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-teal-400 inline-block" /> Completed</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-400 inline-block" /> Paid</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-400 inline-block" /> Cancel req.</span>
         </div>
       </main>
 
