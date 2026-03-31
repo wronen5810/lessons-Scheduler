@@ -26,5 +26,6 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceSupabase();
   const slots = await computeWeekSlots(weekStr, supabase, false, teacherId, studentEmail);
 
-  return NextResponse.json(slots.filter((s) => s.state !== 'unavailable' && s.state !== 'blocked'));
+  const studentStates = new Set(['available', 'pending', 'confirmed', 'cancellation_requested']);
+  return NextResponse.json(slots.filter((s) => studentStates.has(s.state)));
 }

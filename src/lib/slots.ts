@@ -82,7 +82,8 @@ export async function computeWeekSlots(
         (r) =>
           r.template_id === template.id &&
           r.started_date <= dateStr &&
-          (!r.ended_date || r.ended_date >= dateStr)
+          (!r.ended_date || r.ended_date >= dateStr) &&
+          (forTeacher || ['pending', 'approved', 'cancellation_requested'].includes(r.status))
       );
 
       const booking = otBooking || recBooking;
