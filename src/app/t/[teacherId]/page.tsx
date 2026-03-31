@@ -223,15 +223,19 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
       {cancelTarget && (() => {
         const state = 'state' in cancelTarget ? cancelTarget.state : cancelTarget.status;
         const isPending = state === 'cancellation_requested';
+        const isReadOnly = state === 'completed' || state === 'paid';
+        const title = 'state' in cancelTarget
+          ? `${(cancelTarget as ComputedSlot).date} · ${(cancelTarget as ComputedSlot).start_time}`
+          : 'Lesson';
         return (
           <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
-              <h3 className="font-semibold text-gray-900">
-                {'date' in cancelTarget && 'start_time' in cancelTarget && 'state' in cancelTarget
-                  ? `${(cancelTarget as ComputedSlot).date} · ${(cancelTarget as ComputedSlot).start_time}`
-                  : 'Lesson'}
-              </h3>
-              {isPending ? (
+              <h3 className="font-semibold text-gray-900">{title}</h3>
+              {isReadOnly ? (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700">
+                  This lesson has been {state === 'paid' ? 'paid' : 'completed'}.
+                </div>
+              ) : isPending ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
                   Cancellation request already submitted and pending teacher approval.
                 </div>

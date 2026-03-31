@@ -36,7 +36,7 @@ export default function WeekCalendar({ slots, weekStart, today, teacherId, email
       }
       return;
     }
-    if ((slot.state === 'pending' || slot.state === 'confirmed' || slot.state === 'cancellation_requested') && onOwnSlotClick) {
+    if (onOwnSlotClick) {
       onOwnSlotClick(slot);
     }
   }
