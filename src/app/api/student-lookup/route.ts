@@ -10,15 +10,28 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from('students')
     .select('teacher_id, is_active')
-    .eq('email', email.toLowerCase().trim())
-    .single();
+    .eq('email', email.toLowerCase().trim());
 
-  if (error || !data) {
+  if (error || !data || data.length === 0) {
     return NextResponse.json({ error: 'Email not found. Please contact your teacher.' }, { status: 404 });
   }
-  if (!data.is_active) {
+
+  const active = data.filter((s: { teacher_id: string; is_active: boolean }) => s.is_active);
+  if (active.length === 0) {
     return NextResponse.json({ error: 'Your account is inactive. Please contact your teacher.' }, { status: 403 });
   }
 
-  return NextResponse.json({ teacher_id: data.teacher_id });
+  // Enrich with teacher display names
+  const teacherIds = active.map((s: { teacher_id: string }) => s.teacher_id);
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', teacherIds);
+
+  const teachers = (profiles ?? []).map((p: { id: string; display_name: string }) => ({
+    id: p.id,
+    display_name: p.display_name,
+  }));
+
+  return NextResponse.json({ teachers });
 }
