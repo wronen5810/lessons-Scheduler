@@ -10,7 +10,7 @@ interface Props {
   slots: ComputedSlot[];
   weekStart: string;
   today: string;
-  teacherId: string;
+  teacherId?: string;
 }
 
 export default function WeekCalendar({ slots, weekStart, today, teacherId }: Props) {
