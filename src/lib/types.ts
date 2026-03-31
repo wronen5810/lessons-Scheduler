@@ -29,7 +29,7 @@ export interface RecurringBooking {
   template_id: string;
   student_name: string;
   student_email: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested';
   booked_by: 'teacher' | 'student';
   started_date: string;
   ended_date: string | null;
@@ -48,7 +48,7 @@ export interface OneTimeBooking {
   start_time: string;
   student_name: string;
   student_email: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested';
   booked_by: 'teacher' | 'student';
   cancel_token: string;
   reminder_sent: boolean;
@@ -58,7 +58,7 @@ export interface OneTimeBooking {
   created_at: string;
 }
 
-export type SlotState = 'available' | 'blocked' | 'pending' | 'confirmed' | 'completed' | 'paid' | 'unavailable';
+export type SlotState = 'available' | 'blocked' | 'pending' | 'confirmed' | 'completed' | 'paid' | 'unavailable' | 'cancellation_requested';
 
 export interface ComputedSlot {
   date: string;
@@ -71,8 +71,9 @@ export interface ComputedSlot {
   override_id?: string;
   booking_type?: 'recurring' | 'one_time';
   booking_id?: string;
-  booking_status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  booking_status?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested';
   student_name?: string;
   student_email?: string;
   cancel_token?: string;
+  cancellation_reason?: string;
 }

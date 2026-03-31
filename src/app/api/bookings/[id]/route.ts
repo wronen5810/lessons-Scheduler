@@ -16,7 +16,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') as 'recurring' | 'one_time';
-  const action = searchParams.get('action') as 'approve' | 'reject' | 'cancel' | 'complete' | 'pay';
+  const action = searchParams.get('action') as 'approve' | 'reject' | 'cancel' | 'complete' | 'pay' | 'approve-cancellation';
 
   if (!type || !action) {
     return NextResponse.json({ error: 'Missing type or action' }, { status: 400 });
@@ -35,16 +35,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
   const newStatus =
-    action === 'approve'  ? 'approved'  :
-    action === 'reject'   ? 'rejected'  :
-    action === 'cancel'   ? 'cancelled' :
-    action === 'complete' ? 'completed' :
-    action === 'pay'      ? 'paid'      : 'cancelled';
+    action === 'approve'               ? 'approved'   :
+    action === 'reject'                ? 'rejected'   :
+    action === 'cancel'                ? 'cancelled'  :
+    action === 'approve-cancellation'  ? 'cancelled'  :
+    action === 'complete'              ? 'completed'  :
+    action === 'pay'                   ? 'paid'       : 'cancelled';
 
   const updatePayload: Record<string, unknown> = { status: newStatus };
-  if (action === 'cancel') {
+  if (action === 'cancel' || action === 'approve-cancellation') {
     updatePayload.cancelled_at = new Date().toISOString();
-    updatePayload.cancelled_by = 'teacher';
+    updatePayload.cancelled_by = action === 'approve-cancellation' ? 'student' : 'teacher';
   }
 
   const { error } = await supabase.from(table).update(updatePayload).eq('id', id);

@@ -9,13 +9,14 @@ interface Props {
 }
 
 const STATE_STYLES: Record<string, string> = {
-  available:   'bg-green-50 border-green-300 text-green-800 hover:bg-green-100 cursor-pointer',
-  unavailable: 'bg-gray-100 border-gray-200 text-gray-400 cursor-default',
-  blocked:     'bg-gray-100 border-gray-200 text-gray-500 cursor-pointer hover:bg-gray-200',
-  pending:     'bg-amber-50 border-amber-300 text-amber-800 cursor-pointer hover:bg-amber-100',
-  confirmed:   'bg-blue-50 border-blue-300 text-blue-800 cursor-pointer hover:bg-blue-100',
-  completed:   'bg-teal-50 border-teal-300 text-teal-800 cursor-pointer hover:bg-teal-100',
-  paid:        'bg-emerald-50 border-emerald-300 text-emerald-800 cursor-pointer hover:bg-emerald-100',
+  available:                'bg-green-50 border-green-300 text-green-800 hover:bg-green-100 cursor-pointer',
+  unavailable:              'bg-gray-100 border-gray-200 text-gray-400 cursor-default',
+  blocked:                  'bg-gray-100 border-gray-200 text-gray-500 cursor-pointer hover:bg-gray-200',
+  pending:                  'bg-amber-50 border-amber-300 text-amber-800 cursor-pointer hover:bg-amber-100',
+  confirmed:                'bg-blue-50 border-blue-300 text-blue-800 cursor-pointer hover:bg-blue-100',
+  completed:                'bg-teal-50 border-teal-300 text-teal-800 cursor-pointer hover:bg-teal-100',
+  paid:                     'bg-emerald-50 border-emerald-300 text-emerald-800 cursor-pointer hover:bg-emerald-100',
+  cancellation_requested:   'bg-orange-50 border-orange-400 text-orange-800 cursor-pointer hover:bg-orange-100',
 };
 
 export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
@@ -47,6 +48,7 @@ export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
       {isTeacher && slot.state === 'confirmed' && <div className="mt-0.5 font-medium">Approved</div>}
       {isTeacher && slot.state === 'completed' && <div className="mt-0.5 font-medium">Completed</div>}
       {isTeacher && slot.state === 'paid' && <div className="mt-0.5 font-medium">Paid</div>}
+      {isTeacher && slot.state === 'cancellation_requested' && <div className="mt-0.5 font-medium">Cancel req.</div>}
     </div>
   );
 }

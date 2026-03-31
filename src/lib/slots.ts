@@ -14,6 +14,7 @@ function bookingToState(status: string): import('./types').SlotState {
   if (status === 'approved') return 'confirmed';
   if (status === 'completed') return 'completed';
   if (status === 'paid') return 'paid';
+  if (status === 'cancellation_requested') return 'cancellation_requested';
   return 'pending';
 }
 
@@ -36,8 +37,8 @@ export async function computeWeekSlots(
   ] = await Promise.all([
     supabase.from('slot_templates').select('*').eq('teacher_id', teacherId).eq('is_active', true).order('day_of_week').order('start_time'),
     supabase.from('slot_overrides').select('*').eq('teacher_id', teacherId).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
-    supabase.from('recurring_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid']).lte('started_date', weekEndStr),
-    supabase.from('one_time_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('recurring_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid', 'cancellation_requested']).lte('started_date', weekEndStr),
+    supabase.from('one_time_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid', 'cancellation_requested']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
     supabase.from('one_time_slots').select('*').eq('teacher_id', teacherId).eq('is_active', true).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
   ]);
 
@@ -106,6 +107,7 @@ export async function computeWeekSlots(
         slot.student_name = booking.student_name;
         slot.student_email = booking.student_email;
         slot.cancel_token = booking.cancel_token;
+        slot.cancellation_reason = booking.cancellation_reason ?? undefined;
       }
 
       slots.push(slot);
@@ -148,6 +150,7 @@ export async function computeWeekSlots(
       slot.student_name = booking.student_name;
       slot.student_email = booking.student_email;
       slot.cancel_token = booking.cancel_token;
+      slot.cancellation_reason = booking.cancellation_reason ?? undefined;
     }
 
     slots.push(slot);

@@ -70,8 +70,8 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {/* Student info for pending/confirmed/completed/paid */}
-          {(['pending', 'confirmed', 'completed', 'paid'] as const).includes(slot.state as never) && slot.student_name && (
+          {/* Student info for pending/confirmed/completed/paid/cancellation_requested */}
+          {(['pending', 'confirmed', 'completed', 'paid', 'cancellation_requested'] as const).includes(slot.state as never) && slot.student_name && (
             <div className="bg-gray-50 rounded-lg p-3 text-sm">
               <div className="font-medium text-gray-900">{slot.student_name}</div>
               <div className="text-gray-500">{slot.student_email}</div>
@@ -171,6 +171,32 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
             >
               Mark as Paid
             </button>
+          )}
+
+          {/* Cancellation requested */}
+          {slot.state === 'cancellation_requested' && (
+            <div className="space-y-3">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-sm text-orange-800">
+                <p className="font-medium mb-1">Student requested cancellation</p>
+                {slot.cancellation_reason && (
+                  <p className="text-xs">Reason: {slot.cancellation_reason}</p>
+                )}
+              </div>
+              <button
+                onClick={() => patchBooking('approve-cancellation')}
+                disabled={loading}
+                className="w-full py-2 px-3 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                Approve cancellation
+              </button>
+              <button
+                onClick={() => patchBooking('approve')}
+                disabled={loading}
+                className="w-full py-2 px-3 rounded-lg border border-gray-300 text-gray-700 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Deny (keep booking)
+              </button>
+            </div>
           )}
 
           {/* Paid slot */}
