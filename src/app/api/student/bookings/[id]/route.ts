@@ -34,9 +34,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { error } = await supabase
     .from(table)
-    .update({ status: newStatus, cancellation_reason: reason.trim(), cancelled_by: 'student' })
+    .update({ status: newStatus, cancellation_reason: reason.trim() })
     .eq('id', id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('Cancel update error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }

@@ -99,6 +99,12 @@ export default function TeacherDashboard() {
         <div className="flex items-center gap-3">
           <Link href="/teacher/students" className="text-sm text-blue-600 hover:underline">Students</Link>
           <Link href="/teacher/templates" className="text-sm text-blue-600 hover:underline">Manage slots</Link>
+          <button
+            onClick={() => { loadRequests(); if (view === 'week') loadWeek(weekStart); else loadMonth(month); }}
+            className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-0.5"
+          >
+            Refresh
+          </button>
           {teacherId && (
             <button
               onClick={() => {
