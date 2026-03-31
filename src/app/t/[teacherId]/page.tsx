@@ -1,14 +1,18 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { addDays, addWeeks, parseISO, subWeeks } from 'date-fns';
+import { addWeeks, parseISO, subWeeks } from 'date-fns';
 import { formatDate, getWeekStart, todayInIsrael } from '@/lib/dates';
 import type { ComputedSlot } from '@/lib/types';
 import WeekCalendar from '@/components/WeekCalendar';
 import WeekNav from '@/components/WeekNav';
+import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function StudentPage({ params }: { params: Promise<{ teacherId: string }> }) {
-  const { teacherId } = use(params);
+function StudentCalendar({ teacherId }: { teacherId: string }) {
+  const searchParams = useSearchParams();
+  const email = searchParams.get('email') ?? '';
+
   const today = todayInIsrael();
   const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
@@ -54,7 +58,7 @@ export default function StudentPage({ params }: { params: Promise<{ teacherId: s
         {loading ? (
           <div className="mt-8 text-center text-gray-400">Loading...</div>
         ) : (
-          <WeekCalendar slots={slots} weekStart={weekStart} today={today} teacherId={teacherId} />
+          <WeekCalendar slots={slots} weekStart={weekStart} today={today} teacherId={teacherId} email={email} />
         )}
 
         <div className="mt-6 flex gap-4 text-sm text-gray-500">
@@ -67,5 +71,14 @@ export default function StudentPage({ params }: { params: Promise<{ teacherId: s
         </div>
       </main>
     </div>
+  );
+}
+
+export default function StudentPage({ params }: { params: Promise<{ teacherId: string }> }) {
+  const { teacherId } = use(params);
+  return (
+    <Suspense fallback={<div className="mt-8 text-center text-gray-400">Loading...</div>}>
+      <StudentCalendar teacherId={teacherId} />
+    </Suspense>
   );
 }

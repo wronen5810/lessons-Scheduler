@@ -11,9 +11,10 @@ interface Props {
   weekStart: string;
   today: string;
   teacherId?: string;
+  email?: string;
 }
 
-export default function WeekCalendar({ slots, weekStart, today, teacherId }: Props) {
+export default function WeekCalendar({ slots, weekStart, today, teacherId, email }: Props) {
   const router = useRouter();
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -26,10 +27,11 @@ export default function WeekCalendar({ slots, weekStart, today, teacherId }: Pro
   function handleSlotClick(slot: ComputedSlot) {
     if (slot.state !== 'available') return;
     const base = `/t/${teacherId}/request`;
+    const emailParam = email ? `&email=${encodeURIComponent(email)}` : '';
     if (slot.one_time_slot_id) {
-      router.push(`${base}?oneTimeSlotId=${slot.one_time_slot_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}`);
+      router.push(`${base}?oneTimeSlotId=${slot.one_time_slot_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}${emailParam}`);
     } else {
-      router.push(`${base}?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}`);
+      router.push(`${base}?templateId=${slot.template_id}&date=${slot.date}&time=${slot.start_time}&duration=${slot.duration_minutes}&teacherId=${teacherId}${emailParam}`);
     }
   }
 

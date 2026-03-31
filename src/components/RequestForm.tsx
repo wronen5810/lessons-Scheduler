@@ -14,6 +14,7 @@ export default function RequestForm() {
   const time = params.get('time') ?? '';
   const duration = Number(params.get('duration') ?? 45);
   const teacherId = params.get('teacherId') ?? '';
+  const prefillEmail = params.get('email') ?? '';
   const isOneTimeSlot = !!oneTimeSlotId;
 
   const endTime = getEndTime(time, duration);
@@ -23,7 +24,7 @@ export default function RequestForm() {
     isOneTimeSlot ? 'one_time' : 'recurring'
   );
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefillEmail);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
