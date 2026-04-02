@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name, student_email } = body;
+  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name } = body;
+  const student_email = body.student_email?.toLowerCase().trim();
 
   if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
