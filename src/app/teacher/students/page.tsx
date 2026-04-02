@@ -7,6 +7,9 @@ interface Student {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
+  rate: number | null;
+  notes: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -14,17 +17,17 @@ interface Student {
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState('');
+  const [editing, setEditing] = useState<Student | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   async function load() {
     setLoading(true);
     const res = await fetch('/api/teacher/students');
-    const data = await res.json();
-    setStudents(data);
+    setStudents(await res.json());
     setLoading(false);
   }
 
@@ -40,13 +43,7 @@ export default function StudentsPage() {
       body: JSON.stringify({ name, email }),
     });
     const data = await res.json();
-    if (!res.ok) {
-      setFormError(data.error);
-    } else {
-      setName('');
-      setEmail('');
-      load();
-    }
+    if (!res.ok) { setFormError(data.error); } else { setName(''); setEmail(''); load(); }
     setAdding(false);
   }
 
@@ -60,91 +57,138 @@ export default function StudentsPage() {
   }
 
   async function handleDelete(student: Student) {
-    if (!confirm(`Remove ${student.name} from the student list?`)) return;
+    if (!confirm(`Remove ${student.name}?`)) return;
     await fetch(`/api/teacher/students/${student.id}`, { method: 'DELETE' });
     load();
   }
 
+  async function saveEdit() {
+    if (!editing) return;
+    setEditSaving(true);
+    await fetch(`/api/teacher/students/${editing.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: editing.name,
+        phone: editing.phone || null,
+        rate: editing.rate ?? null,
+        notes: editing.notes || null,
+      }),
+    });
+    setEditSaving(false);
+    setEditing(null);
+    load();
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Students</h1>
-        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">
-          Back to schedule
-        </Link>
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-bold text-gray-900">Students</h1>
+        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">← Schedule</Link>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
-        {/* Add student form */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        {/* Add student */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Add Student</h2>
           <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              placeholder="Full name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="email"
-              placeholder="Email address"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              disabled={adding}
-              className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-            >
-              {adding ? 'Adding...' : 'Add student'}
+            <input type="text" placeholder="Full name" required value={name} onChange={(e) => setName(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="email" placeholder="Email address" required value={email} onChange={(e) => setEmail(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button type="submit" disabled={adding}
+              className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap">
+              {adding ? 'Adding...' : 'Add'}
             </button>
           </form>
           {formError && <p className="text-sm text-red-600 mt-2">{formError}</p>}
         </div>
 
         {/* Student list */}
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
           {loading ? (
             <div className="px-5 py-8 text-center text-sm text-gray-400">Loading...</div>
           ) : students.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-gray-400">No students yet.</div>
-          ) : (
-            students.map((student) => (
-              <div key={student.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                  <p className="text-xs text-gray-500">{student.email}</p>
+          ) : students.map((student) => (
+            <div key={student.id}>
+              <div className="flex items-center justify-between px-5 py-3 gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{student.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{student.email}</p>
+                  <div className="flex flex-wrap gap-3 mt-1">
+                    {student.phone && <span className="text-xs text-gray-500">📞 {student.phone}</span>}
+                    {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}/lesson</span>}
+                    {student.notes && <span className="text-xs text-gray-400 italic truncate max-w-[200px]">{student.notes}</span>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleActive(student)}
-                    className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
-                      student.is_active
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                  >
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => setEditing({ ...student })}
+                    className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
+                    Edit
+                  </button>
+                  <button onClick={() => toggleActive(student)}
+                    className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+                      student.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}>
                     {student.is_active ? 'Active' : 'Inactive'}
                   </button>
-                  <button
-                    onClick={() => handleDelete(student)}
-                    className="text-xs text-red-500 hover:text-red-700"
-                  >
-                    Remove
-                  </button>
+                  <button onClick={() => handleDelete(student)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
       </main>
+
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-base font-semibold text-gray-900">Edit Student</h3>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+              <input type="text" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+              <input type="tel" value={editing.phone ?? ''} onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
+                placeholder="e.g. 050-1234567"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Rate per lesson (₪)</label>
+              <input type="number" min="0" step="0.01"
+                value={editing.rate ?? ''} onChange={(e) => setEditing({ ...editing, rate: e.target.value ? Number(e.target.value) : null })}
+                placeholder="e.g. 150"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <textarea rows={3} value={editing.notes ?? ''} onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
+                placeholder="Private notes about this student..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={saveEdit} disabled={editSaving}
+                className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {editSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button onClick={() => setEditing(null)}
+                className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

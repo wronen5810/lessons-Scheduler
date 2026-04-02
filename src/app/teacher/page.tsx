@@ -99,6 +99,7 @@ export default function TeacherDashboard() {
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
           <Link href="/teacher/students" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Students</Link>
           <Link href="/teacher/templates" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Slots</Link>
+          <Link href="/teacher/billing" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Billing</Link>
           <button
             onClick={() => { loadRequests(); if (view === 'week') loadWeek(weekStart); else loadMonth(month); }}
             className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
