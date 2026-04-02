@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     booking = data;
   }
 
-  await emailStudentDirectBooking({
+  emailStudentDirectBooking({
     studentName: student_name,
     studentEmail: student_email,
     bookingType: booking_type,
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     startTime: start_time,
     endTime,
     cancelToken: booking.cancel_token as string,
-  });
+  }).catch((e) => console.error('Email failed:', e));
 
   return NextResponse.json(booking, { status: 201 });
 }
