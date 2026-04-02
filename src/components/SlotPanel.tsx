@@ -70,8 +70,13 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
   async function patchBooking(action: 'approve' | 'reject' | 'cancel' | 'complete' | 'pay' | 'approve-cancellation') {
     if (!slot.booking_id || !slot.booking_type) return;
     setLoading(true);
-    await fetch(`/api/bookings/${slot.booking_id}?type=${slot.booking_type}&action=${action}`, { method: 'PATCH' });
+    const res = await fetch(`/api/bookings/${slot.booking_id}?type=${slot.booking_type}&action=${action}`, { method: 'PATCH' });
     setLoading(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Action failed. Please try again.');
+      return;
+    }
     onAction();
   }
 
