@@ -45,7 +45,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       .ilike('student_email', email),
     supabase
       .from('recurring_bookings')
-      .select('id, started_date, template_id')
+      .select('id, lesson_date, template_id')
       .eq('teacher_id', teacherId)
       .ilike('student_email', email),
   ]);
@@ -90,7 +90,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       const b = recMap.get(n.booking_id);
       if (b) {
         const tpl = tplMap.get(b.template_id);
-        date = b.started_date;
+        date = b.lesson_date;
         start_time = tpl ? formatTime(tpl.start_time) : '';
         end_time = getEndTime(start_time, tpl?.duration_minutes ?? 45);
       }

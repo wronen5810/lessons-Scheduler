@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { emailTeacherNewRequest } from '@/lib/email';
 import { formatDate, getEndTime, todayInIsrael } from '@/lib/dates';
+import { randomUUID } from 'crypto';
 
 // POST /api/bookings — student submits a lesson request
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name, student_email, teacher_id } = body;
+  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, student_name, student_email: rawEmail, teacher_id } = body;
+  const student_email = rawEmail?.toLowerCase().trim();
 
   if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email || !teacher_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -19,7 +21,7 @@ export async function POST(request: NextRequest) {
   const { data: student } = await supabase
     .from('students')
     .select('id, is_active')
-    .eq('email', student_email.toLowerCase().trim())
+    .ilike('email', student_email)
     .eq('teacher_id', teacher_id)
     .single();
 
@@ -30,11 +32,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Your account is currently inactive. Please contact the teacher.' }, { status: 403 });
   }
 
-  // Look up teacher email for notification
   const { data: { user: teacherUser } } = await supabase.auth.admin.getUserById(teacher_id);
   const teacherEmail = teacherUser?.email;
 
-  // Verify template exists and belongs to this teacher
   const { data: template } = await supabase
     .from('slot_templates')
     .select('*')
@@ -46,35 +46,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid slot' }, { status: 400 });
   }
 
-  // Check the slot is still available (no pending/approved booking already)
   if (booking_type === 'recurring') {
+    // Check no existing approved/pending lessons overlap on this template in the date range
+    const stopDate = end_date ?? date;
     const { data: existing } = await supabase
       .from('recurring_bookings')
-      .select('id')
+      .select('lesson_date')
       .eq('template_id', template_id)
       .eq('teacher_id', teacher_id)
       .in('status', ['pending', 'approved'])
-      .lte('started_date', date)
-      .or(`ended_date.is.null,ended_date.gte.${date}`)
-      .limit(1);
+      .gte('lesson_date', date)
+      .lte('lesson_date', stopDate);
 
     if (existing && existing.length > 0) {
-      return NextResponse.json({ error: 'Slot is no longer available' }, { status: 409 });
+      return NextResponse.json({ error: 'One or more dates in that range are no longer available' }, { status: 409 });
     }
 
-    const { data: booking, error } = await supabase
-      .from('recurring_bookings')
-      .insert({
+    const seriesId = randomUUID();
+    const rows = [];
+    let cur = new Date(date);
+    const stop = new Date(stopDate);
+    while (cur <= stop) {
+      rows.push({
         template_id,
         student_name,
         student_email,
+        lesson_date: cur.toISOString().slice(0, 10),
         started_date: date,
+        series_id: seriesId,
         booked_by: 'student',
         teacher_id,
-      })
-      .select()
-      .single();
+      });
+      cur.setDate(cur.getDate() + 7);
+    }
 
+    const { error } = await supabase.from('recurring_bookings').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     emailTeacherNewRequest({
@@ -88,14 +94,12 @@ export async function POST(request: NextRequest) {
       teacherEmail,
     }).catch((e) => console.error('Email failed:', e));
 
-    return NextResponse.json(booking, { status: 201 });
+    return NextResponse.json({ series_id: seriesId, count: rows.length }, { status: 201 });
   }
 
   // one_time booking
   const today = todayInIsrael();
-  const maxDate = formatDate(
-    new Date(new Date(today).getTime() + 28 * 24 * 60 * 60 * 1000)
-  );
+  const maxDate = formatDate(new Date(new Date(today).getTime() + 28 * 24 * 60 * 60 * 1000));
 
   if (date < today || date > maxDate) {
     return NextResponse.json({ error: 'Date out of allowed range' }, { status: 400 });

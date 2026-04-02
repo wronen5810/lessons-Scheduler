@@ -38,7 +38,7 @@ export async function computeWeekSlots(
   ] = await Promise.all([
     supabase.from('slot_templates').select('*').eq('teacher_id', teacherId).eq('is_active', true).order('day_of_week').order('start_time'),
     supabase.from('slot_overrides').select('*').eq('teacher_id', teacherId).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
-    supabase.from('recurring_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid', 'cancellation_requested']).lte('started_date', weekEndStr),
+    supabase.from('recurring_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid', 'cancellation_requested']).gte('lesson_date', weekStartStr).lte('lesson_date', weekEndStr),
     supabase.from('one_time_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid', 'cancellation_requested']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
     supabase.from('one_time_slots').select('*').eq('teacher_id', teacherId).eq('is_active', true).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
   ]);
@@ -81,8 +81,7 @@ export async function computeWeekSlots(
       const recBooking = recurringList.find(
         (r) =>
           r.template_id === template.id &&
-          r.started_date <= dateStr &&
-          (!r.ended_date || r.ended_date >= dateStr) &&
+          r.lesson_date === dateStr &&
           (forTeacher || ['pending', 'approved', 'cancellation_requested'].includes(r.status))
       );
 

@@ -3,6 +3,7 @@ import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { emailStudentDirectBooking } from '@/lib/email';
 import { getEndTime } from '@/lib/dates';
+import { randomUUID } from 'crypto';
 
 // POST /api/teacher/book — teacher books a slot directly for a student (skips pending)
 export async function POST(request: NextRequest) {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name } = body;
+  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, student_name } = body;
   const student_email = body.student_email?.toLowerCase().trim();
 
   if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email) {
@@ -20,7 +21,6 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const endTime = getEndTime(start_time);
 
-  // Fetch template if available (needed for recurring day_of_week in email)
   let template: { day_of_week: number } | null = null;
   if (template_id) {
     const { data } = await supabase
@@ -33,55 +33,72 @@ export async function POST(request: NextRequest) {
     if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
   }
 
-  // Recurring bookings require a template
   if (booking_type === 'recurring' && !template_id) {
     return NextResponse.json({ error: 'Recurring bookings require a template slot' }, { status: 400 });
   }
 
-  let booking: Record<string, unknown>;
-
   if (booking_type === 'recurring') {
-    const { data, error } = await supabase
-      .from('recurring_bookings')
-      .insert({
+    // Create one row per weekly occurrence between date and end_date
+    const seriesId = randomUUID();
+    const rows = [];
+    const stopDate = end_date ?? date; // if no end_date, just one lesson
+    let cur = new Date(date);
+    const stop = new Date(stopDate);
+    while (cur <= stop) {
+      rows.push({
         template_id,
         student_name,
         student_email,
+        lesson_date: cur.toISOString().slice(0, 10),
         started_date: date,
+        series_id: seriesId,
         status: 'approved',
         booked_by: 'teacher',
         teacher_id: auth.user.id,
-      })
-      .select()
-      .single();
+      });
+      cur.setDate(cur.getDate() + 7);
+    }
 
+    const { error } = await supabase.from('recurring_bookings').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    booking = data;
-  } else {
-    const { data, error } = await supabase
-      .from('one_time_bookings')
-      .insert({
-        template_id: template_id || null,
-        one_time_slot_id: one_time_slot_id || null,
-        specific_date: date,
-        start_time,
-        student_name,
-        student_email,
-        status: 'approved',
-        booked_by: 'teacher',
-        teacher_id: auth.user.id,
-      })
-      .select()
-      .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    booking = data;
+    emailStudentDirectBooking({
+      studentName: student_name,
+      studentEmail: student_email,
+      bookingType: 'recurring',
+      date,
+      dayOfWeek: template?.day_of_week,
+      startTime: start_time,
+      endTime,
+      cancelToken: seriesId,
+    }).catch((e) => console.error('Email failed:', e));
+
+    return NextResponse.json({ series_id: seriesId, count: rows.length }, { status: 201 });
   }
+
+  // one_time
+  const { data: booking, error } = await supabase
+    .from('one_time_bookings')
+    .insert({
+      template_id: template_id || null,
+      one_time_slot_id: one_time_slot_id || null,
+      specific_date: date,
+      start_time,
+      student_name,
+      student_email,
+      status: 'approved',
+      booked_by: 'teacher',
+      teacher_id: auth.user.id,
+    })
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   emailStudentDirectBooking({
     studentName: student_name,
     studentEmail: student_email,
-    bookingType: booking_type,
+    bookingType: 'one_time',
     date,
     dayOfWeek: template?.day_of_week,
     startTime: start_time,

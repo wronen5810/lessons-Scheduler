@@ -25,6 +25,7 @@ export default function RequestForm() {
   );
   const [name, setName] = useState('');
   const [email, setEmail] = useState(prefillEmail);
+  const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -46,11 +47,12 @@ export default function RequestForm() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        booking_type: 'one_time',
+        booking_type: isOneTimeSlot ? 'one_time' : bookingType,
         ...(isOneTimeSlot
           ? { one_time_slot_id: oneTimeSlotId }
-          : { template_id: templateId, booking_type: bookingType }),
+          : { template_id: templateId }),
         date,
+        end_date: bookingType === 'recurring' && endDate ? endDate : undefined,
         start_time: time,
         student_name: name,
         student_email: email,
@@ -149,18 +151,33 @@ export default function RequestForm() {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="type" value="recurring" checked={bookingType === 'recurring'} onChange={() => setBookingType('recurring')} className="mt-0.5" />
                   <div>
-                    <div className="text-sm font-medium text-gray-900">Every week</div>
-                    <div className="text-xs text-gray-500">Reserve every {DAY_NAMES[dayOfWeek]} at {time} on an ongoing basis</div>
+                    <div className="text-sm font-medium text-gray-900">Recurring (every week)</div>
+                    <div className="text-xs text-gray-500">Every {DAY_NAMES[dayOfWeek]} at {time}</div>
                   </div>
                 </label>
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="type" value="one_time" checked={bookingType === 'one_time'} onChange={() => setBookingType('one_time')} className="mt-0.5" />
                   <div>
                     <div className="text-sm font-medium text-gray-900">One time only</div>
-                    <div className="text-xs text-gray-500">Just this date: {formatDisplayDateLong(date)}</div>
+                    <div className="text-xs text-gray-500">Just {formatDisplayDateLong(date)}</div>
                   </div>
                 </label>
               </div>
+            </div>
+          )}
+
+          {!isOneTimeSlot && bookingType === 'recurring' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Last lesson date <span className="text-gray-400 font-normal text-xs">(optional — leave blank for open-ended)</span>
+              </label>
+              <input
+                type="date"
+                min={date}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
           )}
 

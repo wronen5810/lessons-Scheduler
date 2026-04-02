@@ -175,7 +175,7 @@ export default function TeacherDashboard() {
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
                         {req.date} &middot; {req.start_time}–{req.end_time}
-                        {isRecurring && !isCancel && ' · Recurring'}
+                        {isRecurring && !isCancel && (req.series_id ? ' · Recurring series' : ' · Recurring')}
                       </div>
                       {isCancel && req.cancellation_reason && (
                         <div className="text-xs text-gray-500 mt-0.5 italic">&ldquo;{req.cancellation_reason}&rdquo;</div>

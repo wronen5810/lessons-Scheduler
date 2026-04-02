@@ -29,9 +29,11 @@ export interface RecurringBooking {
   template_id: string;
   student_name: string;
   student_email: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested' | 'completed' | 'paid';
   booked_by: 'teacher' | 'student';
-  started_date: string;
+  lesson_date: string;
+  series_id: string | null;
+  started_date: string; // kept for backward compat
   ended_date: string | null;
   cancel_token: string;
   cancellation_reason: string | null;
@@ -71,7 +73,7 @@ export interface ComputedSlot {
   override_id?: string;
   booking_type?: 'recurring' | 'one_time';
   booking_id?: string;
-  booking_status?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested';
+  booking_status?: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested' | 'completed' | 'paid';
   student_name?: string;
   student_email?: string;
   cancel_token?: string;

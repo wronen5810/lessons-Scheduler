@@ -12,11 +12,10 @@ export interface PendingRequest {
   date: string;
   start_time: string;
   end_time: string;
+  series_id?: string;
   cancellation_reason?: string;
 }
 
-// GET /api/teacher/requests
-// Returns all pending lesson requests and cancellation requests for the teacher.
 export async function GET() {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
@@ -28,14 +27,16 @@ export async function GET() {
     await Promise.all([
       supabase
         .from('recurring_bookings')
-        .select('id, template_id, student_name, student_email, started_date')
+        .select('id, template_id, student_name, student_email, lesson_date, series_id')
         .eq('teacher_id', teacherId)
-        .eq('status', 'pending'),
+        .eq('status', 'pending')
+        .order('lesson_date'),
       supabase
         .from('recurring_bookings')
-        .select('id, template_id, student_name, student_email, started_date, cancellation_reason')
+        .select('id, template_id, student_name, student_email, lesson_date, series_id, cancellation_reason')
         .eq('teacher_id', teacherId)
-        .eq('status', 'cancellation_requested'),
+        .eq('status', 'cancellation_requested')
+        .order('lesson_date'),
       supabase
         .from('one_time_bookings')
         .select('id, specific_date, start_time, duration_minutes, student_name, student_email')
@@ -48,20 +49,23 @@ export async function GET() {
         .eq('status', 'cancellation_requested'),
     ]);
 
-  // Collect template IDs needed for recurring bookings
   const templateIds = [
     ...(pendingRecurring ?? []).map((b) => b.template_id),
     ...(cancelRecurring ?? []).map((b) => b.template_id),
   ];
-  const uniqueTemplateIds = [...new Set(templateIds)];
-  const { data: templates } = uniqueTemplateIds.length
-    ? await supabase.from('slot_templates').select('id, day_of_week, start_time, duration_minutes').in('id', uniqueTemplateIds)
+  const { data: templates } = [...new Set(templateIds)].length
+    ? await supabase.from('slot_templates').select('id, start_time, duration_minutes').in('id', [...new Set(templateIds)])
     : { data: [] };
   const templateMap = new Map((templates ?? []).map((t) => [t.id, t]));
 
   const results: PendingRequest[] = [];
 
+  // Group pending recurring by series_id — show one entry per series (first lesson date)
+  const pendingSeriesSeen = new Set<string>();
   for (const b of pendingRecurring ?? []) {
+    const seriesKey = b.series_id ?? b.id;
+    if (pendingSeriesSeen.has(seriesKey)) continue;
+    pendingSeriesSeen.add(seriesKey);
     const t = templateMap.get(b.template_id);
     const startTime = t ? formatTime(t.start_time) : '';
     results.push({
@@ -70,9 +74,10 @@ export async function GET() {
       request_type: 'lesson_request',
       student_name: b.student_name,
       student_email: b.student_email,
-      date: b.started_date,
+      date: b.lesson_date,
       start_time: startTime,
       end_time: getEndTime(startTime, t?.duration_minutes ?? 45),
+      series_id: b.series_id ?? undefined,
     });
   }
 
@@ -85,9 +90,10 @@ export async function GET() {
       request_type: 'cancellation_request',
       student_name: b.student_name,
       student_email: b.student_email,
-      date: b.started_date,
+      date: b.lesson_date,
       start_time: startTime,
       end_time: getEndTime(startTime, t?.duration_minutes ?? 45),
+      series_id: b.series_id ?? undefined,
       cancellation_reason: b.cancellation_reason ?? undefined,
     });
   }
@@ -121,8 +127,6 @@ export async function GET() {
     });
   }
 
-  // Sort by date then time
   results.sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time));
-
   return NextResponse.json(results);
 }

@@ -10,9 +10,12 @@ interface Props {
 }
 
 export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
-  const [bookingType, setBookingType] = useState<'recurring' | 'one_time'>('recurring');
+  const [bookingType, setBookingType] = useState<'recurring' | 'one_time'>(
+    slot.template_id ? 'recurring' : 'one_time'
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,6 +32,7 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
         template_id: slot.template_id,
         one_time_slot_id: slot.one_time_slot_id,
         date: slot.date,
+        end_date: bookingType === 'recurring' && endDate ? endDate : undefined,
         start_time: slot.start_time,
         student_name: name,
         student_email: email,
@@ -50,53 +54,52 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">Student name</label>
-        <input
-          type="text"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">Student email</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
-        <select
-          value={bookingType}
-          onChange={(e) => setBookingType(e.target.value as 'recurring' | 'one_time')}
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="recurring">Recurring (every week)</option>
-          <option value="one_time">One time only</option>
-        </select>
-      </div>
+      {slot.template_id && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+          <select value={bookingType} onChange={(e) => setBookingType(e.target.value as 'recurring' | 'one_time')}
+            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="recurring">Recurring (every week)</option>
+            <option value="one_time">One time only</option>
+          </select>
+        </div>
+      )}
+
+      {bookingType === 'recurring' && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Start date <span className="text-gray-400 font-normal">(first lesson)</span>
+          </label>
+          <input type="date" required value={slot.date} readOnly
+            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-gray-50 text-gray-500" />
+          <label className="block text-xs font-medium text-gray-600 mb-1 mt-2">
+            End date <span className="text-gray-400 font-normal">(last lesson)</span>
+          </label>
+          <input type="date" required={bookingType === 'recurring'} min={slot.date} value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+      )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
       <div className="flex gap-2 pt-1">
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
+        <button type="submit" disabled={loading}
+          className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
           {loading ? 'Booking...' : 'Book'}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
-        >
+        <button type="button" onClick={onCancel}
+          className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition-colors">
           Cancel
         </button>
       </div>

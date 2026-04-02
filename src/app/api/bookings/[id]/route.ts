@@ -8,7 +8,8 @@ import {
 } from '@/lib/email';
 import { getEndTime } from '@/lib/dates';
 
-// PATCH /api/bookings/[id]?type=recurring|one_time&action=approve|reject|cancel
+// PATCH /api/bookings/[id]?type=recurring|one_time&action=approve|reject|cancel|complete|pay|approve-cancellation
+// For recurring with a series_id, approve/reject/cancel acts on all rows in the series.
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
@@ -35,12 +36,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!booking) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
 
   const newStatus =
-    action === 'approve'               ? 'approved'   :
-    action === 'reject'                ? 'rejected'   :
-    action === 'cancel'                ? 'cancelled'  :
-    action === 'approve-cancellation'  ? 'cancelled'  :
-    action === 'complete'              ? 'completed'  :
-    action === 'pay'                   ? 'paid'       : 'cancelled';
+    action === 'approve'              ? 'approved'  :
+    action === 'reject'               ? 'rejected'  :
+    action === 'cancel'               ? 'cancelled' :
+    action === 'approve-cancellation' ? 'cancelled' :
+    action === 'complete'             ? 'completed' :
+    action === 'pay'                  ? 'paid'      : 'cancelled';
 
   const updatePayload: Record<string, unknown> = { status: newStatus };
   if (action === 'cancel' || action === 'approve-cancellation') {
@@ -48,13 +49,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     updatePayload.cancelled_by = action === 'approve-cancellation' ? 'student' : 'teacher';
   }
 
-  const { error } = await supabase.from(table).update(updatePayload).eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (type === 'recurring' && booking.series_id && ['approve', 'reject', 'cancel', 'approve-cancellation'].includes(action)) {
+    // Act on all rows in the series
+    const { error } = await supabase
+      .from('recurring_bookings')
+      .update(updatePayload)
+      .eq('series_id', booking.series_id)
+      .eq('teacher_id', auth.user.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  } else {
+    const { error } = await supabase.from(table).update(updatePayload).eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
-  // Fetch template to get day_of_week and start_time
-  let dayOfWeek: number | undefined;
+  // Build email info
   let startTime: string;
   let date: string;
+  let dayOfWeek: number | undefined;
 
   if (type === 'recurring') {
     const { data: template } = await supabase
@@ -64,7 +75,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .single();
     dayOfWeek = template?.day_of_week;
     startTime = template?.start_time?.slice(0, 5) ?? '';
-    date = booking.started_date;
+    date = booking.lesson_date ?? booking.started_date;
   } else {
     startTime = booking.start_time?.slice(0, 5) ?? '';
     date = booking.specific_date;
