@@ -22,7 +22,7 @@ export default function TeacherDashboard() {
   const today = todayInIsrael();
 
   const [teacherId, setTeacherId] = useState<string | null>(null);
-  const [view, setView] = useState<View>('week');
+  const [view, setView] = useState<View>('month');
   const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
   const [month, setMonth] = useState(() => getMonthStr(today));
 
@@ -93,55 +93,42 @@ export default function TeacherDashboard() {
   const weekStarts = view === 'week' ? [weekStart] : getMonthWeekStarts(month);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Schedule</h1>
-        <div className="flex items-center gap-3">
-          <Link href="/teacher/students" className="text-sm text-blue-600 hover:underline">Students</Link>
-          <Link href="/teacher/templates" className="text-sm text-blue-600 hover:underline">Manage slots</Link>
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <h1 className="text-lg font-bold text-gray-900 tracking-tight">Schedule</h1>
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
+          <Link href="/teacher/students" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Students</Link>
+          <Link href="/teacher/templates" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Slots</Link>
           <button
             onClick={() => { loadRequests(); if (view === 'week') loadWeek(weekStart); else loadMonth(month); }}
-            className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-0.5"
+            className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+            title="Refresh"
           >
-            Refresh
+            ↺
           </button>
-          {teacherId && (
-            <button
-              onClick={() => {
-                const url = `${window.location.origin}/t/${teacherId}`;
-                navigator.clipboard.writeText(url);
-                alert(`Booking link copied:\n${url}`);
-              }}
-              className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-2 py-0.5"
-            >
-              Copy booking link
-            </button>
-          )}
-          <button onClick={handleSignOut} className="text-sm text-gray-500 hover:text-gray-700">Sign out</button>
+          <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Sign out</button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-5">
 
         {/* View toggle + navigation */}
-        <div className="flex items-center justify-between mb-4">
-          {/* Week / Month toggle */}
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
             <button
               onClick={() => setView('week')}
-              className={`px-4 py-1.5 transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               Week
             </button>
             <button
               onClick={() => setView('month')}
-              className={`px-4 py-1.5 transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               Month
             </button>
           </div>
 
-          {/* Navigation */}
           {view === 'week' ? (
             <WeekNav
               weekStart={weekStart}
@@ -151,10 +138,10 @@ export default function TeacherDashboard() {
               canNext
             />
           ) : (
-            <div className="flex items-center gap-3">
-              <button onClick={() => setMonth(prevMonth(month))} className="p-1.5 rounded hover:bg-gray-100 text-gray-600">&#8592;</button>
-              <span className="text-sm font-medium text-gray-900 w-36 text-center">{formatMonthDisplay(month)}</span>
-              <button onClick={() => setMonth(nextMonth(month))} className="p-1.5 rounded hover:bg-gray-100 text-gray-600">&#8594;</button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setMonth(prevMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
+              <span className="text-sm font-semibold text-gray-800 w-32 text-center">{formatMonthDisplay(month)}</span>
+              <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
             </div>
           )}
         </div>
@@ -225,14 +212,21 @@ export default function TeacherDashboard() {
           />
         )}
 
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-500">
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-400 inline-block" /> Open</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-gray-300 inline-block" /> Blocked</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" /> Pending</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-400 inline-block" /> Approved</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-teal-400 inline-block" /> Completed</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-400 inline-block" /> Paid</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-400 inline-block" /> Cancel req.</span>
+        <div className="mt-5 flex flex-wrap gap-3">
+          {[
+            { color: 'bg-emerald-400', label: 'Open' },
+            { color: 'bg-gray-400',    label: 'Blocked' },
+            { color: 'bg-amber-400',   label: 'Pending' },
+            { color: 'bg-blue-500',    label: 'Approved' },
+            { color: 'bg-teal-500',    label: 'Completed' },
+            { color: 'bg-emerald-500', label: 'Paid' },
+            { color: 'bg-orange-400',  label: 'Cancel req.' },
+          ].map(({ color, label }) => (
+            <span key={label} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
+              <span className={`w-2 h-2 rounded-full ${color}`} />
+              {label}
+            </span>
+          ))}
         </div>
       </main>
 
