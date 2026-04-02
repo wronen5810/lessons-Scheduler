@@ -42,16 +42,17 @@ export async function GET() {
     : { data: [] };
   const tplMap = new Map((templates ?? []).map((t) => [t.id, t]));
 
-  const studentMap = new Map((students ?? []).map((s) => [s.email, s]));
+  const studentMap = new Map((students ?? []).map((s) => [s.email.toLowerCase(), s]));
 
   // Group lessons by student_email
   const byStudent = new Map<string, BillingRow>();
 
   function getOrCreate(email: string): BillingRow {
-    if (!byStudent.has(email)) {
-      const s = studentMap.get(email);
-      byStudent.set(email, {
-        student_email: email,
+    const key = email.toLowerCase();
+    if (!byStudent.has(key)) {
+      const s = studentMap.get(key);
+      byStudent.set(key, {
+        student_email: key,
         student_name: s?.name ?? email,
         rate: s?.rate ?? null,
         completed_lessons: 0,
@@ -59,7 +60,7 @@ export async function GET() {
         lessons: [],
       });
     }
-    return byStudent.get(email)!;
+    return byStudent.get(key)!;
   }
 
   for (const b of otCompleted ?? []) {

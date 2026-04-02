@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import type { StudentNote } from '@/app/api/teacher/students/[id]/notes/route';
 
 interface Student {
   id: string;
@@ -23,6 +24,9 @@ export default function StudentsPage() {
   const [formError, setFormError] = useState('');
   const [editing, setEditing] = useState<Student | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [notesStudent, setNotesStudent] = useState<Student | null>(null);
+  const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -60,6 +64,15 @@ export default function StudentsPage() {
     if (!confirm(`Remove ${student.name}?`)) return;
     await fetch(`/api/teacher/students/${student.id}`, { method: 'DELETE' });
     load();
+  }
+
+  async function openNotes(student: Student) {
+    setNotesStudent(student);
+    setStudentNotes([]);
+    setNotesLoading(true);
+    const res = await fetch(`/api/teacher/students/${student.id}/notes`);
+    if (res.ok) setStudentNotes(await res.json());
+    setNotesLoading(false);
   }
 
   async function saveEdit() {
@@ -128,6 +141,10 @@ export default function StudentsPage() {
                     className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
                     Edit
                   </button>
+                  <button onClick={() => openNotes(student)}
+                    className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
+                    Notes
+                  </button>
                   <button onClick={() => toggleActive(student)}
                     className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
                       student.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -186,6 +203,43 @@ export default function StudentsPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Notes modal */}
+      {notesStudent && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">Notes — {notesStudent.name}</h3>
+              <button onClick={() => setNotesStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 space-y-3 pr-1">
+              {notesLoading ? (
+                <p className="text-sm text-gray-400 text-center py-6">Loading...</p>
+              ) : studentNotes.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No notes for this student.</p>
+              ) : (
+                studentNotes.map((n) => (
+                  <div key={n.note_id} className="border border-gray-200 rounded-xl p-3 space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <span className="font-medium text-gray-600">{n.date}</span>
+                      {n.start_time && <span>{n.start_time}{n.end_time ? `–${n.end_time}` : ''}</span>}
+                      <span className={`ml-auto px-1.5 py-0.5 rounded-full font-medium ${n.visible_to_student ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {n.visible_to_student ? 'Visible' : 'Hidden'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-800">{n.note}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button onClick={() => setNotesStudent(null)}
+              className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
+              Close
+            </button>
           </div>
         </div>
       )}
