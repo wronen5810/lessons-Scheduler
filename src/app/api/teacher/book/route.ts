@@ -10,23 +10,32 @@ export async function POST(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const body = await request.json();
-  const { booking_type, template_id, date, start_time, student_name, student_email } = body;
+  const { booking_type, template_id, one_time_slot_id, date, start_time, student_name, student_email } = body;
 
-  if (!booking_type || !template_id || !date || !start_time || !student_name || !student_email) {
+  if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
   const supabase = createServiceSupabase();
   const endTime = getEndTime(start_time);
 
-  const { data: template } = await supabase
-    .from('slot_templates')
-    .select('*')
-    .eq('id', template_id)
-    .eq('teacher_id', auth.user.id)
-    .single();
+  // Fetch template if available (needed for recurring day_of_week in email)
+  let template: { day_of_week: number } | null = null;
+  if (template_id) {
+    const { data } = await supabase
+      .from('slot_templates')
+      .select('day_of_week')
+      .eq('id', template_id)
+      .eq('teacher_id', auth.user.id)
+      .single();
+    template = data;
+    if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+  }
 
-  if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+  // Recurring bookings require a template
+  if (booking_type === 'recurring' && !template_id) {
+    return NextResponse.json({ error: 'Recurring bookings require a template slot' }, { status: 400 });
+  }
 
   let booking: Record<string, unknown>;
 
@@ -51,7 +60,8 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('one_time_bookings')
       .insert({
-        template_id,
+        template_id: template_id || null,
+        one_time_slot_id: one_time_slot_id || null,
         specific_date: date,
         start_time,
         student_name,
@@ -72,7 +82,7 @@ export async function POST(request: NextRequest) {
     studentEmail: student_email,
     bookingType: booking_type,
     date,
-    dayOfWeek: template.day_of_week,
+    dayOfWeek: template?.day_of_week,
     startTime: start_time,
     endTime,
     cancelToken: booking.cancel_token as string,

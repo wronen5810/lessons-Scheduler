@@ -27,6 +27,7 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
       body: JSON.stringify({
         booking_type: bookingType,
         template_id: slot.template_id,
+        one_time_slot_id: slot.one_time_slot_id,
         date: slot.date,
         start_time: slot.start_time,
         student_name: name,
