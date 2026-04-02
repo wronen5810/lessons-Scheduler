@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
-import { formatTime, getEndTime } from '@/lib/dates';
+import { formatTime, getEndTime, todayInIsrael } from '@/lib/dates';
 
 export interface BillingRow {
   student_email: string;
@@ -12,6 +12,13 @@ export interface BillingRow {
   lessons: { date: string; start_time: string; end_time: string; booking_type: string; status: string }[];
 }
 
+function countWeeksBetween(startDate: string, endDate: string): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffMs = end.getTime() - start.getTime();
+  return Math.max(1, Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1);
+}
+
 // GET /api/teacher/billing
 // Returns students with completed or paid lessons and their total balance.
 export async function GET() {
@@ -20,17 +27,18 @@ export async function GET() {
 
   const supabase = createServiceSupabase();
   const teacherId = auth.user.id;
+  const today = todayInIsrael();
 
   const [{ data: students }, { data: otCompleted }, { data: recCompleted }] = await Promise.all([
     supabase.from('students').select('email, name, rate').eq('teacher_id', teacherId),
     supabase
       .from('one_time_bookings')
-      .select('student_email, specific_date, start_time, duration_minutes, status')
+      .select('student_email, student_name, specific_date, start_time, duration_minutes, status')
       .eq('teacher_id', teacherId)
       .in('status', ['completed', 'paid']),
     supabase
       .from('recurring_bookings')
-      .select('student_email, started_date, template_id, status')
+      .select('student_email, student_name, started_date, ended_date, template_id, status')
       .eq('teacher_id', teacherId)
       .in('status', ['completed', 'paid']),
   ]);
@@ -46,13 +54,13 @@ export async function GET() {
 
   const byStudent = new Map<string, BillingRow>();
 
-  function getOrCreate(email: string): BillingRow {
+  function getOrCreate(email: string, nameFromBooking: string): BillingRow {
     const key = email.toLowerCase();
     if (!byStudent.has(key)) {
       const s = studentMap.get(key);
       byStudent.set(key, {
         student_email: key,
-        student_name: s?.name ?? email,
+        student_name: s?.name ?? nameFromBooking ?? email,
         rate: s?.rate ?? null,
         completed_lessons: 0,
         balance: null,
@@ -63,18 +71,27 @@ export async function GET() {
   }
 
   for (const b of otCompleted ?? []) {
-    const row = getOrCreate(b.student_email);
+    const row = getOrCreate(b.student_email, b.student_name);
     const st = formatTime(b.start_time);
     row.lessons.push({ date: b.specific_date, start_time: st, end_time: getEndTime(st, b.duration_minutes ?? 45), booking_type: 'one_time', status: b.status });
     row.completed_lessons++;
   }
 
   for (const b of recCompleted ?? []) {
-    const row = getOrCreate(b.student_email);
+    const row = getOrCreate(b.student_email, b.student_name);
     const tpl = tplMap.get(b.template_id);
     const st = tpl ? formatTime(tpl.start_time) : '';
-    row.lessons.push({ date: b.started_date, start_time: st, end_time: getEndTime(st, tpl?.duration_minutes ?? 45), booking_type: 'recurring', status: b.status });
-    row.completed_lessons++;
+    const endDate = b.ended_date ?? today;
+    const weekCount = countWeeksBetween(b.started_date, endDate);
+    // Add one entry per week occurrence
+    for (let i = 0; i < weekCount; i++) {
+      const lessonDate = new Date(b.started_date);
+      lessonDate.setDate(lessonDate.getDate() + i * 7);
+      const lessonDateStr = lessonDate.toISOString().slice(0, 10);
+      if (lessonDateStr > today) break; // don't count future weeks
+      row.lessons.push({ date: lessonDateStr, start_time: st, end_time: getEndTime(st, tpl?.duration_minutes ?? 45), booking_type: 'recurring', status: b.status });
+      row.completed_lessons++;
+    }
   }
 
   for (const row of byStudent.values()) {
