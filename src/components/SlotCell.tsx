@@ -14,7 +14,7 @@ const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; d
   blocked:                { bg: 'bg-gray-100',    border: 'border-gray-200',    text: 'text-gray-500',    dot: 'bg-gray-400',    label: 'Blocked' },
   pending:                { bg: 'bg-amber-50',    border: 'border-amber-200',   text: 'text-amber-800',   dot: 'bg-amber-400',   label: 'Pending' },
   confirmed:              { bg: 'bg-blue-50',     border: 'border-blue-200',    text: 'text-blue-800',    dot: 'bg-blue-500',    label: 'Approved' },
-  completed:              { bg: 'bg-teal-50',     border: 'border-teal-200',    text: 'text-teal-800',    dot: 'bg-teal-500',    label: 'Done' },
+  completed:              { bg: 'bg-yellow-50',   border: 'border-yellow-300',  text: 'text-yellow-800',  dot: 'bg-yellow-400',  label: 'Done' },
   paid:                   { bg: 'bg-emerald-50',  border: 'border-emerald-300', text: 'text-emerald-800', dot: 'bg-emerald-500', label: 'Paid' },
   cancellation_requested: { bg: 'bg-orange-50',   border: 'border-orange-300',  text: 'text-orange-800',  dot: 'bg-orange-400',  label: 'Cancel req.' },
 };

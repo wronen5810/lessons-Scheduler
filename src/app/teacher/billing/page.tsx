@@ -78,7 +78,7 @@ export default function BillingPage() {
                             <tr className="text-gray-400 border-b border-gray-200">
                               <th className="text-left pb-2 font-medium">Date</th>
                               <th className="text-left pb-2 font-medium">Time</th>
-                              <th className="text-left pb-2 font-medium">Type</th>
+                              <th className="text-left pb-2 font-medium">Status</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
@@ -86,7 +86,11 @@ export default function BillingPage() {
                               <tr key={i}>
                                 <td className="py-1.5 text-gray-700">{l.date}</td>
                                 <td className="py-1.5 text-gray-700">{l.start_time}–{l.end_time}</td>
-                                <td className="py-1.5 text-gray-400 capitalize">{l.booking_type.replace('_', '-')}</td>
+                                <td className="py-1.5">
+                                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${l.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                    {l.status === 'paid' ? 'Paid' : 'Completed'}
+                                  </span>
+                                </td>
                               </tr>
                             ))}
                           </tbody>

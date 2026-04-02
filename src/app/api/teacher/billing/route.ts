@@ -9,11 +9,11 @@ export interface BillingRow {
   rate: number | null;
   completed_lessons: number;
   balance: number | null;
-  lessons: { date: string; start_time: string; end_time: string; booking_type: string }[];
+  lessons: { date: string; start_time: string; end_time: string; booking_type: string; status: string }[];
 }
 
 // GET /api/teacher/billing
-// Returns students with completed (unpaid) lessons and their outstanding balance.
+// Returns students with completed or paid lessons and their total balance.
 export async function GET() {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
@@ -25,14 +25,14 @@ export async function GET() {
     supabase.from('students').select('email, name, rate').eq('teacher_id', teacherId),
     supabase
       .from('one_time_bookings')
-      .select('student_email, specific_date, start_time, duration_minutes')
+      .select('student_email, specific_date, start_time, duration_minutes, status')
       .eq('teacher_id', teacherId)
-      .eq('status', 'completed'),
+      .in('status', ['completed', 'paid']),
     supabase
       .from('recurring_bookings')
-      .select('student_email, started_date, template_id')
+      .select('student_email, started_date, template_id, status')
       .eq('teacher_id', teacherId)
-      .eq('status', 'completed'),
+      .in('status', ['completed', 'paid']),
   ]);
 
   // Fetch templates needed for recurring
@@ -44,7 +44,6 @@ export async function GET() {
 
   const studentMap = new Map((students ?? []).map((s) => [s.email.toLowerCase(), s]));
 
-  // Group lessons by student_email
   const byStudent = new Map<string, BillingRow>();
 
   function getOrCreate(email: string): BillingRow {
@@ -66,7 +65,7 @@ export async function GET() {
   for (const b of otCompleted ?? []) {
     const row = getOrCreate(b.student_email);
     const st = formatTime(b.start_time);
-    row.lessons.push({ date: b.specific_date, start_time: st, end_time: getEndTime(st, b.duration_minutes ?? 45), booking_type: 'one_time' });
+    row.lessons.push({ date: b.specific_date, start_time: st, end_time: getEndTime(st, b.duration_minutes ?? 45), booking_type: 'one_time', status: b.status });
     row.completed_lessons++;
   }
 
@@ -74,11 +73,10 @@ export async function GET() {
     const row = getOrCreate(b.student_email);
     const tpl = tplMap.get(b.template_id);
     const st = tpl ? formatTime(tpl.start_time) : '';
-    row.lessons.push({ date: b.started_date, start_time: st, end_time: getEndTime(st, tpl?.duration_minutes ?? 45), booking_type: 'recurring' });
+    row.lessons.push({ date: b.started_date, start_time: st, end_time: getEndTime(st, tpl?.duration_minutes ?? 45), booking_type: 'recurring', status: b.status });
     row.completed_lessons++;
   }
 
-  // Calculate balance
   for (const row of byStudent.values()) {
     row.balance = row.rate != null ? row.completed_lessons * row.rate : null;
     row.lessons.sort((a, b) => a.date.localeCompare(b.date));

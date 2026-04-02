@@ -221,7 +221,7 @@ export default function TeacherDashboard() {
             { color: 'bg-gray-400',    label: 'Blocked' },
             { color: 'bg-amber-400',   label: 'Pending' },
             { color: 'bg-blue-500',    label: 'Approved' },
-            { color: 'bg-teal-500',    label: 'Completed' },
+            { color: 'bg-yellow-400',  label: 'Completed' },
             { color: 'bg-emerald-500', label: 'Paid' },
             { color: 'bg-orange-400',  label: 'Cancel req.' },
           ].map(({ color, label }) => (
