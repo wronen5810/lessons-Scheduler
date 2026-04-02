@@ -15,7 +15,7 @@ export default function WeekNav({ weekStart, onPrev, onNext, canPrev, canNext }:
   const weekEnd = addDays(parseISO(weekStart), 6);
 
   return (
-    <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-3">
       <button
         onClick={onPrev}
         disabled={!canPrev}

@@ -111,22 +111,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
       <main className="max-w-5xl mx-auto px-3 sm:px-6 py-5">
 
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
-            <button
-              onClick={() => setView('week')}
-              className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              Week
-            </button>
-            <button
-              onClick={() => setView('month')}
-              className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              Month
-            </button>
-          </div>
-
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          {/* Navigation */}
           {view === 'week' ? (
             <WeekNav
               weekStart={weekStart}
@@ -142,6 +128,22 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
               <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
             </div>
           )}
+
+          {/* View toggle */}
+          <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm self-start sm:self-auto">
+            <button
+              onClick={() => setView('week')}
+              className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              Week
+            </button>
+            <button
+              onClick={() => setView('month')}
+              className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              Month
+            </button>
+          </div>
         </div>
 
         {loading ? (
