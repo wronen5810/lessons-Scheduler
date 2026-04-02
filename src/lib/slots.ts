@@ -129,7 +129,9 @@ export async function computeWeekSlots(
     if (alreadyCovered) continue;
 
     const booking = otBookingList.find(
-      (o) => o.one_time_slot_id === otSlot.id
+      (o) =>
+        o.one_time_slot_id === otSlot.id ||
+        (o.one_time_slot_id == null && o.specific_date === dateStr && formatTime(o.start_time) === startTime)
     );
 
     if (!booking) {

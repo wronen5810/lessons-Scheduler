@@ -20,14 +20,14 @@ export async function GET(request: NextRequest) {
     supabase
       .from('recurring_bookings')
       .select('id, template_id, status, started_date, cancellation_reason')
-      .eq('student_email', email)
+      .ilike('student_email', email)
       .eq('teacher_id', teacherId)
       .in('status', ['approved', 'cancellation_requested'])
       .is('ended_date', null),
     supabase
       .from('one_time_bookings')
       .select('id, specific_date, start_time, duration_minutes, status, cancellation_reason')
-      .eq('student_email', email)
+      .ilike('student_email', email)
       .eq('teacher_id', teacherId)
       .in('status', ['approved', 'cancellation_requested'])
       .gte('specific_date', today),
