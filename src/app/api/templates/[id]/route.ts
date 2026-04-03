@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 
-// PATCH /api/templates/[id] — toggle is_active
+// PATCH /api/templates/[id] — toggle is_active, optionally cancel future bookings from end_date
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
@@ -20,6 +20,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // When deactivating, cancel all future pending/approved bookings from end_date forward
+  if (body.is_active === false && body.end_date) {
+    await supabase
+      .from('recurring_bookings')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: 'teacher' })
+      .eq('template_id', id)
+      .eq('teacher_id', auth.user.id)
+      .in('status', ['pending', 'approved'])
+      .gte('lesson_date', body.end_date);
+  }
+
   return NextResponse.json(data);
 }
 
