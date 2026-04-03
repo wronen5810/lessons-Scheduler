@@ -26,6 +26,8 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
   const [noteText, setNoteText] = useState('');
   const [noteVisible, setNoteVisible] = useState(false);
   const [addingNote, setAddingNote] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelEndDate, setCancelEndDate] = useState(slot.date);
 
   const dayOfWeek = parseISO(slot.date).getDay();
   const hasBooking = !!slot.booking_id && !!slot.booking_type;
@@ -67,10 +69,11 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
     loadNotes();
   }
 
-  async function patchBooking(action: 'approve' | 'reject' | 'cancel' | 'complete' | 'pay' | 'approve-cancellation') {
+  async function patchBooking(action: 'approve' | 'reject' | 'cancel' | 'complete' | 'pay' | 'approve-cancellation', endDate?: string) {
     if (!slot.booking_id || !slot.booking_type) return;
     setLoading(true);
-    const res = await fetch(`/api/bookings/${slot.booking_id}?type=${slot.booking_type}&action=${action}`, { method: 'PATCH' });
+    const url = `/api/bookings/${slot.booking_id}?type=${slot.booking_type}&action=${action}${endDate ? `&end_date=${endDate}` : ''}`;
+    const res = await fetch(url, { method: 'PATCH' });
     setLoading(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -172,7 +175,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
                 className="w-full py-2.5 px-4 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
                 Mark as Completed
               </button>
-              <button onClick={() => patchBooking('cancel')} disabled={loading}
+              <button onClick={() => { setCancelEndDate(slot.date); setShowCancelModal(true); }} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
                 Cancel booking
               </button>
@@ -189,7 +192,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
                 className="w-full py-2.5 px-4 rounded-xl border border-blue-200 text-blue-600 text-sm hover:bg-blue-50 disabled:opacity-50 transition-colors">
                 Revert to Approved
               </button>
-              <button onClick={() => patchBooking('cancel')} disabled={loading}
+              <button onClick={() => { setCancelEndDate(slot.date); setShowCancelModal(true); }} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
                 Cancel booking
               </button>
@@ -222,7 +225,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
                 className="w-full py-2.5 px-4 rounded-xl border border-purple-200 text-purple-600 text-sm hover:bg-purple-50 disabled:opacity-50 transition-colors">
                 Revert to Completed
               </button>
-              <button onClick={() => patchBooking('cancel')} disabled={loading}
+              <button onClick={() => { setCancelEndDate(slot.date); setShowCancelModal(true); }} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
                 Cancel booking
               </button>
@@ -281,6 +284,48 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
           )}
         </div>
       </div>
+
+      {/* Cancel modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/40 z-60 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-base font-semibold text-gray-900">Cancel booking</h3>
+
+            {slot.booking_type === 'recurring' ? (
+              <>
+                <p className="text-sm text-gray-500">
+                  Cancel all lessons from which date onward?
+                </p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Cancel from</label>
+                  <input
+                    type="date"
+                    value={cancelEndDate}
+                    min={slot.date}
+                    onChange={(e) => setCancelEndDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Are you sure you want to cancel this lesson?</p>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => { setShowCancelModal(false); patchBooking('cancel', slot.booking_type === 'recurring' ? cancelEndDate : undefined); }}
+                disabled={loading}
+                className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors">
+                {loading ? 'Cancelling...' : 'Cancel lessons'}
+              </button>
+              <button onClick={() => setShowCancelModal(false)}
+                className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
+                Keep
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

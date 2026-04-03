@@ -18,6 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') as 'recurring' | 'one_time';
   const action = searchParams.get('action') as 'approve' | 'reject' | 'cancel' | 'complete' | 'pay' | 'approve-cancellation';
+  const endDate = searchParams.get('end_date') ?? undefined;
 
   if (!type || !action) {
     return NextResponse.json({ error: 'Missing type or action' }, { status: 400 });
@@ -50,12 +51,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   if (type === 'recurring' && booking.series_id && ['approve', 'reject', 'cancel', 'approve-cancellation'].includes(action)) {
-    // Act on all rows in the series
-    const { error } = await supabase
+    let query = supabase
       .from('recurring_bookings')
       .update(updatePayload)
       .eq('series_id', booking.series_id)
       .eq('teacher_id', auth.user.id);
+    if (action === 'cancel' && endDate) {
+      query = query.gte('lesson_date', endDate);
+    }
+    const { error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   } else {
     const { error } = await supabase.from(table).update(updatePayload).eq('id', id);
