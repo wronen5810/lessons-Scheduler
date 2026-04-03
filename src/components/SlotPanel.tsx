@@ -169,7 +169,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
           {slot.state === 'confirmed' && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('complete')} disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors">
+                className="w-full py-2.5 px-4 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
                 Mark as Completed
               </button>
               <button onClick={() => patchBooking('cancel')} disabled={loading}
@@ -180,10 +180,20 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
           )}
 
           {slot.state === 'completed' && (
-            <button onClick={() => patchBooking('pay')} disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-              Mark as Paid
-            </button>
+            <div className="space-y-2">
+              <button onClick={() => patchBooking('pay')} disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                Mark as Paid
+              </button>
+              <button onClick={() => patchBooking('approve')} disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl border border-blue-200 text-blue-600 text-sm hover:bg-blue-50 disabled:opacity-50 transition-colors">
+                Revert to Approved
+              </button>
+              <button onClick={() => patchBooking('cancel')} disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
+                Cancel booking
+              </button>
+            </div>
           )}
 
           {slot.state === 'cancellation_requested' && (
@@ -204,8 +214,18 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
           )}
 
           {slot.state === 'paid' && (
-            <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center font-medium">
-              Paid
+            <div className="space-y-2">
+              <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center font-medium">
+                Paid
+              </div>
+              <button onClick={() => patchBooking('complete')} disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl border border-purple-200 text-purple-600 text-sm hover:bg-purple-50 disabled:opacity-50 transition-colors">
+                Revert to Completed
+              </button>
+              <button onClick={() => patchBooking('cancel')} disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
+                Cancel booking
+              </button>
             </div>
           )}
 

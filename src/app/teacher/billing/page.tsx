@@ -104,7 +104,7 @@ export default function BillingPage() {
                                 <td className="py-1.5 text-gray-700">{l.date}</td>
                                 <td className="py-1.5 text-gray-700">{l.start_time}–{l.end_time}</td>
                                 <td className="py-1.5 text-right">
-                                  <span className="px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700">
+                                  <span className="px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">
                                     Completed
                                   </span>
                                 </td>
