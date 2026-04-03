@@ -25,12 +25,12 @@ export async function GET() {
       .from('one_time_bookings')
       .select('student_email, student_name, specific_date, start_time, duration_minutes, status')
       .eq('teacher_id', teacherId)
-      .in('status', ['completed', 'paid']),
+      .eq('status', 'completed'),
     supabase
       .from('recurring_bookings')
       .select('student_email, student_name, lesson_date, template_id, status')
       .eq('teacher_id', teacherId)
-      .in('status', ['completed', 'paid']),
+      .eq('status', 'completed'),
   ]);
 
   const templateIds = [...new Set((recDone ?? []).map((b) => b.template_id))];

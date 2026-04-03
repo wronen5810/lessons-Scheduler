@@ -38,7 +38,7 @@ export default function BillingPage() {
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-blue-600 text-white rounded-2xl p-4 shadow-sm">
-                <p className="text-xs font-medium opacity-75">Total outstanding</p>
+                <p className="text-xs font-medium opacity-75">Total unpaid balance</p>
                 <p className="text-2xl font-bold mt-0.5">
                   {totalBalance > 0 ? `₪${totalBalance.toLocaleString()}` : '—'}
                 </p>
@@ -104,8 +104,8 @@ export default function BillingPage() {
                                 <td className="py-1.5 text-gray-700">{l.date}</td>
                                 <td className="py-1.5 text-gray-700">{l.start_time}–{l.end_time}</td>
                                 <td className="py-1.5 text-right">
-                                  <span className={`px-1.5 py-0.5 rounded-full font-medium ${l.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                    {l.status === 'paid' ? 'Paid' : 'Completed'}
+                                  <span className="px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700">
+                                    Completed
                                   </span>
                                 </td>
                               </tr>
