@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DAY_NAMES, formatTime, getEndTime, todayInIsrael } from '@/lib/dates';
+import { DAY_NAMES, formatTime, getEndTime } from '@/lib/dates';
 import type { SlotTemplate } from '@/lib/types';
 
 interface Props {
@@ -18,26 +18,6 @@ export default function TemplateManager({ templates, onUpdate }: Props) {
   const [newDuration, setNewDuration] = useState(45);
   const [addError, setAddError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [deactivateTarget, setDeactivateTarget] = useState<SlotTemplate | null>(null);
-  const [endDate, setEndDate] = useState('');
-  const [deactivating, setDeactivating] = useState(false);
-
-  const today = todayInIsrael();
-
-  async function confirmDeactivate() {
-    if (!deactivateTarget) return;
-    setDeactivating(true);
-    await fetch(`/api/templates/${deactivateTarget.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: false, end_date: endDate || undefined }),
-    });
-    setDeactivating(false);
-    setDeactivateTarget(null);
-    setEndDate('');
-    onUpdate();
-  }
-
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setAddError('');
@@ -58,15 +38,6 @@ export default function TemplateManager({ templates, onUpdate }: Props) {
     }
 
     setShowAdd(false);
-    onUpdate();
-  }
-
-  async function activate(template: SlotTemplate) {
-    await fetch(`/api/templates/${template.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: true }),
-    });
     onUpdate();
   }
 
@@ -151,18 +122,13 @@ export default function TemplateManager({ templates, onUpdate }: Props) {
             const start = formatTime(t.start_time);
             const end = getEndTime(start, t.duration_minutes ?? 45);
             return (
-              <li key={t.id} className={`flex items-center justify-between rounded-lg border px-4 py-3 ${t.is_active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+              <li key={t.id} className="flex items-center justify-between rounded-lg border px-4 py-3 bg-white border-gray-200">
                 <div>
                   <span className="text-sm font-medium text-gray-900">{DAY_NAMES[t.day_of_week]}</span>
                   <span className="text-sm text-gray-500 ml-2">{start} – {end}</span>
                   <span className="text-xs text-gray-400 ml-2">({t.duration_minutes ?? 45} min)</span>
-                  {!t.is_active && <span className="ml-2 text-xs text-gray-400">(inactive)</span>}
                 </div>
                 <div className="flex items-center gap-3">
-                  {t.is_active
-                    ? <button onClick={() => { setDeactivateTarget(t); setEndDate(today); }} className="text-xs text-gray-500 hover:text-gray-700 underline">Deactivate</button>
-                    : <button onClick={() => activate(t)} className="text-xs text-gray-500 hover:text-gray-700 underline">Activate</button>
-                  }
                   <button onClick={() => deleteTemplate(t.id)} className="text-xs text-red-500 hover:text-red-700 underline">
                     Delete
                   </button>
@@ -171,37 +137,6 @@ export default function TemplateManager({ templates, onUpdate }: Props) {
             );
           })}
         </ul>
-      )}
-      {/* Deactivate modal */}
-      {deactivateTarget && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-base font-semibold text-gray-900">Deactivate slot</h3>
-            <p className="text-sm text-gray-500">
-              Cancel all pending/approved lessons for <strong>{DAY_NAMES[deactivateTarget.day_of_week]} {formatTime(deactivateTarget.start_time)}</strong> from which date onward?
-            </p>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Cancel from date</label>
-              <input
-                type="date"
-                min={today}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button onClick={confirmDeactivate} disabled={deactivating}
-                className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors">
-                {deactivating ? 'Deactivating...' : 'Deactivate'}
-              </button>
-              <button onClick={() => { setDeactivateTarget(null); setEndDate(''); }}
-                className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -177,7 +177,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
               </button>
               <button onClick={() => { setCancelEndDate(slot.date); setShowCancelModal(true); }} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
-                Cancel booking
+                {slot.booking_type === 'recurring' ? 'Set end date' : 'Cancel booking'}
               </button>
             </div>
           )}
@@ -194,7 +194,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
               </button>
               <button onClick={() => { setCancelEndDate(slot.date); setShowCancelModal(true); }} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
-                Cancel booking
+                {slot.booking_type === 'recurring' ? 'Set end date' : 'Cancel booking'}
               </button>
             </div>
           )}
@@ -227,7 +227,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
               </button>
               <button onClick={() => { setCancelEndDate(slot.date); setShowCancelModal(true); }} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
-                Cancel booking
+                {slot.booking_type === 'recurring' ? 'Set end date' : 'Cancel booking'}
               </button>
             </div>
           )}
@@ -289,15 +289,17 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
       {showCancelModal && (
         <div className="fixed inset-0 bg-black/40 z-60 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-base font-semibold text-gray-900">Cancel booking</h3>
+            <h3 className="text-base font-semibold text-gray-900">
+              {slot.booking_type === 'recurring' ? 'Set end date' : 'Cancel booking'}
+            </h3>
 
             {slot.booking_type === 'recurring' ? (
               <>
                 <p className="text-sm text-gray-500">
-                  Cancel all lessons from which date onward?
+                  All lessons from this date onward will be cancelled.
                 </p>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Cancel from</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Last lesson date</label>
                   <input
                     type="date"
                     value={cancelEndDate}
@@ -316,11 +318,11 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
                 onClick={() => { setShowCancelModal(false); patchBooking('cancel', slot.booking_type === 'recurring' ? cancelEndDate : undefined); }}
                 disabled={loading}
                 className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors">
-                {loading ? 'Cancelling...' : 'Cancel lessons'}
+                {loading ? 'Saving...' : slot.booking_type === 'recurring' ? 'Confirm' : 'Cancel lesson'}
               </button>
               <button onClick={() => setShowCancelModal(false)}
                 className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-                Keep
+                Back
               </button>
             </div>
           </div>
