@@ -34,25 +34,21 @@ export async function POST(request: NextRequest) {
   const teacherPhone = profileRow?.phone ?? null;
   const prefs = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(settingsRow?.notification_preferences ?? {}) };
 
-  if (teacherEmail && sendEmail(prefs, 'access_request')) {
-    emailTeacherAccessRequest({
+  await Promise.all([
+    teacherEmail && sendEmail(prefs, 'access_request') ? emailTeacherAccessRequest({
       studentName: name,
       studentEmail: normalizedEmail,
       studentPhone: phone ?? null,
       studentNote: note ?? null,
       teacherEmail,
-    }).catch((e) => console.error('Access request email failed:', e));
-  }
-
-  console.log('[WhatsApp debug] sendWhatsApp:', sendWhatsApp(prefs, 'access_request'), 'teacherPhone:', teacherPhone, 'templateSid:', process.env.TWILIO_TEMPLATE_ACCESS_REQUEST);
-  if (sendWhatsApp(prefs, 'access_request') && teacherPhone) {
-    whatsappTeacherAccessRequest({
+    }).catch((e) => console.error('Access request email failed:', e)) : null,
+    sendWhatsApp(prefs, 'access_request') && teacherPhone ? whatsappTeacherAccessRequest({
       teacherPhone,
       studentName: name,
       studentEmail: normalizedEmail,
       studentPhone: phone ?? null,
-    }).catch((e) => console.error('Access request WhatsApp failed:', e));
-  }
+    }).catch((e) => console.error('Access request WhatsApp failed:', e)) : null,
+  ]);
 
   return NextResponse.json({ ok: true });
 }

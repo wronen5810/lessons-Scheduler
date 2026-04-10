@@ -115,22 +115,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     action === 'approve' ? 'lesson_approved' :
     action === 'reject'  ? 'lesson_rejected' : 'lesson_cancelled';
 
-  if (sendEmail(prefs, notifKey)) {
-    const fn =
+  await Promise.all([
+    sendEmail(prefs, notifKey) ? (
       action === 'approve' ? emailStudentApproved(emailInfo) :
       action === 'reject'  ? emailStudentRejected(emailInfo) :
-                             emailStudentCancelledByTeacher(emailInfo);
-    fn.catch((e) => console.error('Email failed:', e));
-  }
-
-  if (sendWhatsApp(prefs, notifKey) && studentRow?.phone) {
-    const waInfo = { ...emailInfo, phone: studentRow.phone };
-    const fn =
-      action === 'approve' ? whatsappStudentApproved(waInfo) :
-      action === 'reject'  ? whatsappStudentRejected(waInfo) :
-                             whatsappStudentCancelledByTeacher(waInfo);
-    fn.catch((e) => console.error('WhatsApp failed:', e));
-  }
+                             emailStudentCancelledByTeacher(emailInfo)
+    ).catch((e) => console.error('Email failed:', e)) : null,
+    sendWhatsApp(prefs, notifKey) && studentRow?.phone ? (() => {
+      const waInfo = { ...emailInfo, phone: studentRow.phone };
+      return (
+        action === 'approve' ? whatsappStudentApproved(waInfo) :
+        action === 'reject'  ? whatsappStudentRejected(waInfo) :
+                               whatsappStudentCancelledByTeacher(waInfo)
+      ).catch((e) => console.error('WhatsApp failed:', e));
+    })() : null,
+  ]);
 
   return NextResponse.json({ success: true });
 }
