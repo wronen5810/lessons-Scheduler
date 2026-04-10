@@ -24,41 +24,49 @@ function scheduleText(info: LessonInfo): string {
 }
 
 function toWhatsApp(phone: string): string {
-  // Ensure E.164 format with whatsapp: prefix
   const digits = phone.replace(/\D/g, '');
   const e164 = digits.startsWith('0') ? `+972${digits.slice(1)}` : `+${digits}`;
   return `whatsapp:${e164}`;
 }
 
-async function send(to: string, body: string) {
-  await getClient().messages.create({ from: FROM(), to: toWhatsApp(to), body });
+async function sendTemplate(to: string, contentSid: string, variables: Record<string, string>) {
+  await getClient().messages.create({
+    from: FROM(),
+    to: toWhatsApp(to),
+    contentSid,
+    contentVariables: JSON.stringify(variables),
+  });
 }
 
 export async function whatsappStudentApproved(info: LessonInfo) {
-  await send(
+  await sendTemplate(
     info.phone,
-    `Hi ${info.studentName}! Your lesson has been confirmed: ${scheduleText(info)}. See you then!`,
+    process.env.TWILIO_TEMPLATE_LESSON_APPROVED!,
+    { '1': info.studentName, '2': scheduleText(info) },
   );
 }
 
 export async function whatsappStudentRejected(info: LessonInfo) {
-  await send(
+  await sendTemplate(
     info.phone,
-    `Hi ${info.studentName}, unfortunately your lesson request for ${scheduleText(info)} could not be confirmed at this time. Please contact your teacher to find another time.`,
+    process.env.TWILIO_TEMPLATE_LESSON_REJECTED!,
+    { '1': info.studentName, '2': scheduleText(info) },
   );
 }
 
 export async function whatsappStudentCancelledByTeacher(info: LessonInfo) {
-  await send(
+  await sendTemplate(
     info.phone,
-    `Hi ${info.studentName}, your lesson (${scheduleText(info)}) has been cancelled by your teacher. Please get in touch to reschedule.`,
+    process.env.TWILIO_TEMPLATE_LESSON_CANCELLED!,
+    { '1': info.studentName, '2': scheduleText(info) },
   );
 }
 
 export async function whatsappStudentReminder(info: LessonInfo & { specificDate: string }) {
-  await send(
+  await sendTemplate(
     info.phone,
-    `Hi ${info.studentName}, reminder: you have a lesson tomorrow, ${formatDisplayDateLong(info.specificDate)} at ${info.startTime}–${info.endTime}.`,
+    process.env.TWILIO_TEMPLATE_LESSON_REMINDER!,
+    { '1': info.studentName, '2': formatDisplayDateLong(info.specificDate), '3': `${info.startTime}–${info.endTime}` },
   );
 }
 
@@ -77,9 +85,10 @@ export async function whatsappTeacherNewRequest(info: TeacherRequestInfo) {
   const when = info.bookingType === 'recurring'
     ? `every ${DAY_NAMES[info.dayOfWeek!]} at ${info.startTime}–${info.endTime} (from ${formatDisplayDateLong(info.date)})`
     : `${formatDisplayDateLong(info.date)} at ${info.startTime}–${info.endTime}`;
-  await send(
+  await sendTemplate(
     info.teacherPhone,
-    `New lesson request from ${info.studentName} (${info.studentEmail}) for ${when}.`,
+    process.env.TWILIO_TEMPLATE_LESSON_REQUEST!,
+    { '1': info.studentName, '2': info.studentEmail, '3': when },
   );
 }
 
@@ -89,9 +98,10 @@ export async function whatsappTeacherAccessRequest(info: {
   studentEmail: string;
   studentPhone?: string | null;
 }) {
-  const phoneNote = info.studentPhone ? ` Phone: ${info.studentPhone}.` : '';
-  await send(
+  const phoneNote = info.studentPhone ? `Phone: ${info.studentPhone}.` : '';
+  await sendTemplate(
     info.teacherPhone,
-    `New student access request from ${info.studentName} (${info.studentEmail}).${phoneNote} Check your dashboard to approve.`,
+    process.env.TWILIO_TEMPLATE_ACCESS_REQUEST!,
+    { '1': info.studentName, '2': info.studentEmail, '3': phoneNote },
   );
 }
