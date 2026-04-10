@@ -30,12 +30,21 @@ function toWhatsApp(phone: string): string {
 }
 
 async function sendTemplate(to: string, contentSid: string, variables: Record<string, string>) {
-  await getClient().messages.create({
-    from: FROM(),
-    to: toWhatsApp(to),
-    contentSid,
-    contentVariables: JSON.stringify(variables),
-  });
+  const toAddr = toWhatsApp(to);
+  const fromAddr = FROM();
+  console.log('[sendTemplate] to:', toAddr, 'from:', fromAddr, 'contentSid:', contentSid, 'variables:', JSON.stringify(variables));
+  try {
+    const result = await getClient().messages.create({
+      from: fromAddr,
+      to: toAddr,
+      contentSid,
+      contentVariables: JSON.stringify(variables),
+    });
+    console.log('[sendTemplate] success, sid:', result.sid);
+  } catch (e) {
+    console.error('[sendTemplate] error:', e);
+    throw e;
+  }
 }
 
 export async function whatsappStudentApproved(info: LessonInfo) {
