@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     }).catch((e) => console.error('Access request email failed:', e));
   }
 
+  console.log('[WhatsApp debug] sendWhatsApp:', sendWhatsApp(prefs, 'access_request'), 'teacherPhone:', teacherPhone, 'templateSid:', process.env.TWILIO_TEMPLATE_ACCESS_REQUEST);
   if (sendWhatsApp(prefs, 'access_request') && teacherPhone) {
     whatsappTeacherAccessRequest({
       teacherPhone,
