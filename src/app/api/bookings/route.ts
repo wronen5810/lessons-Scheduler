@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const reqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'recurring' as const, date, dayOfWeek: template.day_of_week, startTime: start_time, endTime };
+    console.log('[WhatsApp debug recurring] sendWhatsApp:', sendWhatsApp(prefs, 'lesson_request'), 'teacherPhone:', teacherPhone, 'templateSid:', process.env.TWILIO_TEMPLATE_LESSON_REQUEST);
     if (sendEmail(prefs, 'lesson_request')) {
       emailTeacherNewRequest({ ...reqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e));
     }
@@ -143,6 +144,7 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const otReqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'one_time' as const, date, startTime: start_time, endTime };
+  console.log('[WhatsApp debug one_time] sendWhatsApp:', sendWhatsApp(prefs, 'lesson_request'), 'teacherPhone:', teacherPhone, 'templateSid:', process.env.TWILIO_TEMPLATE_LESSON_REQUEST);
   if (sendEmail(prefs, 'lesson_request')) {
     emailTeacherNewRequest({ ...otReqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e));
   }
