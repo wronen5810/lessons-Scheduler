@@ -1,21 +1,45 @@
 'use client';
 
 import { useState } from 'react';
-import { DAY_NAMES, formatTime, getEndTime } from '@/lib/dates';
+import { DAY_NAMES, formatTime, formatTimeDisplay, getEndTime } from '@/lib/dates';
 import type { SlotTemplate } from '@/lib/types';
 
 interface Props {
   templates: SlotTemplate[];
   onUpdate: () => void;
+  defaultDuration?: number;
+  timeFormat?: '24h' | '12h';
 }
 
 const DAY_OPTIONS = DAY_NAMES.map((name, i) => ({ value: i, label: name }));
 
-export default function TemplateManager({ templates, onUpdate }: Props) {
+export default function TemplateManager({ templates, onUpdate, defaultDuration = 45, timeFormat = '24h' }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [newDay, setNewDay] = useState(0);
-  const [newTime, setNewTime] = useState('16:00');
-  const [newDuration, setNewDuration] = useState(45);
+  const [newHour, setNewHour] = useState(16);
+  const [newMinute, setNewMinute] = useState(0);
+  const [newDuration, setNewDuration] = useState(defaultDuration);
+
+  const newTime = `${String(newHour).padStart(2, '0')}:${String(newMinute).padStart(2, '0')}`;
+
+  const hourOptions = timeFormat === '12h'
+    ? Array.from({ length: 12 }, (_, i) => {
+        const h = i === 0 ? 12 : i; // 12, 1, 2 ... 11
+        const val = i; // 0–11
+        return { value: val, label: `${h} AM` };
+      }).concat(
+        Array.from({ length: 12 }, (_, i) => {
+          const h = i === 0 ? 12 : i;
+          const val = i + 12;
+          return { value: val, label: `${h} PM` };
+        })
+      )
+    : Array.from({ length: 24 }, (_, i) => ({ value: i, label: String(i).padStart(2, '0') }));
+
+  const minuteOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => ({
+    value: m,
+    label: String(m).padStart(2, '0'),
+  }));
   const [addError, setAddError] = useState('');
   const [saving, setSaving] = useState(false);
   async function handleAdd(e: React.FormEvent) {
@@ -79,12 +103,26 @@ export default function TemplateManager({ templates, onUpdate }: Props) {
 
             <div className="flex-1">
               <label className="block text-xs text-gray-600 mb-1">Start time</label>
-              <input
-                type="time"
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex gap-1">
+                <select
+                  value={newHour}
+                  onChange={(e) => setNewHour(Number(e.target.value))}
+                  className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {hourOptions.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={newMinute}
+                  onChange={(e) => setNewMinute(Number(e.target.value))}
+                  className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {minuteOptions.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="w-28">
@@ -125,7 +163,7 @@ export default function TemplateManager({ templates, onUpdate }: Props) {
               <li key={t.id} className="flex items-center justify-between rounded-lg border px-4 py-3 bg-white border-gray-200">
                 <div>
                   <span className="text-sm font-medium text-gray-900">{DAY_NAMES[t.day_of_week]}</span>
-                  <span className="text-sm text-gray-500 ml-2">{start} – {end}</span>
+                  <span className="text-sm text-gray-500 ml-2">{formatTimeDisplay(start, timeFormat)} – {formatTimeDisplay(end, timeFormat)}</span>
                   <span className="text-xs text-gray-400 ml-2">({t.duration_minutes ?? 45} min)</span>
                 </div>
                 <div className="flex items-center gap-3">

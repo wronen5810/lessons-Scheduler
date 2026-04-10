@@ -20,12 +20,11 @@ export default function RequestForm() {
   const endTime = getEndTime(time, duration);
   const dayOfWeek = parseISO(date).getDay();
 
-  const [bookingType, setBookingType] = useState<'recurring' | 'one_time'>(
-    isOneTimeSlot ? 'one_time' : 'recurring'
+  // null = no selection yet (required for template slots; auto-set for one-time)
+  const [bookingType, setBookingType] = useState<'recurring' | 'one_time' | null>(
+    isOneTimeSlot ? 'one_time' : null
   );
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState(prefillEmail);
-  const [endDate, setEndDate] = useState('');
+  const email = prefillEmail;
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -34,6 +33,23 @@ export default function RequestForm() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-500">Invalid booking link.</p>
+      </div>
+    );
+  }
+
+  if (!email) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-sm w-full text-center">
+          <p className="text-gray-700 font-medium mb-2">You&apos;re not identified</p>
+          <p className="text-sm text-gray-500 mb-5">Please sign in with your email first before booking a lesson.</p>
+          <button
+            onClick={() => router.push('/student')}
+            className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Go to sign in
+          </button>
+        </div>
       </div>
     );
   }
@@ -47,14 +63,12 @@ export default function RequestForm() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        booking_type: isOneTimeSlot ? 'one_time' : bookingType,
+        booking_type: bookingType!,
         ...(isOneTimeSlot
           ? { one_time_slot_id: oneTimeSlotId }
           : { template_id: templateId }),
         date,
-        end_date: bookingType === 'recurring' && endDate ? endDate : undefined,
         start_time: time,
-        student_name: name,
         student_email: email,
         teacher_id: teacherId,
       }),
@@ -76,6 +90,9 @@ export default function RequestForm() {
   }
 
   if (done) {
+    const backUrl = teacherId
+      ? `/t/${teacherId}${email ? `?email=${encodeURIComponent(email)}` : ''}`
+      : '/';
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-sm w-full text-center">
@@ -85,7 +102,7 @@ export default function RequestForm() {
             You&apos;ll receive an email once the teacher confirms your lesson.
           </p>
           <button
-            onClick={() => router.push(teacherId ? `/t/${teacherId}` : '/')}
+            onClick={() => router.push(backUrl)}
             className="text-sm text-blue-600 hover:underline"
           >
             Back to schedule
@@ -108,76 +125,64 @@ export default function RequestForm() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-6 text-sm">
           {isOneTimeSlot ? (
             <>
-              <div className="font-medium text-blue-800">One-time slot &middot; {time} &ndash; {endTime}</div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-blue-800">{time} &ndash; {endTime}</span>
+                <span className="text-xs font-medium bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">One-time</span>
+              </div>
               <div className="text-blue-600 mt-0.5">{formatDisplayDateLong(date)}</div>
             </>
           ) : (
             <>
-              <div className="font-medium text-blue-800">{DAY_NAMES[dayOfWeek]}s &middot; {time} &ndash; {endTime}</div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-blue-800">{DAY_NAMES[dayOfWeek]}s &middot; {time} &ndash; {endTime}</span>
+                <span className="text-xs font-medium bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">Recurring slot</span>
+              </div>
               <div className="text-blue-600 mt-0.5">Starting {formatDisplayDateLong(date)}</div>
             </>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Your name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Full name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="you@example.com"
-            />
-          </div>
-
+          {/* Booking type — only for recurring template slots */}
           {!isOneTimeSlot && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Booking type</label>
-              <div className="space-y-2">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="radio" name="type" value="recurring" checked={bookingType === 'recurring'} onChange={() => setBookingType('recurring')} className="mt-0.5" />
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">Recurring (every week)</div>
-                    <div className="text-xs text-gray-500">Every {DAY_NAMES[dayOfWeek]} at {time}</div>
-                  </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Lesson type <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className={`flex flex-col gap-1 border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                  bookingType === 'recurring'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}>
+                  <input
+                    type="radio"
+                    name="lessonType"
+                    value="recurring"
+                    checked={bookingType === 'recurring'}
+                    onChange={() => setBookingType('recurring')}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium text-gray-900">Recurring</span>
+                  <span className="text-xs text-gray-500">Every {DAY_NAMES[dayOfWeek]}</span>
                 </label>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="radio" name="type" value="one_time" checked={bookingType === 'one_time'} onChange={() => setBookingType('one_time')} className="mt-0.5" />
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">One time only</div>
-                    <div className="text-xs text-gray-500">Just {formatDisplayDateLong(date)}</div>
-                  </div>
+                <label className={`flex flex-col gap-1 border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                  bookingType === 'one_time'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}>
+                  <input
+                    type="radio"
+                    name="lessonType"
+                    value="one_time"
+                    checked={bookingType === 'one_time'}
+                    onChange={() => setBookingType('one_time')}
+                    className="sr-only"
+                  />
+                  <span className="text-sm font-medium text-gray-900">One-time</span>
+                  <span className="text-xs text-gray-500">Just this date</span>
                 </label>
               </div>
-            </div>
-          )}
-
-          {!isOneTimeSlot && bookingType === 'recurring' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Last lesson date <span className="text-gray-400 font-normal text-xs">(optional — leave blank for open-ended)</span>
-              </label>
-              <input
-                type="date"
-                min={date}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
             </div>
           )}
 
@@ -189,7 +194,7 @@ export default function RequestForm() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || bookingType === null}
             className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {loading ? 'Sending request...' : 'Send request'}

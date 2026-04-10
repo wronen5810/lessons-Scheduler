@@ -10,13 +10,15 @@ interface Props {
   weekStarts: string[];
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
+  timeFormat?: '24h' | '12h';
 }
 
-function WeekRow({ weekStart, slots, today, onSelectSlot }: {
+function WeekRow({ weekStart, slots, today, onSelectSlot, timeFormat = '24h' }: {
   weekStart: string;
   slots: ComputedSlot[];
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
+  timeFormat?: '24h' | '12h';
 }) {
   const days = Array.from({ length: 7 }, (_, i) => formatDate(addDays(parseISO(weekStart), i)));
   const slotsByDay = (date: string) => slots.filter((s) => s.date === date);
@@ -47,6 +49,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot }: {
                   slot={slot}
                   onClick={onSelectSlot}
                   isTeacher
+                  timeFormat={timeFormat}
                 />
               ))
             )}
@@ -57,7 +60,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot }: {
   );
 }
 
-export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot }: Props) {
+export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, timeFormat = '24h' }: Props) {
   return (
     <div className="space-y-6">
       {weekStarts.map((weekStart) => (
@@ -67,6 +70,7 @@ export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot
             slots={slots}
             today={today}
             onSelectSlot={onSelectSlot}
+            timeFormat={timeFormat}
           />
         </div>
       ))}

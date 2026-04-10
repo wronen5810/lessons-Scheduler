@@ -120,6 +120,36 @@ export async function emailTeacherCancellation(info: LessonInfo & { reason: stri
   });
 }
 
+export async function emailTeacherAccessRequest({
+  studentName,
+  studentEmail,
+  studentPhone,
+  studentNote,
+  teacherEmail,
+}: {
+  studentName: string;
+  studentEmail: string;
+  studentPhone?: string | null;
+  studentNote?: string | null;
+  teacherEmail: string;
+}) {
+  await getResend().emails.send({
+    from: FROM(),
+    to: teacherEmail,
+    subject: `Access request from ${studentName}`,
+    html: `
+      <h2>New Student Access Request</h2>
+      <p>A student tried to log in using your link but is not in your student list yet.</p>
+      <p><strong>Name:</strong> ${studentName}</p>
+      <p><strong>Email:</strong> ${studentEmail}</p>
+      ${studentPhone ? `<p><strong>Phone:</strong> ${studentPhone}</p>` : ''}
+      ${studentNote ? `<p><strong>Note:</strong> ${studentNote}</p>` : ''}
+      <p>Log in to your dashboard to add them as a student:</p>
+      <p><a href="${BASE_URL()}/teacher">Go to dashboard →</a></p>
+    `,
+  });
+}
+
 export async function emailStudentCancelledByTeacher(info: LessonInfo) {
   await getResend().emails.send({
     from: FROM(),

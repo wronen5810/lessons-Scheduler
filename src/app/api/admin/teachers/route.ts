@@ -10,7 +10,7 @@ export async function GET() {
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, display_name, is_active, created_at')
+    .select('id, display_name, is_active, phone, created_at')
     .eq('role', 'teacher')
     .order('created_at');
 

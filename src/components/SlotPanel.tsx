@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DAY_NAMES, formatDisplayDateLong } from '@/lib/dates';
+import { DAY_NAMES, formatDisplayDateLong, formatTimeDisplay } from '@/lib/dates';
 import type { ComputedSlot } from '@/lib/types';
 import DirectBookForm from './DirectBookForm';
 import { parseISO } from 'date-fns';
@@ -17,9 +17,10 @@ interface Props {
   slot: ComputedSlot;
   onClose: () => void;
   onAction: () => void;
+  timeFormat?: '24h' | '12h';
 }
 
-export default function SlotPanel({ slot, onClose, onAction }: Props) {
+export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' }: Props) {
   const [loading, setLoading] = useState(false);
   const [showBookForm, setShowBookForm] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -107,7 +108,7 @@ export default function SlotPanel({ slot, onClose, onAction }: Props) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <div className="font-bold text-gray-900 text-base">
-              {slot.start_time} – {slot.end_time}
+              {formatTimeDisplay(slot.start_time, timeFormat)} – {formatTimeDisplay(slot.end_time, timeFormat)}
             </div>
             <div className="text-sm text-gray-500 mt-0.5">{formatDisplayDateLong(slot.date)}</div>
           </div>

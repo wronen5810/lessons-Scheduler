@@ -6,7 +6,13 @@ import {
   emailStudentCancelledByTeacher,
   emailStudentRejected,
 } from '@/lib/email';
+import {
+  whatsappStudentApproved,
+  whatsappStudentCancelledByTeacher,
+  whatsappStudentRejected,
+} from '@/lib/whatsapp';
 import { getEndTime } from '@/lib/dates';
+import { DEFAULT_NOTIFICATION_PREFERENCES, sendEmail, sendWhatsApp, type NotificationKey } from '@/lib/notifications';
 
 // PATCH /api/bookings/[id]?type=recurring|one_time&action=approve|reject|cancel|complete|pay|approve-cancellation
 // For recurring with a series_id, approve/reject/cancel acts on all rows in the series.
@@ -50,7 +56,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     updatePayload.cancelled_by = action === 'approve-cancellation' ? 'student' : 'teacher';
   }
 
-  if (type === 'recurring' && booking.series_id && ['approve', 'reject', 'cancel', 'approve-cancellation'].includes(action)) {
+  // approve-cancellation always affects only the single booking (slot reverts to available)
+  if (type === 'recurring' && booking.series_id && ['approve', 'reject', 'cancel'].includes(action)) {
     let query = supabase
       .from('recurring_bookings')
       .update(updatePayload)
@@ -97,11 +104,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     cancelToken: booking.cancel_token,
   };
 
-  const sendEmail =
-    action === 'approve' ? emailStudentApproved(emailInfo) :
-    action === 'reject'  ? emailStudentRejected(emailInfo) :
-                           emailStudentCancelledByTeacher(emailInfo);
-  sendEmail.catch((e) => console.error('Email failed:', e));
+  // Load teacher notification preferences and student phone in parallel
+  const [{ data: settingsRow }, { data: studentRow }] = await Promise.all([
+    supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', auth.user.id).single(),
+    supabase.from('students').select('phone').ilike('email', booking.student_email).eq('teacher_id', auth.user.id).single(),
+  ]);
+
+  const prefs = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(settingsRow?.notification_preferences ?? {}) };
+  const notifKey: NotificationKey =
+    action === 'approve' ? 'lesson_approved' :
+    action === 'reject'  ? 'lesson_rejected' : 'lesson_cancelled';
+
+  if (sendEmail(prefs, notifKey)) {
+    const fn =
+      action === 'approve' ? emailStudentApproved(emailInfo) :
+      action === 'reject'  ? emailStudentRejected(emailInfo) :
+                             emailStudentCancelledByTeacher(emailInfo);
+    fn.catch((e) => console.error('Email failed:', e));
+  }
+
+  if (sendWhatsApp(prefs, notifKey) && studentRow?.phone) {
+    const waInfo = { ...emailInfo, phone: studentRow.phone };
+    const fn =
+      action === 'approve' ? whatsappStudentApproved(waInfo) :
+      action === 'reject'  ? whatsappStudentRejected(waInfo) :
+                             whatsappStudentCancelledByTeacher(waInfo);
+    fn.catch((e) => console.error('WhatsApp failed:', e));
+  }
 
   return NextResponse.json({ success: true });
 }

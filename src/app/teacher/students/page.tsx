@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { StudentNote } from '@/app/api/teacher/students/[id]/notes/route';
+import StudentNotebook from '@/components/StudentNotebook';
+import { createBrowserSupabase } from '@/lib/supabase-browser';
 
 interface Student {
   id: string;
@@ -27,6 +29,11 @@ export default function StudentsPage() {
   const [notesStudent, setNotesStudent] = useState<Student | null>(null);
   const [studentNotes, setStudentNotes] = useState<StudentNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
+  const [notebookStudent, setNotebookStudent] = useState<Student | null>(null);
+  const [teacherId, setTeacherId] = useState<string>('');
+  const [loginHistoryStudent, setLoginHistoryStudent] = useState<Student | null>(null);
+  const [loginHistory, setLoginHistory] = useState<{ id: string; student_name: string; student_email: string; logged_in_at: string }[]>([]);
+  const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -35,7 +42,12 @@ export default function StudentsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    createBrowserSupabase().auth.getUser().then(({ data }) => {
+      if (data.user) setTeacherId(data.user.id);
+    });
+  }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +76,15 @@ export default function StudentsPage() {
     if (!confirm(`Remove ${student.name}?`)) return;
     await fetch(`/api/teacher/students/${student.id}`, { method: 'DELETE' });
     load();
+  }
+
+  async function openLoginHistory(student: Student) {
+    setLoginHistoryStudent(student);
+    setLoginHistory([]);
+    setLoginHistoryLoading(true);
+    const res = await fetch(`/api/teacher/student-logins?email=${encodeURIComponent(student.email)}`);
+    if (res.ok) setLoginHistory(await res.json());
+    setLoginHistoryLoading(false);
   }
 
   async function openNotes(student: Student) {
@@ -141,9 +162,17 @@ export default function StudentsPage() {
                     className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
                     Edit
                   </button>
+                  <button onClick={() => openLoginHistory(student)}
+                    className="text-xs text-teal-600 hover:text-teal-800 px-2 py-1 rounded hover:bg-teal-50 transition-colors">
+                    Logins
+                  </button>
                   <button onClick={() => openNotes(student)}
                     className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
                     Notes
+                  </button>
+                  <button onClick={() => setNotebookStudent(student)}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">
+                    Notebook
                   </button>
                   <button onClick={() => toggleActive(student)}
                     className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
@@ -206,6 +235,48 @@ export default function StudentsPage() {
           </div>
         </div>
       )}
+      {/* Login history modal */}
+      {loginHistoryStudent && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">Login History — {loginHistoryStudent.name}</h3>
+              <button onClick={() => setLoginHistoryStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {loginHistoryLoading ? (
+                <p className="text-sm text-gray-400 text-center py-6">Loading...</p>
+              ) : loginHistory.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No login history yet.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-400 border-b border-gray-100">
+                      <th className="text-left pb-2 font-medium">Date & Time</th>
+                      <th className="text-left pb-2 font-medium">Email</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {loginHistory.map((l) => (
+                      <tr key={l.id}>
+                        <td className="py-2 text-gray-700 whitespace-nowrap pr-4">
+                          {new Date(l.logged_in_at).toLocaleString()}
+                        </td>
+                        <td className="py-2 text-gray-500">{l.student_email}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <button onClick={() => setLoginHistoryStudent(null)}
+              className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Notes modal */}
       {notesStudent && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
@@ -240,6 +311,27 @@ export default function StudentsPage() {
               className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Notebook modal */}
+      {notebookStudent && teacherId && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">Notebook — {notebookStudent.name}</h3>
+              <button onClick={() => setNotebookStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4">
+              <StudentNotebook teacherId={teacherId} email={notebookStudent.email} />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100">
+              <button onClick={() => setNotebookStudent(null)}
+                className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

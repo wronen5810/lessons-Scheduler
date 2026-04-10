@@ -38,6 +38,15 @@ export function formatTime(time: string): string {
   return time.slice(0, 5);
 }
 
+export function formatTimeDisplay(time: string, format: '24h' | '12h' = '24h'): string {
+  const t = time.slice(0, 5);
+  if (format === '24h') return t;
+  const [h, m] = t.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 export function getEndTime(startTime: string, durationMinutes = 45): string {
   const [h, m] = startTime.slice(0, 5).split(':').map(Number);
   const total = h * 60 + m + durationMinutes;

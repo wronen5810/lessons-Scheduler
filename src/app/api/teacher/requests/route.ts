@@ -5,10 +5,12 @@ import { formatTime, getEndTime } from '@/lib/dates';
 
 export interface PendingRequest {
   id: string;
-  booking_type: 'recurring' | 'one_time';
-  request_type: 'lesson_request' | 'cancellation_request';
+  booking_type: 'recurring' | 'one_time' | 'access_request';
+  request_type: 'lesson_request' | 'cancellation_request' | 'access_request';
   student_name: string;
   student_email: string;
+  student_phone?: string;
+  student_note?: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -23,7 +25,7 @@ export async function GET() {
   const supabase = createServiceSupabase();
   const teacherId = auth.user.id;
 
-  const [{ data: pendingRecurring }, { data: cancelRecurring }, { data: pendingOt }, { data: cancelOt }] =
+  const [{ data: pendingRecurring }, { data: cancelRecurring }, { data: pendingOt }, { data: cancelOt }, { data: accessReqs }] =
     await Promise.all([
       supabase
         .from('recurring_bookings')
@@ -47,6 +49,11 @@ export async function GET() {
         .select('id, specific_date, start_time, duration_minutes, student_name, student_email, cancellation_reason')
         .eq('teacher_id', teacherId)
         .eq('status', 'cancellation_requested'),
+      supabase
+        .from('student_access_requests')
+        .select('id, student_name, student_email, student_phone, student_note, created_at')
+        .eq('teacher_id', teacherId)
+        .order('created_at'),
     ]);
 
   const templateIds = [
@@ -124,6 +131,21 @@ export async function GET() {
       start_time: startTime,
       end_time: getEndTime(startTime, b.duration_minutes ?? 45),
       cancellation_reason: b.cancellation_reason ?? undefined,
+    });
+  }
+
+  for (const r of accessReqs ?? []) {
+    results.push({
+      id: r.id,
+      booking_type: 'access_request',
+      request_type: 'access_request',
+      student_name: r.student_name,
+      student_email: r.student_email,
+      student_phone: r.student_phone ?? undefined,
+      student_note: r.student_note ?? undefined,
+      date: r.created_at,
+      start_time: '',
+      end_time: '',
     });
   }
 

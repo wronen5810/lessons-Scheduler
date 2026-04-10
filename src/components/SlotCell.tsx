@@ -1,11 +1,13 @@
 'use client';
 
 import type { ComputedSlot } from '@/lib/types';
+import { formatTimeDisplay } from '@/lib/dates';
 
 interface Props {
   slot: ComputedSlot;
   onClick?: (slot: ComputedSlot) => void;
   isTeacher?: boolean;
+  timeFormat?: '24h' | '12h';
 }
 
 const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; dot: string; label?: string }> = {
@@ -19,7 +21,7 @@ const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; d
   cancellation_requested: { bg: 'bg-orange-50',   border: 'border-orange-300',  text: 'text-orange-800',  dot: 'bg-orange-400',  label: 'Cancel req.' },
 };
 
-export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
+export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat = '24h' }: Props) {
   const cfg = STATE_CONFIG[slot.state] ?? STATE_CONFIG.unavailable;
   const isClickable = !!onClick && slot.state !== 'unavailable';
 
@@ -34,7 +36,7 @@ export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
     >
       <div className="flex items-center gap-1.5">
         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
-        <span className="font-semibold tabular-nums">{slot.start_time}</span>
+        <span className="font-semibold tabular-nums">{formatTimeDisplay(slot.start_time, timeFormat)}</span>
       </div>
 
       {isTeacher && slot.student_name && (
@@ -45,8 +47,22 @@ export default function SlotCell({ slot, onClick, isTeacher = false }: Props) {
         <div className="mt-0.5 ml-3 opacity-70">{cfg.label}</div>
       )}
 
-      {!isTeacher && slot.state === 'available' && slot.one_time_slot_id && (
-        <div className="mt-0.5 ml-3 opacity-70">One-time</div>
+      {isTeacher && slot.booking_type && (
+        <div className="mt-0.5 ml-3 opacity-60 text-[10px]">
+          {slot.booking_type === 'one_time' ? 'One-time' : 'Recurring'}
+        </div>
+      )}
+
+      {!isTeacher && slot.state === 'available' && (
+        <div className="mt-0.5 ml-3 opacity-70">
+          {slot.one_time_slot_id ? 'One-time' : 'Recurring'}
+        </div>
+      )}
+
+      {!isTeacher && slot.state !== 'available' && slot.state !== 'unavailable' && slot.booking_type && (
+        <div className="mt-0.5 ml-3 opacity-70">
+          {slot.booking_type === 'one_time' ? 'One-time' : 'Recurring'}
+        </div>
       )}
     </div>
   );

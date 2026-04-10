@@ -11,9 +11,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
 
   const supabase = createServiceSupabase();
+  const allowed: Record<string, unknown> = {};
+  if (body.display_name !== undefined) allowed.display_name = body.display_name;
+  if (body.is_active !== undefined) allowed.is_active = body.is_active;
+  if (body.phone !== undefined) allowed.phone = body.phone || null;
+
   const { data, error } = await supabase
     .from('profiles')
-    .update(body)
+    .update(allowed)
     .eq('id', id)
     .eq('role', 'teacher')
     .select()

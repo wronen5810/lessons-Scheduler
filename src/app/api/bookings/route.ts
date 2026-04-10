@@ -3,14 +3,16 @@ import { createServiceSupabase } from '@/lib/supabase-server';
 import { emailTeacherNewRequest } from '@/lib/email';
 import { formatDate, getEndTime, todayInIsrael } from '@/lib/dates';
 import { randomUUID } from 'crypto';
+import { DEFAULT_NOTIFICATION_PREFERENCES, sendEmail, sendWhatsApp } from '@/lib/notifications';
+import { whatsappTeacherNewRequest } from '@/lib/whatsapp';
 
 // POST /api/bookings — student submits a lesson request
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, student_name, student_email: rawEmail, teacher_id } = body;
+  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, student_email: rawEmail, teacher_id } = body;
   const student_email = rawEmail?.toLowerCase().trim();
 
-  if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_name || !student_email || !teacher_id) {
+  if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_email || !teacher_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -20,7 +22,7 @@ export async function POST(request: NextRequest) {
   // Verify student is on this teacher's active list
   const { data: student } = await supabase
     .from('students')
-    .select('id, is_active')
+    .select('id, name, is_active')
     .ilike('email', student_email)
     .eq('teacher_id', teacher_id)
     .single();
@@ -32,8 +34,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Your account is currently inactive. Please contact the teacher.' }, { status: 403 });
   }
 
-  const { data: { user: teacherUser } } = await supabase.auth.admin.getUserById(teacher_id);
+  const student_name = student.name;
+
+  const [{ data: { user: teacherUser } }, { data: settingsRow }, { data: profileRow }] = await Promise.all([
+    supabase.auth.admin.getUserById(teacher_id),
+    supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', teacher_id).single(),
+    supabase.from('profiles').select('phone').eq('id', teacher_id).single(),
+  ]);
   const teacherEmail = teacherUser?.email;
+  const teacherPhone = profileRow?.phone ?? null;
+  const prefs = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(settingsRow?.notification_preferences ?? {}) };
 
   const { data: template } = await supabase
     .from('slot_templates')
@@ -83,16 +93,13 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from('recurring_bookings').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    emailTeacherNewRequest({
-      studentName: student_name,
-      studentEmail: student_email,
-      bookingType: 'recurring',
-      date,
-      dayOfWeek: template.day_of_week,
-      startTime: start_time,
-      endTime,
-      teacherEmail,
-    }).catch((e) => console.error('Email failed:', e));
+    const reqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'recurring' as const, date, dayOfWeek: template.day_of_week, startTime: start_time, endTime };
+    if (sendEmail(prefs, 'lesson_request')) {
+      emailTeacherNewRequest({ ...reqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e));
+    }
+    if (sendWhatsApp(prefs, 'lesson_request') && teacherPhone) {
+      whatsappTeacherNewRequest({ ...reqInfo, teacherPhone }).catch((e) => console.error('WhatsApp failed:', e));
+    }
 
     return NextResponse.json({ series_id: seriesId, count: rows.length }, { status: 201 });
   }
@@ -135,15 +142,13 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  emailTeacherNewRequest({
-    studentName: student_name,
-    studentEmail: student_email,
-    bookingType: 'one_time',
-    date,
-    startTime: start_time,
-    endTime,
-    teacherEmail,
-  }).catch((e) => console.error('Email failed:', e));
+  const otReqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'one_time' as const, date, startTime: start_time, endTime };
+  if (sendEmail(prefs, 'lesson_request')) {
+    emailTeacherNewRequest({ ...otReqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e));
+  }
+  if (sendWhatsApp(prefs, 'lesson_request') && teacherPhone) {
+    whatsappTeacherNewRequest({ ...otReqInfo, teacherPhone }).catch((e) => console.error('WhatsApp failed:', e));
+  }
 
   return NextResponse.json(booking, { status: 201 });
 }

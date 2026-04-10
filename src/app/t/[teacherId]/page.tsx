@@ -11,8 +11,10 @@ import WeekCalendar from '@/components/WeekCalendar';
 import WeekNav from '@/components/WeekNav';
 import { useSearchParams } from 'next/navigation';
 import { DAY_NAMES } from '@/lib/dates';
+import StudentNotebook from '@/components/StudentNotebook';
 
 type View = 'week' | 'month';
+type Section = 'schedule' | 'notebook';
 
 interface StudentBooking {
   id: string;
@@ -31,6 +33,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const email = searchParams.get('email') ?? '';
 
   const today = todayInIsrael();
+  const [section, setSection] = useState<Section>('schedule');
   const [view, setView] = useState<View>('month');
   const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
   const [month, setMonth] = useState(() => getMonthStr(today));
@@ -105,117 +108,156 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">Book a Lesson</h1>
-        {email && <p className="text-xs text-gray-400 mt-0.5">{email}</p>}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">My Lessons</h1>
+            {email && <p className="text-xs text-gray-400 mt-0.5">{email}</p>}
+          </div>
+          {email && (
+            <div className="flex rounded-xl border border-gray-200 bg-gray-50 overflow-hidden text-sm">
+              <button
+                onClick={() => setSection('schedule')}
+                className={`px-4 py-2 font-medium transition-colors ${section === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Schedule
+              </button>
+              <button
+                onClick={() => setSection('notebook')}
+                className={`px-4 py-2 font-medium transition-colors ${section === 'notebook' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Notebook
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-3 sm:px-6 py-5">
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-          {/* Navigation */}
-          {view === 'week' ? (
-            <WeekNav
-              weekStart={weekStart}
-              onPrev={() => { const p = formatDate(subWeeks(parseISO(weekStart), 1)); if (p >= minWeek) setWeekStart(p); }}
-              onNext={() => { const n = formatDate(addWeeks(parseISO(weekStart), 1)); if (n <= maxWeek) setWeekStart(n); }}
-              canPrev={weekStart > minWeek}
-              canNext={weekStart < maxWeek}
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <button onClick={() => setMonth(prevMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
-              <span className="text-sm font-semibold text-gray-800 w-32 text-center">{formatMonthDisplay(month)}</span>
-              <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
-            </div>
-          )}
-
-          {/* View toggle */}
-          <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm self-start sm:self-auto">
-            <button
-              onClick={() => setView('week')}
-              className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              Week
-            </button>
-            <button
-              onClick={() => setView('month')}
-              className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              Month
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="mt-8 text-center text-gray-400">Loading...</div>
-        ) : (
-          <div className="space-y-4">
-            {weekStarts.map((ws) => (
-              <div key={ws} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4">
-                <WeekCalendar
-                  slots={slots.filter((s) => {
-                    const d = parseISO(s.date);
-                    const start = parseISO(ws);
-                    const end = addWeeks(start, 1);
-                    return d >= start && d < end;
-                  })}
-                  weekStart={ws}
-                  today={today}
-                  teacherId={teacherId}
-                  email={email}
-                  onOwnSlotClick={(slot) => { setCancelTarget(slot); setCancelReason(''); setCancelError(''); }}
-                />
-              </div>
-            ))}
-          </div>
+        {/* ── NOTEBOOK SECTION ── */}
+        {section === 'notebook' && email && (
+          <StudentNotebook teacherId={teacherId} email={email} />
         )}
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          {[
-            { color: 'bg-emerald-400', label: 'Available' },
-            ...(email ? [
-              { color: 'bg-amber-400', label: 'Pending' },
-              { color: 'bg-blue-500',  label: 'Confirmed' },
-            ] : []),
-          ].map(({ color, label }) => (
-            <span key={label} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
-              <span className={`w-2 h-2 rounded-full ${color}`} />
-              {label}
-            </span>
-          ))}
-        </div>
+        {/* ── SCHEDULE SECTION ── */}
+        {section === 'schedule' && (
+          <>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+              {/* Navigation */}
+              {view === 'week' ? (
+                <WeekNav
+                  weekStart={weekStart}
+                  onPrev={() => { const p = formatDate(subWeeks(parseISO(weekStart), 1)); if (p >= minWeek) setWeekStart(p); }}
+                  onNext={() => { const n = formatDate(addWeeks(parseISO(weekStart), 1)); if (n <= maxWeek) setWeekStart(n); }}
+                  canPrev={weekStart > minWeek}
+                  canNext={weekStart < maxWeek}
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setMonth(prevMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
+                  <span className="text-sm font-semibold text-gray-800 w-32 text-center">{formatMonthDisplay(month)}</span>
+                  <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
+                </div>
+              )}
 
-        {/* My bookings */}
-        {email && bookings.length > 0 && (
-          <section className="mt-10">
-            <h2 className="text-base font-semibold text-gray-900 mb-3">My Bookings</h2>
-            <div className="space-y-2">
-              {bookings.map((b) => {
-                const label = b.booking_type === 'recurring'
-                  ? `Every ${DAY_NAMES[b.day_of_week ?? 0]} · ${b.start_time}–${b.end_time}`
-                  : `${b.specific_date} · ${b.start_time}–${b.end_time}`;
-                const isPending = b.status === 'cancellation_requested';
-                return (
-                  <div key={b.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{label}</p>
-                      {isPending && (
-                        <p className="text-xs text-amber-600 mt-0.5">Cancellation pending teacher approval</p>
-                      )}
-                    </div>
-                    {!isPending && (
-                      <button
-                        onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
-                        className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap"
-                      >
-                        Request cancel
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+              {/* View toggle */}
+              <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm self-start sm:self-auto">
+                <button
+                  onClick={() => setView('week')}
+                  className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                >
+                  Week
+                </button>
+                <button
+                  onClick={() => setView('month')}
+                  className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                >
+                  Month
+                </button>
+              </div>
             </div>
-          </section>
+
+            {loading ? (
+              <div className="mt-8 text-center text-gray-400">Loading...</div>
+            ) : (
+              <div className="space-y-4">
+                {weekStarts.map((ws) => (
+                  <div key={ws} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4">
+                    <WeekCalendar
+                      slots={slots.filter((s) => {
+                        const d = parseISO(s.date);
+                        const start = parseISO(ws);
+                        const end = addWeeks(start, 1);
+                        return d >= start && d < end;
+                      })}
+                      weekStart={ws}
+                      today={today}
+                      teacherId={teacherId}
+                      email={email}
+                      onOwnSlotClick={(slot) => { setCancelTarget(slot); setCancelReason(''); setCancelError(''); }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              {[
+                { color: 'bg-emerald-400', label: 'Available' },
+                ...(email ? [
+                  { color: 'bg-amber-400', label: 'Pending' },
+                  { color: 'bg-blue-500',  label: 'Confirmed' },
+                ] : []),
+              ].map(({ color, label }) => (
+                <span key={label} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
+                  <span className={`w-2 h-2 rounded-full ${color}`} />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* My bookings */}
+            {email && bookings.length > 0 && (
+              <section className="mt-10">
+                <h2 className="text-base font-semibold text-gray-900 mb-3">My Bookings</h2>
+                <div className="space-y-2">
+                  {bookings.map((b) => {
+                    const label = b.booking_type === 'recurring'
+                      ? `Every ${DAY_NAMES[b.day_of_week ?? 0]} · ${b.start_time}–${b.end_time}`
+                      : `${b.specific_date} · ${b.start_time}–${b.end_time}`;
+                    const isPending = b.status === 'cancellation_requested';
+                    return (
+                      <div key={b.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-gray-900">{label}</p>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                              b.booking_type === 'recurring'
+                                ? 'bg-violet-100 text-violet-700'
+                                : 'bg-sky-100 text-sky-700'
+                            }`}>
+                              {b.booking_type === 'recurring' ? 'Recurring' : 'One-time'}
+                            </span>
+                          </div>
+                          {isPending && (
+                            <p className="text-xs text-amber-600 mt-0.5">Cancellation pending teacher approval</p>
+                          )}
+                        </div>
+                        {!isPending && (
+                          <button
+                            onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
+                            className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap"
+                          >
+                            Request cancel
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 

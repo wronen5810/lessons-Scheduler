@@ -1,6 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createBrowserSupabase } from '@/lib/supabase-browser';
 
 function TeacherIllustration() {
   return (
@@ -79,6 +82,23 @@ function StudentIllustration() {
 }
 
 export default function LandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const params = new URLSearchParams(hash);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const type = params.get('type');
+    if (access_token && refresh_token && type === 'magiclink') {
+      const supabase = createBrowserSupabase();
+      supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+        if (!error) router.replace('/teacher');
+      });
+    }
+  }, [router]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center px-4 py-12">
 

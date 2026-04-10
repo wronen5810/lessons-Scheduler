@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { SlotTemplate, OneTimeSlot } from '@/lib/types';
 import TemplateManager from '@/components/TemplateManager';
-import { formatTime, getEndTime, todayInIsrael } from '@/lib/dates';
+import { formatTime, formatTimeDisplay, getEndTime, todayInIsrael } from '@/lib/dates';
+import { useTeacherSettings } from '@/lib/useTeacherSettings';
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<SlotTemplate[]>([]);
@@ -12,11 +13,29 @@ export default function TemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { settings } = useTeacherSettings();
+
   // One-time slot form state
   const [showAdd, setShowAdd] = useState(false);
   const [newDate, setNewDate] = useState('');
-  const [newTime, setNewTime] = useState('16:00');
+  const [newHour, setNewHour] = useState(16);
+  const [newMinute, setNewMinute] = useState(0);
   const [newDuration, setNewDuration] = useState(45);
+
+  const newTime = `${String(newHour).padStart(2, '0')}:${String(newMinute).padStart(2, '0')}`;
+
+  const hourOptions = settings.time_format === '12h'
+    ? Array.from({ length: 12 }, (_, i) => ({ value: i, label: `${i === 0 ? 12 : i} AM` })).concat(
+        Array.from({ length: 12 }, (_, i) => ({ value: i + 12, label: `${i === 0 ? 12 : i} PM` }))
+      )
+    : Array.from({ length: 24 }, (_, i) => ({ value: i, label: String(i).padStart(2, '0') }));
+
+  const minuteOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => ({
+    value: m, label: String(m).padStart(2, '0'),
+  }));
+
+  // Sync default duration from settings when loaded
+  useEffect(() => { setNewDuration(settings.default_duration_minutes); }, [settings.default_duration_minutes]);
   const [addError, setAddError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -84,7 +103,7 @@ export default function TemplatesPage() {
             {/* Recurring slots */}
             <section>
               <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Recurring Weekly Slots</h2>
-              <TemplateManager templates={templates} onUpdate={load} />
+              <TemplateManager templates={templates} onUpdate={load} defaultDuration={settings.default_duration_minutes} timeFormat={settings.time_format} />
             </section>
 
             {/* One-time slots */}
@@ -116,12 +135,26 @@ export default function TemplatesPage() {
                     </div>
                     <div className="flex-1">
                       <label className="block text-xs text-gray-600 mb-1">Start time</label>
-                      <input
-                        type="time"
-                        value={newTime}
-                        onChange={(e) => setNewTime(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <div className="flex gap-1">
+                        <select
+                          value={newHour}
+                          onChange={(e) => setNewHour(Number(e.target.value))}
+                          className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {hourOptions.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={newMinute}
+                          onChange={(e) => setNewMinute(Number(e.target.value))}
+                          className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {minuteOptions.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div className="w-28">
                       <label className="block text-xs text-gray-600 mb-1">Duration (min)</label>
@@ -159,7 +192,7 @@ export default function TemplatesPage() {
                       <li key={s.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3">
                         <div>
                           <span className="text-sm font-medium text-gray-900">{s.specific_date}</span>
-                          <span className="text-sm text-gray-500 ml-2">{start} – {end}</span>
+                          <span className="text-sm text-gray-500 ml-2">{formatTimeDisplay(start, settings.time_format)} – {formatTimeDisplay(end, settings.time_format)}</span>
                           <span className="text-xs text-gray-400 ml-2">({s.duration_minutes ?? 45} min)</span>
                         </div>
                         <button onClick={() => deleteOneTimeSlot(s.id)} className="text-xs text-red-500 hover:text-red-700 underline">

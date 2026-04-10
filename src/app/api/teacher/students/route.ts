@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
 
-  const { name, email } = await request.json();
+  const { name, email, phone } = await request.json();
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
   }
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('students')
-    .insert({ name, email: email.toLowerCase().trim(), teacher_id: auth.user.id })
+    .insert({ name, email: email.toLowerCase().trim(), phone: phone ?? null, teacher_id: auth.user.id })
     .select()
     .single();
 
