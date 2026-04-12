@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "982494620146",
+    "project_id": "lessons-scheduler-388bf",
+    "storage_bucket": "lessons-scheduler-388bf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982494620146:android:0a36cf8bcfdacbcc86a36b",
+        "android_client_info": {
+          "package_name": "com.lessonscheduler.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCj73587z8dwE0lyygBIup5olI3Kq_INjE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
