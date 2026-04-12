@@ -3,8 +3,9 @@ import { createServiceSupabase } from '@/lib/supabase-server';
 import { emailTeacherNewRequest } from '@/lib/email';
 import { formatDate, getEndTime, todayInIsrael } from '@/lib/dates';
 import { randomUUID } from 'crypto';
-import { DEFAULT_NOTIFICATION_PREFERENCES, sendEmail, sendWhatsApp } from '@/lib/notifications';
+import { mergePrefs, sendEmail, sendWhatsApp, sendPush } from '@/lib/notifications';
 import { whatsappTeacherNewRequest } from '@/lib/whatsapp';
+import { sendPushToUser } from '@/lib/firebase-admin';
 
 // POST /api/bookings — student submits a lesson request
 export async function POST(request: NextRequest) {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   ]);
   const teacherEmail = teacherUser?.email;
   const teacherPhone = profileRow?.phone ?? null;
-  const prefs = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(settingsRow?.notification_preferences ?? {}) };
+  const prefs = mergePrefs(settingsRow?.notification_preferences);
 
   const { data: template } = await supabase
     .from('slot_templates')
@@ -94,9 +95,12 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const reqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'recurring' as const, date, dayOfWeek: template.day_of_week, startTime: start_time, endTime };
+    const pushTitle = 'New Lesson Request';
+    const pushBody = `${student_name} requested a lesson on ${reqInfo.startTime}`;
     await Promise.all([
       sendEmail(prefs, 'lesson_request') ? emailTeacherNewRequest({ ...reqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e)) : null,
       sendWhatsApp(prefs, 'lesson_request') && teacherPhone ? whatsappTeacherNewRequest({ ...reqInfo, teacherPhone }).catch((e) => console.error('WhatsApp failed:', e)) : null,
+      sendPush(prefs, 'lesson_request') ? sendPushToUser(supabase, teacher_id, pushTitle, pushBody).catch((e) => console.error('Push failed:', e)) : null,
     ]);
 
     return NextResponse.json({ series_id: seriesId, count: rows.length }, { status: 201 });
@@ -141,9 +145,12 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const otReqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'one_time' as const, date, startTime: start_time, endTime };
+  const pushTitle = 'New Lesson Request';
+  const pushBody = `${student_name} requested a lesson on ${start_time}`;
   await Promise.all([
     sendEmail(prefs, 'lesson_request') ? emailTeacherNewRequest({ ...otReqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e)) : null,
     sendWhatsApp(prefs, 'lesson_request') && teacherPhone ? whatsappTeacherNewRequest({ ...otReqInfo, teacherPhone }).catch((e) => console.error('WhatsApp failed:', e)) : null,
+    sendPush(prefs, 'lesson_request') ? sendPushToUser(supabase, teacher_id, pushTitle, pushBody).catch((e) => console.error('Push failed:', e)) : null,
   ]);
 
   return NextResponse.json(booking, { status: 201 });

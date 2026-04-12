@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
-import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences } from '@/lib/notifications';
+import { DEFAULT_NOTIFICATION_PREFERENCES, mergePrefs, type NotificationPreferences } from '@/lib/notifications';
 
 export interface TeacherSettings {
   default_duration_minutes: number;
@@ -30,10 +30,7 @@ export async function GET() {
 
   return NextResponse.json({
     ...data,
-    notification_preferences: {
-      ...DEFAULT_NOTIFICATION_PREFERENCES,
-      ...(data.notification_preferences ?? {}),
-    },
+    notification_preferences: mergePrefs(data.notification_preferences),
   });
 }
 
@@ -60,15 +57,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (body.notification_preferences !== undefined) {
-    const validChannels = ['email', 'whatsapp', 'both', 'off'];
-    const validKeys = ['lesson_request', 'lesson_approved', 'lesson_rejected', 'lesson_cancelled', 'lesson_reminder', 'access_request'];
-    const prefs = body.notification_preferences;
-    for (const key of validKeys) {
-      if (prefs[key] !== undefined && !validChannels.includes(prefs[key])) {
-        return NextResponse.json({ error: `Invalid channel for ${key}` }, { status: 400 });
-      }
-    }
-    update.notification_preferences = prefs;
+    update.notification_preferences = mergePrefs(body.notification_preferences);
   }
 
   const supabase = createServiceSupabase();
@@ -81,9 +70,6 @@ export async function PATCH(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({
     ...data,
-    notification_preferences: {
-      ...DEFAULT_NOTIFICATION_PREFERENCES,
-      ...(data.notification_preferences ?? {}),
-    },
+    notification_preferences: mergePrefs(data.notification_preferences),
   });
 }

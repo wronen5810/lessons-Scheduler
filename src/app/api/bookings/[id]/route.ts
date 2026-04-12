@@ -12,7 +12,8 @@ import {
   whatsappStudentRejected,
 } from '@/lib/whatsapp';
 import { getEndTime } from '@/lib/dates';
-import { DEFAULT_NOTIFICATION_PREFERENCES, sendEmail, sendWhatsApp, type NotificationKey } from '@/lib/notifications';
+import { mergePrefs, sendEmail, sendWhatsApp, sendPush, type NotificationKey } from '@/lib/notifications';
+import { sendPushToUser } from '@/lib/firebase-admin';
 
 // PATCH /api/bookings/[id]?type=recurring|one_time&action=approve|reject|cancel|complete|pay|approve-cancellation
 // For recurring with a series_id, approve/reject/cancel acts on all rows in the series.
@@ -110,10 +111,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     supabase.from('students').select('phone').ilike('email', booking.student_email).eq('teacher_id', auth.user.id).single(),
   ]);
 
-  const prefs = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(settingsRow?.notification_preferences ?? {}) };
+  const prefs = mergePrefs(settingsRow?.notification_preferences);
   const notifKey: NotificationKey =
     action === 'approve' ? 'lesson_approved' :
     action === 'reject'  ? 'lesson_rejected' : 'lesson_cancelled';
+
+  const pushTitle =
+    action === 'approve' ? 'Lesson Confirmed' :
+    action === 'reject'  ? 'Lesson Request Declined' : 'Lesson Cancelled';
+  const pushBody =
+    action === 'approve' ? `Your lesson on ${emailInfo.startTime} has been confirmed.` :
+    action === 'reject'  ? `Your lesson request for ${emailInfo.startTime} was declined.` :
+                           `Your lesson on ${emailInfo.startTime} has been cancelled.`;
 
   await Promise.all([
     sendEmail(prefs, notifKey) ? (
@@ -121,7 +130,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       action === 'reject'  ? emailStudentRejected(emailInfo) :
                              emailStudentCancelledByTeacher(emailInfo)
     ).catch((e) => console.error('Email failed:', e)) : null,
-    sendWhatsApp(prefs, notifKey) && studentRow?.phone ? (() => {
+    sendWhatsApp(prefs, notifKey) && studentRow?.phone ? (async () => {
       const waInfo = { ...emailInfo, phone: studentRow.phone };
       return (
         action === 'approve' ? whatsappStudentApproved(waInfo) :
@@ -129,6 +138,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                                whatsappStudentCancelledByTeacher(waInfo)
       ).catch((e) => console.error('WhatsApp failed:', e));
     })() : null,
+    sendPush(prefs, notifKey) ? sendPushToUser(supabase, auth.user.id, pushTitle, pushBody).catch((e) => console.error('Push failed:', e)) : null,
   ]);
 
   return NextResponse.json({ success: true });

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { emailTeacherAccessRequest } from '@/lib/email';
-import { DEFAULT_NOTIFICATION_PREFERENCES, sendEmail, sendWhatsApp } from '@/lib/notifications';
+import { mergePrefs, sendEmail, sendWhatsApp, sendPush } from '@/lib/notifications';
+import { sendPushToUser } from '@/lib/firebase-admin';
 import { whatsappTeacherAccessRequest } from '@/lib/whatsapp';
 
 // POST /api/student-access-request
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
   ]);
   const teacherEmail = user?.email;
   const teacherPhone = profileRow?.phone ?? null;
-  const prefs = { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(settingsRow?.notification_preferences ?? {}) };
+  const prefs = mergePrefs(settingsRow?.notification_preferences);
 
   await Promise.all([
     teacherEmail && sendEmail(prefs, 'access_request') ? emailTeacherAccessRequest({
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       studentEmail: normalizedEmail,
       studentPhone: phone ?? null,
     }).catch((e) => console.error('Access request WhatsApp failed:', e)) : null,
+    sendPush(prefs, 'access_request') ? sendPushToUser(supabase, teacherId, 'New Student Request', `${name} is requesting access to your lessons.`).catch((e) => console.error('Access request push failed:', e)) : null,
   ]);
 
   return NextResponse.json({ ok: true });

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { TeacherSettings } from '@/app/api/teacher/settings/route';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
-  type NotificationChannel,
+  type NotificationChannels,
   type NotificationKey,
   type NotificationPreferences,
 } from '@/lib/notifications';
@@ -24,13 +24,6 @@ const NOTIFICATION_ROWS: { key: NotificationKey; label: string; direction: strin
   { key: 'access_request',   label: 'New student request',  direction: '→ you' },
 ];
 
-const CHANNEL_OPTIONS: { value: NotificationChannel; label: string }[] = [
-  { value: 'email',     label: 'Email' },
-  { value: 'whatsapp',  label: 'WhatsApp' },
-  { value: 'both',      label: 'Email + WhatsApp' },
-  { value: 'off',       label: 'Off' },
-];
-
 export default function TeacherSettingsModal({ settings, onSave, onClose }: Props) {
   const [duration, setDuration] = useState(settings.default_duration_minutes);
   const [timeFormat, setTimeFormat] = useState<'24h' | '12h'>(settings.time_format);
@@ -41,8 +34,11 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  function setChannel(key: NotificationKey, value: NotificationChannel) {
-    setPrefs((p) => ({ ...p, [key]: value }));
+  function toggleChannel(key: NotificationKey, channel: keyof NotificationChannels) {
+    setPrefs((p) => ({
+      ...p,
+      [key]: { ...p[key], [channel]: !p[key][channel] },
+    }));
   }
 
   async function handleSave() {
@@ -63,7 +59,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
 
   return (
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Settings</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
@@ -105,30 +101,33 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
         {/* Notification preferences */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notifications</label>
-          <p className="text-xs text-gray-400 mb-3">WhatsApp to student requires their phone number on file.</p>
+          <p className="text-xs text-gray-400 mb-3">WhatsApp/push to student requires their phone or app install.</p>
           <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <div className="grid grid-cols-[1fr_auto] bg-gray-50 px-3 py-2 border-b border-gray-200">
+            <div className="grid grid-cols-[1fr_48px_64px_48px] bg-gray-50 px-3 py-2 border-b border-gray-200 gap-2">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Event</span>
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Channel</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide text-center">Email</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide text-center">WhatsApp</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide text-center">Push</span>
             </div>
             {NOTIFICATION_ROWS.map((row, i) => (
               <div
                 key={row.key}
-                className={`grid grid-cols-[1fr_auto] items-center px-3 py-2.5 gap-4 ${i < NOTIFICATION_ROWS.length - 1 ? 'border-b border-gray-100' : ''}`}
+                className={`grid grid-cols-[1fr_48px_64px_48px] items-center px-3 py-2.5 gap-2 ${i < NOTIFICATION_ROWS.length - 1 ? 'border-b border-gray-100' : ''}`}
               >
                 <div>
                   <span className="text-sm text-gray-800">{row.label}</span>
                   <span className="text-xs text-gray-400 ml-1.5">{row.direction}</span>
                 </div>
-                <select
-                  value={prefs[row.key]}
-                  onChange={(e) => setChannel(row.key, e.target.value as NotificationChannel)}
-                  className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {CHANNEL_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                {(['email', 'whatsapp', 'push'] as const).map((ch) => (
+                  <div key={ch} className="flex justify-center">
+                    <input
+                      type="checkbox"
+                      checked={prefs[row.key][ch]}
+                      onChange={() => toggleChannel(row.key, ch)}
+                      className="w-4 h-4 accent-blue-600 cursor-pointer"
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>

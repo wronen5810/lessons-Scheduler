@@ -4,7 +4,7 @@ import { emailStudentReminder } from '@/lib/email';
 import { whatsappStudentReminder } from '@/lib/whatsapp';
 import { formatDate, getEndTime, todayInIsrael } from '@/lib/dates';
 import { addDays, parseISO } from 'date-fns';
-import { DEFAULT_NOTIFICATION_PREFERENCES, sendEmail, sendWhatsApp, type NotificationPreferences } from '@/lib/notifications';
+import { mergePrefs, sendEmail, sendWhatsApp, type NotificationPreferences } from '@/lib/notifications';
 
 // GET /api/cron/reminders — called daily by Vercel Cron at 06:00 UTC
 // Sends reminder emails for all lessons scheduled for tomorrow.
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   async function getPrefs(teacherId: string): Promise<NotificationPreferences> {
     if (!prefCache.has(teacherId)) {
       const { data } = await supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', teacherId).single();
-      prefCache.set(teacherId, { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(data?.notification_preferences ?? {}) });
+      prefCache.set(teacherId, mergePrefs(data?.notification_preferences));
     }
     return prefCache.get(teacherId)!;
   }
