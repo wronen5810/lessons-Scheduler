@@ -19,12 +19,11 @@ export async function sendPushToUser(
   body: string,
   data: Record<string, string> = {}
 ) {
-  const { data: tokens, error: tokenError } = await supabase
+  const { data: tokens } = await supabase
     .from('push_tokens')
     .select('token')
     .eq('user_id', userId);
 
-  console.log('[Push debug] userId:', userId, 'tokens:', tokens?.length ?? 0, 'tokenError:', tokenError);
   if (!tokens || tokens.length === 0) return { sent: 0 };
 
   const response = await messaging.sendEachForMulticast({
@@ -32,7 +31,6 @@ export async function sendPushToUser(
     notification: { title, body },
     data,
   });
-  console.log('[Push debug] successCount:', response.successCount, 'failureCount:', response.failureCount, 'responses:', JSON.stringify(response.responses.map(r => ({ success: r.success, error: r.error?.message }))));
 
   // Clean up dead tokens
   const dead: string[] = [];
