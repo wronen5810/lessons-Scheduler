@@ -92,6 +92,22 @@ export async function whatsappTeacherNewRequest(info: TeacherRequestInfo) {
   );
 }
 
+export async function whatsappAdminNewTeacherRequest(info: {
+  name: string;
+  email: string;
+  phone?: string | null;
+  comments?: string | null;
+}) {
+  const adminPhone = process.env.ADMIN_WHATSAPP_PHONE;
+  const templateSid = process.env.TWILIO_TEMPLATE_TEACHER_SUBSCRIPTION;
+  if (!adminPhone || !templateSid) return;
+  await sendTemplate(
+    adminPhone,
+    templateSid,
+    { '1': info.name, '2': info.email, '3': info.phone ?? 'N/A', '4': info.comments ?? 'N/A' },
+  );
+}
+
 export async function whatsappTeacherAccessRequest(info: {
   teacherPhone: string;
   studentName: string;

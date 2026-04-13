@@ -11,6 +11,16 @@ interface Teacher {
   created_at: string;
 }
 
+interface Subscription {
+  id: string;
+  teacher_id: string;
+  start_date: string;
+  end_date: string | null;
+  cost: number;
+  notes: string | null;
+  created_at: string;
+}
+
 export default function AdminTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +41,14 @@ export default function AdminTeachersPage() {
 
   // Impersonate
   const [impersonating, setImpersonating] = useState<string | null>(null);
+
+  // Subscriptions
+  const [subsTeacher, setSubsTeacher] = useState<Teacher | null>(null);
+  const [subs, setSubs] = useState<Subscription[]>([]);
+  const [subsLoading, setSubsLoading] = useState(false);
+  const [newSub, setNewSub] = useState({ start_date: '', end_date: '', cost: '0', notes: '' });
+  const [addingSub, setAddingSub] = useState(false);
+  const [subError, setSubError] = useState('');
 
   async function handleImpersonate(teacher: Teacher) {
     setImpersonating(teacher.id);
@@ -53,6 +71,48 @@ export default function AdminTeachersPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  async function openSubscriptions(teacher: Teacher) {
+    setSubsTeacher(teacher);
+    setSubsLoading(true);
+    setSubs([]);
+    setSubError('');
+    setNewSub({ start_date: '', end_date: '', cost: '0', notes: '' });
+    const res = await fetch(`/api/admin/teacher-subscriptions?teacher_id=${teacher.id}`);
+    setSubs(res.ok ? await res.json() : []);
+    setSubsLoading(false);
+  }
+
+  async function handleAddSub() {
+    if (!subsTeacher || !newSub.start_date) return;
+    setAddingSub(true);
+    setSubError('');
+    const res = await fetch('/api/admin/teacher-subscriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teacher_id: subsTeacher.id,
+        start_date: newSub.start_date,
+        end_date: newSub.end_date || null,
+        cost: Number(newSub.cost) || 0,
+        notes: newSub.notes || null,
+      }),
+    });
+    const data = await res.json();
+    setAddingSub(false);
+    if (!res.ok) {
+      setSubError(data.error ?? 'Failed to add subscription');
+    } else {
+      setSubs((prev) => [data, ...prev]);
+      setNewSub({ start_date: '', end_date: '', cost: '0', notes: '' });
+    }
+  }
+
+  async function handleDeleteSub(sub: Subscription) {
+    if (!confirm('Delete this subscription?')) return;
+    await fetch(`/api/admin/teacher-subscriptions/${sub.id}`, { method: 'DELETE' });
+    setSubs((prev) => prev.filter((s) => s.id !== sub.id));
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -81,10 +141,7 @@ export default function AdminTeachersPage() {
     const res = await fetch(`/api/admin/teachers/${editing.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        display_name: editing.display_name,
-        phone: editing.phone || null,
-      }),
+      body: JSON.stringify({ display_name: editing.display_name, phone: editing.phone || null }),
     });
     const data = await res.json();
     setEditSaving(false);
@@ -174,16 +231,22 @@ export default function AdminTeachersPage() {
             <div>
               <p className="text-sm font-medium text-gray-900">{teacher.display_name}</p>
               <p className="text-xs text-gray-500">{teacher.email}</p>
-              {teacher.phone && <p className="text-xs text-gray-400">📱 {teacher.phone}</p>}
+              {teacher.phone && <p className="text-xs text-gray-400">{teacher.phone}</p>}
               <p className="text-xs text-gray-400 mt-0.5">Booking link: /t/{teacher.id}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               <button
                 onClick={() => handleImpersonate(teacher)}
                 disabled={impersonating === teacher.id}
                 className="text-xs text-emerald-600 hover:text-emerald-800 px-2 py-1 rounded hover:bg-emerald-50 disabled:opacity-50 transition-colors"
               >
                 {impersonating === teacher.id ? 'Opening...' : 'Login as'}
+              </button>
+              <button
+                onClick={() => openSubscriptions(teacher)}
+                className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors"
+              >
+                Subscriptions
               </button>
               <button
                 onClick={() => { setEditing({ ...teacher }); setEditError(''); }}
@@ -215,7 +278,6 @@ export default function AdminTeachersPage() {
               <h3 className="text-base font-semibold text-gray-900">Edit Teacher</h3>
               <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
-
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Display name</label>
               <input
@@ -225,7 +287,6 @@ export default function AdminTeachersPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Mobile phone <span className="text-gray-400 font-normal">(for WhatsApp)</span></label>
               <input
@@ -235,11 +296,8 @@ export default function AdminTeachersPage() {
                 placeholder="e.g. +972501234567"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-400 mt-1">Include country code. Used to send WhatsApp notifications to the teacher.</p>
             </div>
-
             {editError && <p className="text-sm text-red-600">{editError}</p>}
-
             <div className="flex gap-3 pt-1">
               <button onClick={handleEditSave} disabled={editSaving}
                 className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
@@ -249,6 +307,103 @@ export default function AdminTeachersPage() {
                 className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subscriptions modal */}
+      {subsTeacher && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Subscriptions</h3>
+                <p className="text-xs text-gray-500">{subsTeacher.display_name} — {subsTeacher.email}</p>
+              </div>
+              <button onClick={() => setSubsTeacher(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+            </div>
+
+            {/* Add subscription form */}
+            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+              <h4 className="text-sm font-medium text-gray-700">Add subscription</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Start date <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    value={newSub.start_date}
+                    onChange={(e) => setNewSub((s) => ({ ...s, start_date: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">End date</label>
+                  <input
+                    type="date"
+                    value={newSub.end_date}
+                    onChange={(e) => setNewSub((s) => ({ ...s, end_date: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Cost</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={newSub.cost}
+                    onChange={(e) => setNewSub((s) => ({ ...s, cost: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Notes</label>
+                  <input
+                    type="text"
+                    value={newSub.notes}
+                    onChange={(e) => setNewSub((s) => ({ ...s, notes: e.target.value }))}
+                    placeholder="Optional"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              {subError && <p className="text-sm text-red-600">{subError}</p>}
+              <button
+                onClick={handleAddSub}
+                disabled={addingSub || !newSub.start_date}
+                className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {addingSub ? 'Adding...' : 'Add subscription'}
+              </button>
+            </div>
+
+            {/* Subscription list */}
+            <div className="space-y-2">
+              {subsLoading ? (
+                <p className="text-sm text-gray-400 text-center py-4">Loading...</p>
+              ) : subs.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">No subscriptions yet.</p>
+              ) : subs.map((sub) => (
+                <div key={sub.id} className="flex items-center justify-between border border-gray-100 rounded-lg px-4 py-3">
+                  <div>
+                    <p className="text-sm text-gray-800">
+                      {sub.start_date} → {sub.end_date ?? 'ongoing'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Cost: {sub.cost} {sub.notes && `· ${sub.notes}`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteSub(sub)}
+                    className="text-xs text-red-500 hover:text-red-700 ml-4"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
