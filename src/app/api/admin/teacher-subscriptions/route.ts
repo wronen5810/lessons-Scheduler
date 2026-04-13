@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
+import { computeStatus, checkOverlap } from './shared';
 
 // GET /api/admin/teacher-subscriptions?teacher_id=
 export async function GET(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     .order('start_date', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? []);
+  return NextResponse.json((data ?? []).map((s) => ({ ...s, status: computeStatus(s) })));
 }
 
 // POST /api/admin/teacher-subscriptions
@@ -32,18 +33,16 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceSupabase();
+
+  const overlapError = await checkOverlap(supabase, teacher_id, start_date, end_date || null, null);
+  if (overlapError) return NextResponse.json({ error: overlapError }, { status: 409 });
+
   const { data, error } = await supabase
     .from('teacher_subscriptions')
-    .insert({
-      teacher_id,
-      start_date,
-      end_date: end_date || null,
-      cost: cost ?? 0,
-      notes: notes?.trim() || null,
-    })
+    .insert({ teacher_id, start_date, end_date: end_date || null, cost: cost ?? 0, notes: notes?.trim() || null })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json({ ...data, status: computeStatus(data) }, { status: 201 });
 }

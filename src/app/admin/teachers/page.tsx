@@ -18,6 +18,7 @@ interface Subscription {
   end_date: string | null;
   cost: number;
   notes: string | null;
+  status: 'active' | 'inactive';
   created_at: string;
 }
 
@@ -49,6 +50,9 @@ export default function AdminTeachersPage() {
   const [newSub, setNewSub] = useState({ start_date: '', end_date: '', cost: '0', notes: '' });
   const [addingSub, setAddingSub] = useState(false);
   const [subError, setSubError] = useState('');
+  const [editingSub, setEditingSub] = useState<Subscription | null>(null);
+  const [editSubSaving, setEditSubSaving] = useState(false);
+  const [editSubError, setEditSubError] = useState('');
 
   async function handleImpersonate(teacher: Teacher) {
     setImpersonating(teacher.id);
@@ -112,6 +116,30 @@ export default function AdminTeachersPage() {
     if (!confirm('Delete this subscription?')) return;
     await fetch(`/api/admin/teacher-subscriptions/${sub.id}`, { method: 'DELETE' });
     setSubs((prev) => prev.filter((s) => s.id !== sub.id));
+  }
+
+  async function handleEditSubSave() {
+    if (!editingSub) return;
+    setEditSubSaving(true);
+    setEditSubError('');
+    const res = await fetch(`/api/admin/teacher-subscriptions/${editingSub.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        start_date: editingSub.start_date,
+        end_date: editingSub.end_date || null,
+        cost: Number(editingSub.cost) || 0,
+        notes: editingSub.notes || null,
+      }),
+    });
+    const data = await res.json();
+    setEditSubSaving(false);
+    if (!res.ok) {
+      setEditSubError(data.error ?? 'Failed to save');
+    } else {
+      setSubs((prev) => prev.map((s) => s.id === data.id ? data : s));
+      setEditingSub(null);
+    }
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -387,21 +415,80 @@ export default function AdminTeachersPage() {
               ) : subs.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">No subscriptions yet.</p>
               ) : subs.map((sub) => (
-                <div key={sub.id} className="flex items-center justify-between border border-gray-100 rounded-lg px-4 py-3">
-                  <div>
-                    <p className="text-sm text-gray-800">
-                      {sub.start_date} → {sub.end_date ?? 'ongoing'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Cost: {sub.cost} {sub.notes && `· ${sub.notes}`}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteSub(sub)}
-                    className="text-xs text-red-500 hover:text-red-700 ml-4"
-                  >
-                    Delete
-                  </button>
+                <div key={sub.id} className="border border-gray-100 rounded-lg px-4 py-3 space-y-2">
+                  {editingSub?.id === sub.id ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Start date</label>
+                          <input type="date" value={editingSub.start_date}
+                            onChange={(e) => setEditingSub({ ...editingSub, start_date: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">End date</label>
+                          <input type="date" value={editingSub.end_date ?? ''}
+                            onChange={(e) => setEditingSub({ ...editingSub, end_date: e.target.value || null })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Cost</label>
+                          <input type="number" min={0} step={0.01} value={editingSub.cost}
+                            onChange={(e) => setEditingSub({ ...editingSub, cost: Number(e.target.value) })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Notes</label>
+                          <input type="text" value={editingSub.notes ?? ''}
+                            onChange={(e) => setEditingSub({ ...editingSub, notes: e.target.value || null })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      {editSubError && <p className="text-xs text-red-600">{editSubError}</p>}
+                      <div className="flex gap-2">
+                        <button onClick={handleEditSubSave} disabled={editSubSaving}
+                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                          {editSubSaving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button onClick={() => { setEditingSub(null); setEditSubError(''); }}
+                          className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-gray-800">
+                            {sub.start_date} → {sub.end_date ?? 'ongoing'}
+                          </p>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            sub.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {sub.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Cost: {sub.cost}{sub.notes && ` · ${sub.notes}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 ml-4">
+                        <button onClick={() => { setEditingSub({ ...sub }); setEditSubError(''); }}
+                          className="text-xs text-blue-600 hover:text-blue-800">
+                          Edit
+                        </button>
+                        <button onClick={() => handleDeleteSub(sub)}
+                          className="text-xs text-red-500 hover:text-red-700">
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
