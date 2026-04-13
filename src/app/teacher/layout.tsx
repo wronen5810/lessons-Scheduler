@@ -1,6 +1,8 @@
 import { createAuthSupabase, createServiceSupabase } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TeacherLayout({ children }: { children: React.ReactNode }) {
   const auth = await createAuthSupabase();
   const { data: { user } } = await auth.getUser();
@@ -10,14 +12,16 @@ export default async function TeacherLayout({ children }: { children: React.Reac
   const supabase = createServiceSupabase();
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: activeSub } = await supabase
+  const { data: activeSub, error: subError } = await supabase
     .from('teacher_subscriptions')
     .select('id')
     .eq('teacher_id', user.id)
     .lte('start_date', today)
     .or(`end_date.is.null,end_date.gte.${today}`)
     .limit(1)
-    .single();
+    .maybeSingle();
+
+  console.log('[subscription gate] user:', user.id, 'today:', today, 'activeSub:', activeSub, 'error:', subError?.message);
 
   if (!activeSub) {
     return (
