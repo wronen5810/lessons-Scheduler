@@ -21,8 +21,8 @@ export interface GroupBillingRow {
   completed_lessons: number;
   balance_per_student: number | null;
   total_balance: number | null;
-  members: { student_id: string; student_name: string; student_email: string }[];
-  lessons: { date: string; start_time: string; end_time: string; booking_type: string; status: string }[];
+  members: { student_id: string; student_name: string; student_email: string; unpaid_lessons: number; unpaid_balance: number | null }[];
+  lessons: { date: string; start_time: string; end_time: string; booking_type: string; booking_id: string; status: string }[];
 }
 
 export async function GET() {
@@ -36,12 +36,12 @@ export async function GET() {
     supabase.from('students').select('email, name, rate').eq('teacher_id', teacherId),
     supabase
       .from('one_time_bookings')
-      .select('student_email, student_name, specific_date, start_time, duration_minutes, status, group_id')
+      .select('id, student_email, student_name, specific_date, start_time, duration_minutes, status, group_id')
       .eq('teacher_id', teacherId)
       .eq('status', 'completed'),
     supabase
       .from('recurring_bookings')
-      .select('student_email, student_name, lesson_date, template_id, status, group_id')
+      .select('id, student_email, student_name, lesson_date, template_id, status, group_id')
       .eq('teacher_id', teacherId)
       .eq('status', 'completed'),
     supabase
@@ -56,14 +56,28 @@ export async function GET() {
     : { data: [] };
   const tplMap = new Map((templates ?? []).map((t) => [t.id, t]));
 
-  // Fetch group members for groups that have completed lessons
+  // Fetch group members and payment records
   const groupIds = (groups ?? []).map((g) => g.id);
-  const { data: allMembers } = groupIds.length
-    ? await supabase
-        .from('student_group_members')
-        .select('group_id, student_id, students(name, email)')
-        .in('group_id', groupIds)
-    : { data: [] };
+  const groupBookingIds = [
+    ...(otDone ?? []).filter((b) => b.group_id).map((b) => b.id),
+    ...(recDone ?? []).filter((b) => b.group_id).map((b) => b.id),
+  ];
+
+  const [{ data: allMembers }, { data: allPayments }] = await Promise.all([
+    groupIds.length
+      ? supabase.from('student_group_members').select('group_id, student_id, students(name, email)').in('group_id', groupIds)
+      : Promise.resolve({ data: [] }),
+    groupBookingIds.length
+      ? supabase.from('group_booking_payments').select('booking_type, booking_id, student_id').eq('teacher_id', teacherId).in('booking_id', groupBookingIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  // Map: booking_id → Set of paid student_ids
+  const paidByBooking = new Map<string, Set<string>>();
+  for (const p of allPayments ?? []) {
+    if (!paidByBooking.has(p.booking_id)) paidByBooking.set(p.booking_id, new Set());
+    paidByBooking.get(p.booking_id)!.add(p.student_id);
+  }
 
   const membersByGroup = new Map<string, { student_id: string; student_name: string; student_email: string }[]>();
   for (const m of allMembers ?? []) {
@@ -125,13 +139,13 @@ export async function GET() {
     .sort((a, b) => a.student_name.localeCompare(b.student_name));
 
   // ── Group billing ───────────────────────────────────────────────
-  const byGroup = new Map<string, { lessons: { date: string; start_time: string; end_time: string; booking_type: string; status: string }[] }>();
+  const byGroup = new Map<string, { lessons: { date: string; start_time: string; end_time: string; booking_type: string; booking_id: string; status: string }[] }>();
 
   for (const b of otDone ?? []) {
     if (!b.group_id) continue;
     if (!byGroup.has(b.group_id)) byGroup.set(b.group_id, { lessons: [] });
     const st = formatTime(b.start_time);
-    byGroup.get(b.group_id)!.lessons.push({ date: b.specific_date, start_time: st, end_time: getEndTime(st, b.duration_minutes ?? 45), booking_type: 'one_time', status: b.status });
+    byGroup.get(b.group_id)!.lessons.push({ date: b.specific_date, start_time: st, end_time: getEndTime(st, b.duration_minutes ?? 45), booking_type: 'one_time', booking_id: b.id, status: b.status });
   }
 
   for (const b of recDone ?? []) {
@@ -139,7 +153,7 @@ export async function GET() {
     if (!byGroup.has(b.group_id)) byGroup.set(b.group_id, { lessons: [] });
     const tpl = tplMap.get(b.template_id);
     const st = tpl ? formatTime(tpl.start_time) : '';
-    byGroup.get(b.group_id)!.lessons.push({ date: b.lesson_date, start_time: st, end_time: getEndTime(st, tpl?.duration_minutes ?? 45), booking_type: 'recurring', status: b.status });
+    byGroup.get(b.group_id)!.lessons.push({ date: b.lesson_date, start_time: st, end_time: getEndTime(st, tpl?.duration_minutes ?? 45), booking_type: 'recurring', booking_id: b.id, status: b.status });
   }
 
   const groupBilling: GroupBillingRow[] = [];
@@ -151,6 +165,20 @@ export async function GET() {
     const memberCount = members.length;
     const perStudentRate = group.rate != null && memberCount > 0 ? group.rate / memberCount : null;
     lessons.sort((a, b) => a.date.localeCompare(b.date));
+
+    // Count unpaid lessons per student
+    const membersWithBalance = members.map((m) => {
+      const unpaidLessons = lessons.filter((l) => !paidByBooking.get(l.booking_id)?.has(m.student_id)).length;
+      return {
+        ...m,
+        unpaid_lessons: unpaidLessons,
+        unpaid_balance: perStudentRate != null ? unpaidLessons * perStudentRate : null,
+      };
+    });
+
+    const totalUnpaidLessons = membersWithBalance.reduce((sum, m) => sum + m.unpaid_lessons, 0);
+    const totalUnpaidBalance = perStudentRate != null ? totalUnpaidLessons * perStudentRate : null;
+
     groupBilling.push({
       group_id: groupId,
       group_name: group.name,
@@ -159,8 +187,8 @@ export async function GET() {
       per_student_rate: perStudentRate,
       completed_lessons: lessons.length,
       balance_per_student: perStudentRate != null ? lessons.length * perStudentRate : null,
-      total_balance: group.rate != null ? lessons.length * group.rate : null,
-      members,
+      total_balance: totalUnpaidBalance,
+      members: membersWithBalance,
       lessons,
     });
   }

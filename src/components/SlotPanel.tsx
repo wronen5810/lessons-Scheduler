@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { DAY_NAMES, formatDisplayDateLong, formatTimeDisplay } from '@/lib/dates';
-import type { ComputedSlot } from '@/lib/types';
+import type { ComputedSlot, GroupMember } from '@/lib/types';
 import DirectBookForm from './DirectBookForm';
 import { parseISO } from 'date-fns';
+import type { GroupPaymentRecord } from '@/app/api/teacher/group-payments/route';
 
 interface Note {
   id: string;
@@ -30,12 +31,53 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelEndDate, setCancelEndDate] = useState(slot.date);
 
+  // Group payment state
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [groupPayments, setGroupPayments] = useState<GroupPaymentRecord[]>([]);
+  const [payingStudentId, setPayingStudentId] = useState<string | null>(null);
+
   const dayOfWeek = parseISO(slot.date).getDay();
   const hasBooking = !!slot.booking_id && !!slot.booking_type;
+  const isGroupBooking = !!slot.group_id;
+  const showGroupPayments = isGroupBooking && ['completed', 'paid'].includes(slot.state);
 
   useEffect(() => {
     if (hasBooking) loadNotes();
+    if (showGroupPayments) loadGroupPaymentData();
   }, [slot.booking_id]);
+
+  async function loadGroupPaymentData() {
+    const [membersRes, paymentsRes] = await Promise.all([
+      fetch(`/api/teacher/groups/${slot.group_id}/members`),
+      fetch(`/api/teacher/group-payments?booking_type=${slot.booking_type}&booking_id=${slot.booking_id}`),
+    ]);
+    if (membersRes.ok) setGroupMembers(await membersRes.json());
+    if (paymentsRes.ok) setGroupPayments(await paymentsRes.json());
+  }
+
+  async function markStudentPaid(studentId: string) {
+    setPayingStudentId(studentId);
+    const res = await fetch('/api/teacher/group-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_type: slot.booking_type, booking_id: slot.booking_id, student_id: studentId }),
+    });
+    setPayingStudentId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Failed to record payment');
+      return;
+    }
+    const result = await res.json();
+    await loadGroupPaymentData();
+    if (result.all_paid) onAction(); // refresh calendar to show 'paid' state
+  }
+
+  async function undoStudentPayment(paymentId: string) {
+    await fetch(`/api/teacher/group-payments/${paymentId}`, { method: 'DELETE' });
+    await loadGroupPaymentData();
+    onAction();
+  }
 
   async function loadNotes() {
     const res = await fetch(`/api/teacher/notes?booking_type=${slot.booking_type}&booking_id=${slot.booking_id}`);
@@ -197,7 +239,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {slot.state === 'completed' && (
+          {slot.state === 'completed' && !isGroupBooking && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('pay')} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -231,7 +273,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {slot.state === 'paid' && (
+          {slot.state === 'paid' && !isGroupBooking && (
             <div className="space-y-2">
               <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center font-medium">
                 Paid
@@ -244,6 +286,75 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
                 {slot.booking_type === 'recurring' ? 'Set end date' : 'Cancel booking'}
               </button>
+            </div>
+          )}
+
+          {/* Group payment panel — shown for completed or paid group lessons */}
+          {showGroupPayments && (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payment per student</span>
+                {groupMembers.length > 0 && (
+                  <span className="text-xs text-gray-400">
+                    {groupPayments.length}/{groupMembers.length} paid
+                  </span>
+                )}
+              </div>
+              <div className="divide-y divide-gray-100">
+                {groupMembers.length === 0 ? (
+                  <p className="px-4 py-3 text-xs text-gray-400">No members in this group.</p>
+                ) : groupMembers.map((member) => {
+                  const payment = groupPayments.find((p) => p.student_id === member.student_id);
+                  return (
+                    <div key={member.student_id} className="flex items-center justify-between px-4 py-2.5 gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{member.student_name}</p>
+                        <p className="text-xs text-gray-400 truncate">{member.student_email}</p>
+                      </div>
+                      {payment ? (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            Paid
+                          </span>
+                          <button
+                            onClick={() => undoStudentPayment(payment.id)}
+                            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                            title="Undo payment"
+                          >
+                            undo
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => markStudentPaid(member.student_id)}
+                          disabled={payingStudentId === member.student_id}
+                          className="flex-shrink-0 text-xs font-medium px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                        >
+                          {payingStudentId === member.student_id ? '...' : 'Mark paid'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="px-4 py-3 border-t border-gray-100 space-y-2">
+                {slot.state === 'completed' && (
+                  <button onClick={() => patchBooking('approve')} disabled={loading}
+                    className="w-full py-2 px-4 rounded-xl border border-blue-200 text-blue-600 text-sm hover:bg-blue-50 disabled:opacity-50 transition-colors">
+                    Revert to Approved
+                  </button>
+                )}
+                {slot.state === 'paid' && (
+                  <button onClick={() => patchBooking('complete')} disabled={loading}
+                    className="w-full py-2 px-4 rounded-xl border border-purple-200 text-purple-600 text-sm hover:bg-purple-50 disabled:opacity-50 transition-colors">
+                    Revert to Completed
+                  </button>
+                )}
+                <button onClick={() => { setCancelEndDate(slot.date); setShowCancelModal(true); }} disabled={loading}
+                  className="w-full py-2 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
+                  {slot.booking_type === 'recurring' ? 'Set end date' : 'Cancel booking'}
+                </button>
+              </div>
             </div>
           )}
 

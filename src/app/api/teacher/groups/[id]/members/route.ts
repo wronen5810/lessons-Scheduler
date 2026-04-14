@@ -2,6 +2,46 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 
+// GET /api/teacher/groups/[id]/members — list members of a group
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireTeacher();
+  if (auth.error) return auth.error;
+
+  const { id } = await params;
+  const supabase = createServiceSupabase();
+
+  // Verify the group belongs to this teacher
+  const { data: group } = await supabase
+    .from('student_groups')
+    .select('id')
+    .eq('id', id)
+    .eq('teacher_id', auth.user.id)
+    .single();
+
+  if (!group) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+
+  const { data, error } = await supabase
+    .from('student_group_members')
+    .select('id, group_id, student_id, added_at, students(name, email)')
+    .eq('group_id', id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const result = (data ?? []).map((m) => {
+    const s = (Array.isArray(m.students) ? m.students[0] : m.students) as { name: string; email: string } | null;
+    return {
+      id: m.id,
+      group_id: m.group_id,
+      student_id: m.student_id,
+      student_name: s?.name ?? '',
+      student_email: s?.email ?? '',
+      added_at: m.added_at,
+    };
+  });
+
+  return NextResponse.json(result);
+}
+
 // POST /api/teacher/groups/[id]/members — add a student to the group
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireTeacher();

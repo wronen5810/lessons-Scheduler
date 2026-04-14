@@ -174,11 +174,17 @@ export default function BillingPage() {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0 text-right">
                             <div>
-                              {row.total_balance != null ? (
+                              {row.rate != null ? (
                                 <div>
-                                  <p className="text-sm font-bold text-gray-900">₪{row.total_balance.toLocaleString()}</p>
-                                  {row.balance_per_student != null && (
-                                    <p className="text-xs text-indigo-600">₪{row.balance_per_student.toFixed(0)}/student</p>
+                                  {row.total_balance != null && row.total_balance > 0 ? (
+                                    <>
+                                      <p className="text-sm font-bold text-gray-900">₪{row.total_balance.toLocaleString()} owed</p>
+                                      {row.per_student_rate != null && (
+                                        <p className="text-xs text-indigo-600">₪{row.per_student_rate.toFixed(0)}/student/lesson</p>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">All paid</span>
                                   )}
                                 </div>
                               ) : (
@@ -192,20 +198,33 @@ export default function BillingPage() {
 
                       {isExpanded && (
                         <div className="px-5 pb-4 bg-slate-50 border-t border-gray-100 space-y-4">
-                          {/* Members */}
+                          {/* Members with per-student payment status */}
                           {row.members.length > 0 && (
                             <div className="mt-3">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Students & charges</p>
-                              <div className="space-y-1">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Students</p>
+                              <div className="space-y-1.5">
                                 {row.members.map((m) => (
                                   <div key={m.student_id} className="flex items-center justify-between text-xs">
                                     <div>
                                       <span className="font-medium text-gray-700">{m.student_name}</span>
                                       <span className="text-gray-400 ml-2">{m.student_email}</span>
                                     </div>
-                                    {row.balance_per_student != null && (
-                                      <span className="font-semibold text-gray-900">₪{row.balance_per_student.toFixed(0)}</span>
-                                    )}
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {m.unpaid_lessons < row.completed_lessons && (
+                                        <span className="text-emerald-600 font-medium">
+                                          {row.completed_lessons - m.unpaid_lessons} paid
+                                        </span>
+                                      )}
+                                      {m.unpaid_lessons > 0 ? (
+                                        <span className="font-semibold text-gray-900">
+                                          ₪{m.unpaid_balance != null ? m.unpaid_balance.toFixed(0) : '—'} owed
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full font-medium">
+                                          All paid
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
