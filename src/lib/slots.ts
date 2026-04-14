@@ -24,6 +24,7 @@ export async function computeWeekSlots(
   forTeacher = false,
   teacherId: string,
   studentEmail?: string,
+  studentGroupIds?: Set<string>,
 ): Promise<ComputedSlot[]> {
   const weekStart = parseISO(weekStartStr);
   const weekDates = getWeekDates(weekStart);
@@ -113,7 +114,9 @@ export async function computeWeekSlots(
         continue;
       }
 
-      const isOwnBooking = !!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase();
+      const bookingGroupId = (booking as { group_id?: string | null }).group_id;
+      const isOwnBooking = (!!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase())
+        || (!!bookingGroupId && !!studentGroupIds && studentGroupIds.has(bookingGroupId));
       const slot: ComputedSlot = {
         date: dateStr,
         start_time: startTime,
@@ -133,7 +136,6 @@ export async function computeWeekSlots(
         slot.cancellation_reason = booking.cancellation_reason ?? undefined;
       }
 
-      const bookingGroupId = (booking as { group_id?: string | null }).group_id;
       if (bookingGroupId) {
         slot.group_id = bookingGroupId;
         slot.group_name = groupNameMap.get(bookingGroupId);
@@ -166,7 +168,9 @@ export async function computeWeekSlots(
       continue;
     }
 
-    const isOwnBooking = !!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase();
+    const otBookingGroupId = (booking as { group_id?: string | null }).group_id;
+    const isOwnBooking = (!!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase())
+      || (!!otBookingGroupId && !!studentGroupIds && studentGroupIds.has(otBookingGroupId));
     const slot: ComputedSlot = {
       date: dateStr,
       start_time: startTime,
@@ -186,7 +190,6 @@ export async function computeWeekSlots(
       slot.cancellation_reason = booking.cancellation_reason ?? undefined;
     }
 
-    const otBookingGroupId = (booking as { group_id?: string | null }).group_id;
     if (otBookingGroupId) {
       slot.group_id = otBookingGroupId;
       slot.group_name = groupNameMap.get(otBookingGroupId);

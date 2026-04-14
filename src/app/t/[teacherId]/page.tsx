@@ -26,6 +26,8 @@ interface StudentBooking {
   started_date?: string;
   specific_date?: string;
   cancellation_reason?: string;
+  is_group?: boolean;
+  group_name?: string;
 }
 
 function StudentCalendar({ teacherId }: { teacherId: string }) {
@@ -227,23 +229,34 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                       : `${b.specific_date} · ${b.start_time}–${b.end_time}`;
                     const isPending = b.status === 'cancellation_requested';
                     return (
-                      <div key={b.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+                      <div key={`${b.id}-${b.is_group}`} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-gray-900">{label}</p>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                              b.booking_type === 'recurring'
-                                ? 'bg-violet-100 text-violet-700'
-                                : 'bg-sky-100 text-sky-700'
-                            }`}>
-                              {b.booking_type === 'recurring' ? 'Recurring' : 'One-time'}
-                            </span>
+                            <p className="text-sm font-medium text-gray-900">
+                              {b.is_group ? b.group_name : label}
+                            </p>
+                            {b.is_group ? (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                                Group · {b.booking_type === 'recurring' ? 'Recurring' : 'One-time'}
+                              </span>
+                            ) : (
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                b.booking_type === 'recurring'
+                                  ? 'bg-violet-100 text-violet-700'
+                                  : 'bg-sky-100 text-sky-700'
+                              }`}>
+                                {b.booking_type === 'recurring' ? 'Recurring' : 'One-time'}
+                              </span>
+                            )}
                           </div>
+                          {b.is_group && (
+                            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+                          )}
                           {isPending && (
                             <p className="text-xs text-amber-600 mt-0.5">Cancellation pending teacher approval</p>
                           )}
                         </div>
-                        {!isPending && (
+                        {!isPending && !b.is_group && (
                           <button
                             onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
                             className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap"
