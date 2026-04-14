@@ -35,13 +35,34 @@ export async function computeWeekSlots(
     { data: recurring },
     { data: oneTimeBookings },
     { data: oneTimeSlots },
+    { data: groups },
   ] = await Promise.all([
     supabase.from('slot_templates').select('*').eq('teacher_id', teacherId).eq('is_active', true).order('day_of_week').order('start_time'),
     supabase.from('slot_overrides').select('*').eq('teacher_id', teacherId).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
     supabase.from('recurring_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid', 'cancellation_requested']).gte('lesson_date', weekStartStr).lte('lesson_date', weekEndStr),
     supabase.from('one_time_bookings').select('*').eq('teacher_id', teacherId).in('status', ['pending', 'approved', 'completed', 'paid', 'cancellation_requested']).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
     supabase.from('one_time_slots').select('*').eq('teacher_id', teacherId).eq('is_active', true).gte('specific_date', weekStartStr).lte('specific_date', weekEndStr),
+    supabase.from('student_groups').select('id, name').eq('teacher_id', teacherId),
   ]);
+
+  // Build group name lookup and member count map
+  const groupNameMap = new Map<string, string>((groups ?? []).map((g: { id: string; name: string }) => [g.id, g.name]));
+
+  // Fetch member counts for groups referenced in this week's bookings
+  const bookingGroupIds = new Set<string>();
+  for (const b of [...(recurring ?? []), ...(oneTimeBookings ?? [])]) {
+    if ((b as { group_id?: string | null }).group_id) bookingGroupIds.add((b as { group_id: string }).group_id);
+  }
+  const groupMemberCountMap = new Map<string, number>();
+  if (bookingGroupIds.size > 0) {
+    const { data: memberCounts } = await supabase
+      .from('student_group_members')
+      .select('group_id')
+      .in('group_id', [...bookingGroupIds]);
+    for (const m of memberCounts ?? []) {
+      groupMemberCountMap.set(m.group_id, (groupMemberCountMap.get(m.group_id) ?? 0) + 1);
+    }
+  }
 
   const templateList: SlotTemplate[] = templates || [];
   const overrideList: SlotOverride[] = overrides || [];
@@ -112,6 +133,13 @@ export async function computeWeekSlots(
         slot.cancellation_reason = booking.cancellation_reason ?? undefined;
       }
 
+      const bookingGroupId = (booking as { group_id?: string | null }).group_id;
+      if (bookingGroupId) {
+        slot.group_id = bookingGroupId;
+        slot.group_name = groupNameMap.get(bookingGroupId);
+        slot.group_member_count = groupMemberCountMap.get(bookingGroupId);
+      }
+
       slots.push(slot);
     }
   }
@@ -156,6 +184,13 @@ export async function computeWeekSlots(
       slot.student_email = booking.student_email;
       slot.cancel_token = booking.cancel_token;
       slot.cancellation_reason = booking.cancellation_reason ?? undefined;
+    }
+
+    const otBookingGroupId = (booking as { group_id?: string | null }).group_id;
+    if (otBookingGroupId) {
+      slot.group_id = otBookingGroupId;
+      slot.group_name = groupNameMap.get(otBookingGroupId);
+      slot.group_member_count = groupMemberCountMap.get(otBookingGroupId);
     }
 
     slots.push(slot);

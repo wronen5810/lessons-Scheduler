@@ -119,11 +119,25 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
-          {/* Student info */}
+          {/* Student / group info */}
           {(['pending', 'confirmed', 'completed', 'paid', 'cancellation_requested'] as const).includes(slot.state as never) && slot.student_name && (
             <div className="bg-slate-50 rounded-xl p-4 text-sm">
-              <div className="font-semibold text-gray-900 text-base">{slot.student_name}</div>
-              <div className="text-gray-500 mt-0.5">{slot.student_email}</div>
+              {slot.group_id ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="font-semibold text-gray-900 text-base">{slot.group_name ?? slot.student_name}</div>
+                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Group</span>
+                  </div>
+                  {slot.group_member_count != null && (
+                    <div className="text-gray-500 mt-0.5">{slot.group_member_count} student{slot.group_member_count !== 1 ? 's' : ''}</div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="font-semibold text-gray-900 text-base">{slot.student_name}</div>
+                  <div className="text-gray-500 mt-0.5">{slot.student_email}</div>
+                </>
+              )}
               <div className="mt-1.5 text-xs text-gray-400 capitalize">
                 {slot.booking_type === 'recurring'
                   ? `Recurring · every ${DAY_NAMES[dayOfWeek]}`

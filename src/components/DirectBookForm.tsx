@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import type { ComputedSlot } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import type { ComputedSlot, StudentGroup } from '@/lib/types';
 
 interface Props {
   slot: ComputedSlot;
@@ -13,30 +13,47 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
   const [bookingType, setBookingType] = useState<'recurring' | 'one_time'>(
     slot.template_id ? 'recurring' : 'one_time'
   );
+  const [bookFor, setBookFor] = useState<'student' | 'group'>('student');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [groups, setGroups] = useState<StudentGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/teacher/groups')
+      .then((r) => r.ok ? r.json() : [])
+      .then(setGroups);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    const payload: Record<string, unknown> = {
+      booking_type: bookingType,
+      template_id: slot.template_id,
+      one_time_slot_id: slot.one_time_slot_id,
+      date: slot.date,
+      start_time: slot.start_time,
+      end_date: bookingType === 'recurring' && endDate ? endDate : undefined,
+    };
+
+    if (bookFor === 'group') {
+      if (!selectedGroupId) { setError('Please select a group'); setLoading(false); return; }
+      payload.group_id = selectedGroupId;
+    } else {
+      payload.student_name = name;
+      payload.student_email = email;
+    }
+
     const res = await fetch('/api/teacher/book', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        booking_type: bookingType,
-        template_id: slot.template_id,
-        one_time_slot_id: slot.one_time_slot_id,
-        date: slot.date,
-        end_date: bookingType === 'recurring' && endDate ? endDate : undefined,
-        start_time: slot.start_time,
-        student_name: name,
-        student_email: email,
-      }),
+      body: JSON.stringify(payload),
     });
 
     setLoading(false);
@@ -50,19 +67,70 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
     onDone();
   }
 
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Book for: student or group toggle */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Student name</label>
-        <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <label className="block text-xs font-medium text-gray-600 mb-1">Book for</label>
+        <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+          <button
+            type="button"
+            onClick={() => setBookFor('student')}
+            className={`flex-1 py-1.5 text-sm font-medium transition-colors ${bookFor === 'student' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            Individual
+          </button>
+          <button
+            type="button"
+            onClick={() => setBookFor('group')}
+            className={`flex-1 py-1.5 text-sm font-medium transition-colors ${bookFor === 'group' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            Group
+          </button>
+        </div>
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Student email</label>
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
+      {bookFor === 'student' ? (
+        <>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Student name</label>
+            <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Student email</label>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </>
+      ) : (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Group</label>
+          {groups.length === 0 ? (
+            <p className="text-xs text-gray-400">No groups yet. Create one in the Students page.</p>
+          ) : (
+            <select
+              value={selectedGroupId}
+              onChange={(e) => setSelectedGroupId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a group…</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} ({g.members?.length ?? 0} students{g.rate != null ? ` · ₪${g.rate}/lesson` : ''})
+                </option>
+              ))}
+            </select>
+          )}
+          {selectedGroup && selectedGroup.rate != null && (selectedGroup.members?.length ?? 0) > 0 && (
+            <p className="text-xs text-gray-400 mt-1">
+              Each student pays ₪{(selectedGroup.rate / (selectedGroup.members?.length ?? 1)).toFixed(0)}/lesson
+            </p>
+          )}
+        </div>
+      )}
 
       {slot.template_id && (
         <div>

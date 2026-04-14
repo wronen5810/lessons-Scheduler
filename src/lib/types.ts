@@ -78,4 +78,25 @@ export interface ComputedSlot {
   student_email?: string;
   cancel_token?: string;
   cancellation_reason?: string;
+  group_id?: string;
+  group_name?: string;
+  group_member_count?: number;
+}
+
+export interface StudentGroup {
+  id: string;
+  teacher_id: string;
+  name: string;
+  rate: number | null;
+  created_at: string;
+  members?: GroupMember[];
+}
+
+export interface GroupMember {
+  id: string;
+  group_id: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  added_at: string;
 }
