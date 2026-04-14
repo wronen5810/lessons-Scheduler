@@ -3,10 +3,11 @@ import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 
 // POST /api/teacher/groups/[id]/members — add a student to the group
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
 
+  const { id } = await params;
   const { student_id } = await request.json();
   if (!student_id) return NextResponse.json({ error: 'student_id is required' }, { status: 400 });
 
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const { data: group } = await supabase
     .from('student_groups')
     .select('id')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('teacher_id', auth.user.id)
     .single();
 
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   const { data, error } = await supabase
     .from('student_group_members')
-    .insert({ group_id: params.id, student_id })
+    .insert({ group_id: id, student_id })
     .select()
     .single();
 
