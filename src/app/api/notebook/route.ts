@@ -8,6 +8,12 @@ const TABLE_MAP: Record<string, string> = {
   resources: 'notebook_resources',
 };
 
+const GROUP_TABLE_MAP: Record<string, string> = {
+  homework: 'notebook_group_homework',
+  notes: 'notebook_group_notes',
+  resources: 'notebook_group_resources',
+};
+
 async function resolveIdentity(
   request: NextRequest,
 ): Promise<{ teacherId: string; studentEmail: string } | NextResponse> {
@@ -36,21 +42,75 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceSupabase();
-  const query = supabase
+
+  // Find student record to look up group memberships
+  const { data: student } = await supabase
+    .from('students')
+    .select('id')
+    .eq('teacher_id', identity.teacherId)
+    .ilike('email', identity.studentEmail)
+    .single();
+
+  // Fetch individual items and group memberships in parallel
+  const indivQuery = supabase
     .from(TABLE_MAP[type])
     .select('*')
     .eq('teacher_id', identity.teacherId)
     .ilike('student_email', identity.studentEmail);
 
   if (type === 'homework') {
-    query.order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true });
+    indivQuery.order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true });
   } else {
-    query.order('created_at', { ascending: true });
+    indivQuery.order('created_at', { ascending: true });
   }
 
-  const { data, error } = await query;
+  const [{ data: indivItems, error }, memberships] = await Promise.all([
+    indivQuery,
+    student
+      ? supabase
+          .from('student_group_members')
+          .select('group_id, student_groups(id, name)')
+          .eq('student_id', student.id)
+      : Promise.resolve({ data: [] as { group_id: string; student_groups: unknown }[] }),
+  ]);
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // Build group items if the student belongs to any groups
+  const groupRows = (memberships.data ?? []).map((m) => {
+    const g = (Array.isArray(m.student_groups) ? m.student_groups[0] : m.student_groups) as { id: string; name: string } | null;
+    return g ? { group_id: g.id, group_name: g.name } : null;
+  }).filter(Boolean) as { group_id: string; group_name: string }[];
+
+  let groupItems: unknown[] = [];
+  if (groupRows.length > 0) {
+    const groupIds = groupRows.map((g) => g.group_id);
+    const groupNameById = new Map(groupRows.map((g) => [g.group_id, g.group_name]));
+
+    const groupQuery = supabase
+      .from(GROUP_TABLE_MAP[type])
+      .select('*')
+      .eq('teacher_id', identity.teacherId)
+      .in('group_id', groupIds);
+
+    if (type === 'homework') {
+      groupQuery.order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true });
+    } else {
+      groupQuery.order('created_at', { ascending: true });
+    }
+
+    const { data: gItems } = await groupQuery;
+    groupItems = (gItems ?? []).map((item) => ({
+      ...item,
+      scope: 'group' as const,
+      group_name: groupNameById.get(item.group_id) ?? 'Group',
+    }));
+  }
+
+  const individualItems = (indivItems ?? []).map((item) => ({ ...item, scope: 'individual' as const }));
+
+  // Merge: individual first, then group items
+  return NextResponse.json([...individualItems, ...groupItems]);
 }
 
 export async function POST(request: NextRequest) {

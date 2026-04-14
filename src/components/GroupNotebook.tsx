@@ -2,23 +2,17 @@
 
 import { useEffect, useState } from 'react';
 
-type Scope = 'individual' | 'group';
-
 interface HomeworkEntry {
   id: string;
   due_date: string | null;
   notes: string;
   created_at: string;
-  scope?: Scope;
-  group_name?: string;
 }
 
 interface NoteEntry {
   id: string;
   note: string;
   created_at: string;
-  scope?: Scope;
-  group_name?: string;
 }
 
 interface ResourceEntry {
@@ -26,15 +20,12 @@ interface ResourceEntry {
   description: string;
   url: string;
   created_at: string;
-  scope?: Scope;
-  group_name?: string;
 }
 
 type Tab = 'homework' | 'notes' | 'resources';
 
 interface Props {
-  teacherId: string;
-  email: string;
+  groupId: string;
 }
 
 function formatDate(iso: string) {
@@ -42,18 +33,16 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function StudentNotebook({ teacherId, email }: Props) {
+export default function GroupNotebook({ groupId }: Props) {
   const [tab, setTab] = useState<Tab>('homework');
   const [homework, setHomework] = useState<HomeworkEntry[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [resources, setResources] = useState<ResourceEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Edit state
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, string>>({});
 
-  // Add form state
   const [addingHomework, setAddingHomework] = useState(false);
   const [newHwDueDate, setNewHwDueDate] = useState('');
   const [newHwNotes, setNewHwNotes] = useState('');
@@ -67,14 +56,14 @@ export default function StudentNotebook({ teacherId, email }: Props) {
 
   const [saving, setSaving] = useState(false);
 
-  const baseParams = `email=${encodeURIComponent(email)}&teacherId=${encodeURIComponent(teacherId)}`;
+  const base = `/api/teacher/groups/${groupId}/notebook`;
 
   async function loadAll() {
     setLoading(true);
     const [hw, nt, rs] = await Promise.all([
-      fetch(`/api/notebook?type=homework&${baseParams}`).then((r) => r.ok ? r.json() : []),
-      fetch(`/api/notebook?type=notes&${baseParams}`).then((r) => r.ok ? r.json() : []),
-      fetch(`/api/notebook?type=resources&${baseParams}`).then((r) => r.ok ? r.json() : []),
+      fetch(`${base}?type=homework`).then((r) => r.ok ? r.json() : []),
+      fetch(`${base}?type=notes`).then((r) => r.ok ? r.json() : []),
+      fetch(`${base}?type=resources`).then((r) => r.ok ? r.json() : []),
     ]);
     setHomework(hw);
     setNotes(nt);
@@ -82,13 +71,13 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     setLoading(false);
   }
 
-  useEffect(() => { loadAll(); }, [email, teacherId]);
+  useEffect(() => { loadAll(); }, [groupId]);
 
   // --- Homework CRUD ---
   async function addHomework() {
     if (!newHwNotes.trim()) return;
     setSaving(true);
-    await fetch(`/api/notebook?${baseParams}`, {
+    await fetch(base, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'homework', due_date: newHwDueDate || null, notes: newHwNotes.trim() }),
@@ -97,25 +86,25 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     setNewHwNotes('');
     setAddingHomework(false);
     setSaving(false);
-    const res = await fetch(`/api/notebook?type=homework&${baseParams}`);
+    const res = await fetch(`${base}?type=homework`);
     if (res.ok) setHomework(await res.json());
   }
 
   async function saveHomework(id: string) {
     setSaving(true);
-    await fetch(`/api/notebook/${id}?${baseParams}`, {
+    await fetch(`${base}/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'homework', due_date: editData.due_date || null, notes: editData.notes }),
     });
     setEditId(null);
     setSaving(false);
-    const res = await fetch(`/api/notebook?type=homework&${baseParams}`);
+    const res = await fetch(`${base}?type=homework`);
     if (res.ok) setHomework(await res.json());
   }
 
   async function deleteHomework(id: string) {
-    await fetch(`/api/notebook/${id}?type=homework&${baseParams}`, { method: 'DELETE' });
+    await fetch(`${base}/${id}?type=homework`, { method: 'DELETE' });
     setHomework((prev) => prev.filter((h) => h.id !== id));
   }
 
@@ -123,7 +112,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
   async function addNote() {
     if (!newNote.trim()) return;
     setSaving(true);
-    await fetch(`/api/notebook?${baseParams}`, {
+    await fetch(base, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'notes', note: newNote.trim() }),
@@ -131,25 +120,25 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     setNewNote('');
     setAddingNote(false);
     setSaving(false);
-    const res = await fetch(`/api/notebook?type=notes&${baseParams}`);
+    const res = await fetch(`${base}?type=notes`);
     if (res.ok) setNotes(await res.json());
   }
 
   async function saveNote(id: string) {
     setSaving(true);
-    await fetch(`/api/notebook/${id}?${baseParams}`, {
+    await fetch(`${base}/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'notes', note: editData.note }),
     });
     setEditId(null);
     setSaving(false);
-    const res = await fetch(`/api/notebook?type=notes&${baseParams}`);
+    const res = await fetch(`${base}?type=notes`);
     if (res.ok) setNotes(await res.json());
   }
 
   async function deleteNote(id: string) {
-    await fetch(`/api/notebook/${id}?type=notes&${baseParams}`, { method: 'DELETE' });
+    await fetch(`${base}/${id}?type=notes`, { method: 'DELETE' });
     setNotes((prev) => prev.filter((n) => n.id !== id));
   }
 
@@ -157,7 +146,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
   async function addResource() {
     if (!newResDesc.trim() || !newResUrl.trim()) return;
     setSaving(true);
-    await fetch(`/api/notebook?${baseParams}`, {
+    await fetch(base, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'resources', description: newResDesc.trim(), url: newResUrl.trim() }),
@@ -166,25 +155,25 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     setNewResUrl('');
     setAddingResource(false);
     setSaving(false);
-    const res = await fetch(`/api/notebook?type=resources&${baseParams}`);
+    const res = await fetch(`${base}?type=resources`);
     if (res.ok) setResources(await res.json());
   }
 
   async function saveResource(id: string) {
     setSaving(true);
-    await fetch(`/api/notebook/${id}?${baseParams}`, {
+    await fetch(`${base}/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'resources', description: editData.description, url: editData.url }),
     });
     setEditId(null);
     setSaving(false);
-    const res = await fetch(`/api/notebook?type=resources&${baseParams}`);
+    const res = await fetch(`${base}?type=resources`);
     if (res.ok) setResources(await res.json());
   }
 
   async function deleteResource(id: string) {
-    await fetch(`/api/notebook/${id}?type=resources&${baseParams}`, { method: 'DELETE' });
+    await fetch(`${base}/${id}?type=resources`, { method: 'DELETE' });
     setResources((prev) => prev.filter((r) => r.id !== id));
   }
 
@@ -201,7 +190,6 @@ export default function StudentNotebook({ teacherId, email }: Props) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      {/* Tab bar */}
       <div className="flex border-b border-gray-200">
         {tabs.map(({ key, label }) => (
           <button
@@ -209,7 +197,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
             onClick={() => setTab(key)}
             className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === key
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
@@ -248,7 +236,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                                 type="date"
                                 value={editData.due_date ?? ''}
                                 onChange={(e) => setEditData({ ...editData, due_date: e.target.value })}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                             </td>
                             <td className="py-2">
@@ -256,12 +244,12 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                                 type="text"
                                 value={editData.notes ?? ''}
                                 onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                             </td>
                             <td className="py-2 pl-3 flex gap-2 justify-end">
                               <button onClick={() => saveHomework(hw.id)} disabled={saving}
-                                className="text-xs text-blue-600 hover:text-blue-800 font-medium">Save</button>
+                                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Save</button>
                               <button onClick={() => setEditId(null)}
                                 className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                             </td>
@@ -271,38 +259,28 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                             <td className="py-2.5 pr-4 text-gray-600 whitespace-nowrap">
                               {hw.due_date ? formatDate(hw.due_date) : <span className="text-gray-300">—</span>}
                             </td>
-                            <td className="py-2.5 text-gray-800">
-                              {hw.scope === 'group' && (
-                                <span className="inline-block mr-2 px-1.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                  Group: {hw.group_name}
-                                </span>
-                              )}
-                              {hw.notes}
-                            </td>
+                            <td className="py-2.5 text-gray-800">{hw.notes}</td>
                             <td className="py-2.5 pl-3">
-                              {hw.scope !== 'group' && (
-                                <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(hw.id, { due_date: hw.due_date ?? '', notes: hw.notes })}
-                                    className="text-xs text-blue-500 hover:text-blue-700">Edit</button>
-                                  <button onClick={() => deleteHomework(hw.id)}
-                                    className="text-xs text-red-400 hover:text-red-600">Delete</button>
-                                </div>
-                              )}
+                              <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => startEdit(hw.id, { due_date: hw.due_date ?? '', notes: hw.notes })}
+                                  className="text-xs text-indigo-500 hover:text-indigo-700">Edit</button>
+                                <button onClick={() => deleteHomework(hw.id)}
+                                  className="text-xs text-red-400 hover:text-red-600">Delete</button>
+                              </div>
                             </td>
                           </tr>
                         )
                       )
                     )}
 
-                    {/* Add row */}
                     {addingHomework && (
-                      <tr className="border-b border-blue-100 bg-blue-50/30">
+                      <tr className="border-b border-indigo-100 bg-indigo-50/30">
                         <td className="py-2 pr-4">
                           <input
                             type="date"
                             value={newHwDueDate}
                             onChange={(e) => setNewHwDueDate(e.target.value)}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </td>
                         <td className="py-2">
@@ -312,13 +290,13 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                             onChange={(e) => setNewHwNotes(e.target.value)}
                             placeholder="Homework description..."
                             autoFocus
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </td>
                         <td className="py-2 pl-3">
                           <div className="flex gap-2 justify-end">
                             <button onClick={addHomework} disabled={saving || !newHwNotes.trim()}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50">Add</button>
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50">Add</button>
                             <button onClick={() => { setAddingHomework(false); setNewHwDueDate(''); setNewHwNotes(''); }}
                               className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                           </div>
@@ -330,7 +308,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
 
                 {!addingHomework && (
                   <button onClick={() => setAddingHomework(true)}
-                    className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
                     + Add homework
                   </button>
                 )}
@@ -365,13 +343,13 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                                 type="text"
                                 value={editData.note ?? ''}
                                 onChange={(e) => setEditData({ ...editData, note: e.target.value })}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                             </td>
                             <td className="py-2 pl-3">
                               <div className="flex gap-2 justify-end">
                                 <button onClick={() => saveNote(n.id)} disabled={saving}
-                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium">Save</button>
+                                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Save</button>
                                 <button onClick={() => setEditId(null)}
                                   className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                               </div>
@@ -382,23 +360,14 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                             <td className="py-2.5 pr-4 text-gray-400 text-xs whitespace-nowrap">
                               {formatDate(n.created_at)}
                             </td>
-                            <td className="py-2.5 text-gray-800">
-                              {n.scope === 'group' && (
-                                <span className="inline-block mr-2 px-1.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                  Group: {n.group_name}
-                                </span>
-                              )}
-                              {n.note}
-                            </td>
+                            <td className="py-2.5 text-gray-800">{n.note}</td>
                             <td className="py-2.5 pl-3">
-                              {n.scope !== 'group' && (
-                                <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(n.id, { note: n.note })}
-                                    className="text-xs text-blue-500 hover:text-blue-700">Edit</button>
-                                  <button onClick={() => deleteNote(n.id)}
-                                    className="text-xs text-red-400 hover:text-red-600">Delete</button>
-                                </div>
-                              )}
+                              <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => startEdit(n.id, { note: n.note })}
+                                  className="text-xs text-indigo-500 hover:text-indigo-700">Edit</button>
+                                <button onClick={() => deleteNote(n.id)}
+                                  className="text-xs text-red-400 hover:text-red-600">Delete</button>
+                              </div>
                             </td>
                           </tr>
                         )
@@ -406,7 +375,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                     )}
 
                     {addingNote && (
-                      <tr className="border-b border-blue-100 bg-blue-50/30">
+                      <tr className="border-b border-indigo-100 bg-indigo-50/30">
                         <td className="py-2 pr-4 text-gray-400 text-xs whitespace-nowrap">Today</td>
                         <td className="py-2">
                           <input
@@ -415,13 +384,13 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                             onChange={(e) => setNewNote(e.target.value)}
                             placeholder="Write a note..."
                             autoFocus
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </td>
                         <td className="py-2 pl-3">
                           <div className="flex gap-2 justify-end">
                             <button onClick={addNote} disabled={saving || !newNote.trim()}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50">Add</button>
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50">Add</button>
                             <button onClick={() => { setAddingNote(false); setNewNote(''); }}
                               className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                           </div>
@@ -433,7 +402,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
 
                 {!addingNote && (
                   <button onClick={() => setAddingNote(true)}
-                    className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
                     + Add note
                   </button>
                 )}
@@ -467,7 +436,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                                 type="text"
                                 value={editData.description ?? ''}
                                 onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                             </td>
                             <td className="py-2">
@@ -475,13 +444,13 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                                 type="url"
                                 value={editData.url ?? ''}
                                 onChange={(e) => setEditData({ ...editData, url: e.target.value })}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                             </td>
                             <td className="py-2 pl-3">
                               <div className="flex gap-2 justify-end">
                                 <button onClick={() => saveResource(r.id)} disabled={saving}
-                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium">Save</button>
+                                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Save</button>
                                 <button onClick={() => setEditId(null)}
                                   className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                               </div>
@@ -490,33 +459,24 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                         ) : (
                           <tr key={r.id} className="border-b border-gray-50 group">
                             <td className="py-2.5 pr-3 text-gray-400 text-xs">{idx + 1}</td>
-                            <td className="py-2.5 pr-4 text-gray-800">
-                              {r.scope === 'group' && (
-                                <span className="inline-block mr-2 px-1.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                                  Group: {r.group_name}
-                                </span>
-                              )}
-                              {r.description}
-                            </td>
+                            <td className="py-2.5 pr-4 text-gray-800">{r.description}</td>
                             <td className="py-2.5">
                               <a
                                 href={r.url.startsWith('http') ? r.url : `https://${r.url}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline truncate block max-w-[220px]"
+                                className="text-indigo-600 hover:underline truncate block max-w-[220px]"
                               >
                                 {r.url}
                               </a>
                             </td>
                             <td className="py-2.5 pl-3">
-                              {r.scope !== 'group' && (
-                                <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => startEdit(r.id, { description: r.description, url: r.url })}
-                                    className="text-xs text-blue-500 hover:text-blue-700">Edit</button>
-                                  <button onClick={() => deleteResource(r.id)}
-                                    className="text-xs text-red-400 hover:text-red-600">Delete</button>
-                                </div>
-                              )}
+                              <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => startEdit(r.id, { description: r.description, url: r.url })}
+                                  className="text-xs text-indigo-500 hover:text-indigo-700">Edit</button>
+                                <button onClick={() => deleteResource(r.id)}
+                                  className="text-xs text-red-400 hover:text-red-600">Delete</button>
+                              </div>
                             </td>
                           </tr>
                         )
@@ -524,7 +484,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                     )}
 
                     {addingResource && (
-                      <tr className="border-b border-blue-100 bg-blue-50/30">
+                      <tr className="border-b border-indigo-100 bg-indigo-50/30">
                         <td className="py-2 pr-3 text-gray-400 text-xs">{resources.length + 1}</td>
                         <td className="py-2 pr-4">
                           <input
@@ -533,7 +493,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                             onChange={(e) => setNewResDesc(e.target.value)}
                             placeholder="Description..."
                             autoFocus
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </td>
                         <td className="py-2">
@@ -542,13 +502,13 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                             value={newResUrl}
                             onChange={(e) => setNewResUrl(e.target.value)}
                             placeholder="https://..."
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </td>
                         <td className="py-2 pl-3">
                           <div className="flex gap-2 justify-end">
                             <button onClick={addResource} disabled={saving || !newResDesc.trim() || !newResUrl.trim()}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50">Add</button>
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50">Add</button>
                             <button onClick={() => { setAddingResource(false); setNewResDesc(''); setNewResUrl(''); }}
                               className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                           </div>
@@ -560,7 +520,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
 
                 {!addingResource && (
                   <button onClick={() => setAddingResource(true)}
-                    className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
                     + Add resource
                   </button>
                 )}

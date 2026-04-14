@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { StudentNote } from '@/app/api/teacher/students/[id]/notes/route';
 import StudentNotebook from '@/components/StudentNotebook';
+import GroupNotebook from '@/components/GroupNotebook';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import type { StudentGroup, GroupMember } from '@/lib/types';
 
@@ -49,6 +50,7 @@ export default function StudentsPage() {
   const [editingGroup, setEditingGroup] = useState<StudentGroup | null>(null);
   const [editGroupSaving, setEditGroupSaving] = useState(false);
   const [managingGroup, setManagingGroup] = useState<StudentGroup | null>(null);
+  const [notebookGroup, setNotebookGroup] = useState<StudentGroup | null>(null);
 
   async function load() {
     setLoading(true);
@@ -360,6 +362,10 @@ export default function StudentsPage() {
                         >
                           Members
                         </button>
+                        <button onClick={() => setNotebookGroup({ ...group })}
+                          className="text-xs text-violet-600 hover:text-violet-800 px-2 py-1 rounded hover:bg-violet-50 transition-colors">
+                          Notebook
+                        </button>
                         <button onClick={() => setEditingGroup({ ...group })}
                           className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
                           Edit
@@ -603,6 +609,30 @@ export default function StudentsPage() {
               className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Group Notebook modal */}
+      {notebookGroup && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Group Notebook — {notebookGroup.name}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Content shared with all group members</p>
+              </div>
+              <button onClick={() => setNotebookGroup(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4">
+              <GroupNotebook groupId={notebookGroup.id} />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100">
+              <button onClick={() => setNotebookGroup(null)}
+                className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
