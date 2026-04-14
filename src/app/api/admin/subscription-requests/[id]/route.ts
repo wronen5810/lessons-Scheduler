@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   // Send magic link so teacher can log in without knowing the temp password
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('.supabase.co', '.vercel.app') ?? '';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
   await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email: req.email,
