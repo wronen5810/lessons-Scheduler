@@ -163,3 +163,29 @@ export async function emailStudentCancelledByTeacher(info: LessonInfo) {
     `,
   });
 }
+
+export async function emailDirectMessage({
+  to,
+  studentName,
+  message,
+  teacherEmail,
+}: {
+  to: string;
+  studentName: string;
+  message: string;
+  teacherEmail: string;
+}) {
+  await getResend().emails.send({
+    from: FROM(),
+    to,
+    reply_to: teacherEmail,
+    subject: 'Message from your teacher',
+    html: `
+      <div style="font-family:sans-serif;max-width:540px;margin:0 auto">
+        <p>Hi ${studentName},</p>
+        <div style="background:#f5f5f5;border-radius:8px;padding:16px;margin:16px 0;white-space:pre-wrap">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <p style="font-size:12px;color:#888">To reply, just respond to this email.</p>
+      </div>
+    `,
+  });
+}
