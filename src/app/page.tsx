@@ -100,26 +100,27 @@ export default function LandingPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center px-4 py-10">
 
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-3">Lesson Scheduler</h1>
-        <p className="text-lg text-gray-500">How are you joining today?</p>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Lessons Scheduler</h1>
+        <p className="text-base sm:text-lg text-gray-500">How are you joining today?</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+      {/* Cards — always 2 columns, responsive sizing */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 w-full max-w-2xl">
 
         {/* Student card */}
         <Link
           href="/student"
-          className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-300 p-8 flex flex-col items-center text-center transition-all duration-200 cursor-pointer"
+          className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-300 px-3 py-5 sm:p-8 flex flex-col items-center text-center transition-all duration-200 cursor-pointer"
         >
-          <div className="w-40 h-44 mb-6 transition-transform duration-200 group-hover:scale-105">
+          <div className="w-20 h-24 sm:w-40 sm:h-44 mb-3 sm:mb-6 transition-transform duration-200 group-hover:scale-105">
             <StudentIllustration />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">I&apos;m a Student</h2>
-          <p className="text-sm text-gray-500 mb-6">View available slots and book a lesson with your teacher.</p>
-          <span className="inline-block bg-blue-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl group-hover:bg-blue-700 transition-colors">
+          <h2 className="text-sm sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">I&apos;m a Student</h2>
+          <p className="hidden sm:block text-sm text-gray-500 mb-6">View available slots and book a lesson with your teacher.</p>
+          <span className="inline-block bg-blue-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-6 sm:py-2.5 rounded-xl group-hover:bg-blue-700 transition-colors">
             Book a lesson →
           </span>
         </Link>
@@ -127,19 +128,37 @@ export default function LandingPage() {
         {/* Teacher card */}
         <Link
           href="/teacher/login"
-          className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-transparent hover:border-indigo-300 p-8 flex flex-col items-center text-center transition-all duration-200 cursor-pointer"
+          className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-transparent hover:border-indigo-300 px-3 py-5 sm:p-8 flex flex-col items-center text-center transition-all duration-200 cursor-pointer"
         >
-          <div className="w-40 h-44 mb-6 transition-transform duration-200 group-hover:scale-105">
+          <div className="w-20 h-24 sm:w-40 sm:h-44 mb-3 sm:mb-6 transition-transform duration-200 group-hover:scale-105">
             <TeacherIllustration />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">I&apos;m a Teacher</h2>
-          <p className="text-sm text-gray-500 mb-6">Manage your schedule, students, and lesson bookings.</p>
-          <span className="inline-block bg-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl group-hover:bg-indigo-700 transition-colors">
+          <h2 className="text-sm sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">I&apos;m a Teacher</h2>
+          <p className="hidden sm:block text-sm text-gray-500 mb-6">Manage your schedule, students, and lesson bookings.</p>
+          <span className="inline-block bg-indigo-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-6 sm:py-2.5 rounded-xl group-hover:bg-indigo-700 transition-colors">
             Go to dashboard →
           </span>
         </Link>
 
       </div>
+
+      {/* Teacher subscription link */}
+      <p className="mt-6 text-sm text-gray-500">
+        New teacher?{' '}
+        <Link href="/subscribe" className="text-indigo-600 hover:underline font-medium">
+          Request a subscription →
+        </Link>
+      </p>
+
+      {/* Policy links */}
+      <div className="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-gray-400">
+        <Link href="/privacy" className="hover:text-gray-600 hover:underline">Privacy Policy</Link>
+        <span aria-hidden>·</span>
+        <Link href="/terms-of-service" className="hover:text-gray-600 hover:underline">Terms of Service</Link>
+        <span aria-hidden>·</span>
+        <Link href="/refund-policy" className="hover:text-gray-600 hover:underline">Refund Policy</Link>
+      </div>
+
     </div>
   );
 }

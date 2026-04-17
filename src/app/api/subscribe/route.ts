@@ -3,7 +3,7 @@ import { createServiceSupabase } from '@/lib/supabase-server';
 import { whatsappAdminNewTeacherRequest } from '@/lib/whatsapp';
 
 export async function POST(request: NextRequest) {
-  const { name, email, phone, comments } = await request.json();
+  const { name, email, phone, comments, policies_accepted_at } = await request.json();
 
   if (!name || !email) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     email: email.toLowerCase().trim(),
     phone: phone?.trim() || null,
     comments: comments?.trim() || null,
+    policies_accepted_at: policies_accepted_at || null,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

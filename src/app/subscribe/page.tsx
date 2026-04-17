@@ -1,24 +1,36 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function SubscribePage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [comments, setComments] = useState('');
+  const [policiesAccepted, setPoliciesAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!policiesAccepted) {
+      setError('Please accept the Terms of Service, Privacy Policy, and Refund Policy to continue.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     const res = await fetch('/api/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, phone, comments }),
+      body: JSON.stringify({
+        name,
+        email,
+        phone,
+        comments,
+        policies_accepted_at: new Date().toISOString(),
+      }),
     });
     const data = await res.json();
     setSubmitting(false);
@@ -35,23 +47,27 @@ export default function SubscribePage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-3">
           <div className="text-4xl">✓</div>
           <h1 className="text-lg font-semibold text-gray-900">Request received!</h1>
-          <p className="text-sm text-gray-500">We'll review your request and get back to you soon.</p>
+          <p className="text-sm text-gray-500">We&apos;ll review your request and get back to you soon.</p>
+          <Link href="/" className="block text-sm text-blue-600 hover:underline mt-2">← Back to home</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
         <div>
+          <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 mb-4 block">← Back to home</Link>
           <h1 className="text-xl font-semibold text-gray-900">Join as a Teacher</h1>
-          <p className="text-sm text-gray-500 mt-1">Fill in your details and we'll be in touch.</p>
+          <p className="text-sm text-gray-500 mt-1">Fill in your details and we&apos;ll be in touch.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full name <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Full name <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               required
@@ -63,7 +79,9 @@ export default function SubscribePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email <span className="text-red-500">*</span>
+            </label>
             <input
               type="email"
               required
@@ -96,11 +114,41 @@ export default function SubscribePage() {
             />
           </div>
 
+          {/* Policy acceptance */}
+          <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={policiesAccepted}
+                onChange={(e) => {
+                  setPoliciesAccepted(e.target.checked);
+                  if (e.target.checked) setError('');
+                }}
+                className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700 leading-snug">
+                I have read and agree to the{' '}
+                <Link href="/terms-of-service" target="_blank" className="text-blue-600 hover:underline font-medium">
+                  Terms of Service
+                </Link>
+                {', '}
+                <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline font-medium">
+                  Privacy Policy
+                </Link>
+                {', and '}
+                <Link href="/refund-policy" target="_blank" className="text-blue-600 hover:underline font-medium">
+                  Refund Policy
+                </Link>
+                . <span className="text-red-500">*</span>
+              </span>
+            </label>
+          </div>
+
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !policiesAccepted}
             className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {submitting ? 'Sending...' : 'Submit request'}

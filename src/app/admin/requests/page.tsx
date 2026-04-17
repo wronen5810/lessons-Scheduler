@@ -10,6 +10,7 @@ interface SubscriptionRequest {
   comments: string | null;
   status: string;
   created_at: string;
+  policies_accepted_at: string | null;
 }
 
 export default function AdminRequestsPage() {
@@ -80,8 +81,15 @@ export default function AdminRequestsPage() {
                 <p className="text-xs text-gray-500 mt-1 italic">{req.comments}</p>
               )}
               <p className="text-xs text-gray-300 mt-1">
-                {new Date(req.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                Submitted: {new Date(req.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
+              {req.policies_accepted_at ? (
+                <p className="text-xs text-green-600 mt-0.5">
+                  ✓ Policies accepted {new Date(req.policies_accepted_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              ) : (
+                <p className="text-xs text-amber-500 mt-0.5">⚠ Policies not confirmed</p>
+              )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {req.status === 'pending' ? (
