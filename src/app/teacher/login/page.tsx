@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
+import { markSessionActive } from '@/components/SessionGuard';
 
 export default function TeacherLogin() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function TeacherLogin() {
       return;
     }
 
+    markSessionActive();
     router.push('/teacher');
     router.refresh();
   }
