@@ -3,7 +3,7 @@ import './globals.css';
 import PushRegistrar from '@/components/PushRegistrar';
 
 export const metadata: Metadata = {
-  title: 'Lesson Scheduler',
+  title: 'Lessons Scheduler',
   description: 'Book and manage private lessons',
 };
 
