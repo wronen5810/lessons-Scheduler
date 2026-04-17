@@ -18,10 +18,26 @@ export default async function TeacherSlugPage({ params }: { params: Promise<{ sl
     .eq('role', 'teacher')
     .eq('is_active', true);
 
-  if (!teachers) notFound();
+  if (!teachers || teachers.length === 0) notFound();
 
-  const match = teachers!.find((t) => nameToSlug(t.display_name ?? '') === normalized);
+  // Try matching against display_name slug first
+  let match = teachers.find((t) => nameToSlug(t.display_name ?? '') === normalized);
+
+  // Fallback: match against email username (e.g. "oritjaschek" from "orit.jaschek@...")
+  if (!match) {
+    const enriched = await Promise.all(
+      teachers.map(async (t) => {
+        const { data: { user } } = await supabase.auth.admin.getUserById(t.id);
+        return { ...t, email: user?.email ?? '' };
+      })
+    );
+    match = enriched.find((t) => {
+      const username = (t.email ?? '').split('@')[0];
+      return nameToSlug(username) === normalized;
+    });
+  }
+
   if (!match) notFound();
 
-  redirect(`/t/${match.id}`);
+  redirect(`/join/${match!.id}`);
 }
