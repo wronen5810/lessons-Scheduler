@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { markSessionActive } from '@/components/SessionGuard';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -55,7 +56,12 @@ export default function TeacherLogin() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.password')}</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">{t('auth.password')}</label>
+              <Link href="/teacher/forgot-password" className="text-xs text-blue-600 hover:underline">
+                {t('auth.forgotPassword')}
+              </Link>
+            </div>
             <input
               type="password"
               required
