@@ -12,12 +12,14 @@ interface Plan {
   created_at: string;
 }
 
-const emptyForm = { name: '', free_months: '0', paid_months: '1', monthly_cost: '0', status: 'active' as const };
+type PlanStatus = 'active' | 'inactive';
+type PlanForm = { name: string; free_months: string; paid_months: string; monthly_cost: string; status: PlanStatus };
+const emptyForm: PlanForm = { name: '', free_months: '0', paid_months: '1', monthly_cost: '0', status: 'active' };
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newPlan, setNewPlan] = useState({ ...emptyForm });
+  const [newPlan, setNewPlan] = useState<PlanForm>({ ...emptyForm });
   const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState('');
   const [editing, setEditing] = useState<Plan | null>(null);
