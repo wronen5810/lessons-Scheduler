@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 
@@ -15,8 +16,29 @@ interface Plan {
   monthly_cost: number;
 }
 
-export default function SubscribePage() {
+interface TeacherSubStatus {
+  status: 'active' | 'expired' | 'none';
+  active_end_date: string | null;
+  last_end_date: string | null;
+  teacher: { id: string; name: string; email: string; phone: string };
+}
+
+function formatDate(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+}
+
+function addDays(iso: string, days: number) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function SubscribeForm() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -29,8 +51,20 @@ export default function SubscribePage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [plansLoading, setPlansLoading] = useState(false);
+
+  // For normal (unauthenticated) flow
   const [isExistingTeacher, setIsExistingTeacher] = useState<boolean | null>(null);
   const checkedEmail = useRef('');
+
+  // For logged-in teacher flows
+  const [subStatus, setSubStatus] = useState<TeacherSubStatus | null>(null);
+  const [statusLoaded, setStatusLoaded] = useState(false);
+  // 'extend' flow: null = not asked, true = yes extend, false = declined
+  const [confirmExtend, setConfirmExtend] = useState<boolean | null>(null);
+  const [startsAfter, setStartsAfter] = useState<string | null>(null);
+
+  // Whether form was pre-filled from URL params (expired redirect)
+  const prefilled = useRef(false);
 
   async function loadPlans(type: 'new' | 'renewal') {
     setPlansLoading(true);
@@ -42,7 +76,50 @@ export default function SubscribePage() {
     setPlansLoading(false);
   }
 
+  // On mount: apply URL params + check logged-in subscription status
+  useEffect(() => {
+    const pName = searchParams.get('name') ?? '';
+    const pEmail = searchParams.get('email') ?? '';
+    const pPhone = searchParams.get('phone') ?? '';
+    const pType = searchParams.get('type');
+
+    if (pEmail) {
+      setName(pName);
+      setEmail(pEmail);
+      setPhone(pPhone);
+      prefilled.current = true;
+      if (pType === 'renewal') {
+        setIsExistingTeacher(true);
+        loadPlans('renewal');
+      }
+    }
+
+    // Check if a teacher is logged in
+    fetch('/api/teacher/me/subscription')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: TeacherSubStatus | null) => {
+        setSubStatus(data);
+        setStatusLoaded(true);
+
+        if (!data) return; // not logged in
+
+        // If expired + not already pre-filled from URL params
+        if (data.status === 'expired' && !prefilled.current) {
+          setName(data.teacher.name);
+          setEmail(data.teacher.email);
+          setPhone(data.teacher.phone);
+          prefilled.current = true;
+          setIsExistingTeacher(true);
+          loadPlans('renewal');
+        }
+        // Active sub: will show extend prompt (no form yet)
+      })
+      .catch(() => setStatusLoaded(true));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleEmailBlur() {
+    if (prefilled.current) return; // skip check when pre-filled
     const normalized = email.toLowerCase().trim();
     if (!normalized || normalized === checkedEmail.current) return;
     checkedEmail.current = normalized;
@@ -55,6 +132,20 @@ export default function SubscribePage() {
     const { exists } = await res.json();
     setIsExistingTeacher(exists);
     await loadPlans(exists ? 'renewal' : 'new');
+  }
+
+  function handleConfirmExtend(yes: boolean) {
+    setConfirmExtend(yes);
+    if (yes && subStatus?.active_end_date) {
+      const after = addDays(subStatus.active_end_date, 1);
+      setStartsAfter(after);
+      setName(subStatus.teacher.name);
+      setEmail(subStatus.teacher.email);
+      setPhone(subStatus.teacher.phone);
+      prefilled.current = true;
+      setIsExistingTeacher(true);
+      loadPlans('renewal');
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,6 +170,7 @@ export default function SubscribePage() {
         comments,
         plan_id: selectedPlanId,
         policies_accepted_at: new Date().toISOString(),
+        starts_after: startsAfter,
       }),
     });
     const data = await res.json();
@@ -103,6 +195,72 @@ export default function SubscribePage() {
     );
   }
 
+  // Active subscription — show extend prompt
+  if (statusLoaded && subStatus?.status === 'active' && confirmExtend === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
+          <div className="flex items-center justify-between mb-2">
+            <Link href="/teacher" className="text-xs text-gray-400 hover:text-gray-600">← Dashboard</Link>
+            <LanguageToggle />
+          </div>
+          <div className="space-y-3">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-semibold text-gray-900">Subscription Active</h1>
+            <p className="text-sm text-gray-600">
+              Your subscription is active
+              {subStatus.active_end_date
+                ? <> until <span className="font-medium text-gray-900">{formatDate(subStatus.active_end_date)}</span></>
+                : ' with no expiry date'
+              }.
+            </p>
+            {subStatus.active_end_date && (
+              <p className="text-sm text-gray-500">
+                Would you like to extend your subscription beyond that date?
+              </p>
+            )}
+          </div>
+          {subStatus.active_end_date ? (
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleConfirmExtend(true)}
+                className="flex-1 bg-blue-600 text-white text-sm font-medium rounded-xl py-2.5 hover:bg-blue-700 transition-colors"
+              >
+                Yes, extend
+              </button>
+              <button
+                onClick={() => handleConfirmExtend(false)}
+                className="flex-1 border border-gray-300 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 transition-colors"
+              >
+                No, thanks
+              </button>
+            </div>
+          ) : (
+            <Link href="/teacher" className="block w-full text-center border border-gray-300 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 transition-colors">
+              Back to Dashboard
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Declined extend
+  if (statusLoaded && subStatus?.status === 'active' && confirmExtend === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-4">
+          <p className="text-sm text-gray-500">No problem! Come back when you&apos;re ready to renew.</p>
+          <Link href="/teacher" className="block text-sm text-blue-600 hover:underline">Back to Dashboard</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
@@ -113,6 +271,11 @@ export default function SubscribePage() {
           </div>
           <h1 className="text-xl font-semibold text-gray-900">{t('subscribe.title')}</h1>
           <p className="text-sm text-gray-500 mt-1">{t('subscribe.subtitle')}</p>
+          {startsAfter && (
+            <p className="text-sm text-blue-600 mt-2 font-medium">
+              New plan will start on {formatDate(startsAfter)}
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -138,9 +301,10 @@ export default function SubscribePage() {
               type="email"
               required
               value={email}
+              readOnly={prefilled.current}
               onChange={(e) => {
+                if (prefilled.current) return;
                 setEmail(e.target.value);
-                // Reset check if email changes
                 if (e.target.value.toLowerCase().trim() !== checkedEmail.current) {
                   setIsExistingTeacher(null);
                   setPlans([]);
@@ -149,12 +313,12 @@ export default function SubscribePage() {
               }}
               onBlur={handleEmailBlur}
               placeholder="jane@example.com"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${prefilled.current ? 'bg-gray-50 text-gray-500' : ''}`}
             />
-            {isExistingTeacher === true && (
+            {!prefilled.current && isExistingTeacher === true && (
               <p className="text-xs text-blue-600 mt-1">Welcome back! Showing renewal plans.</p>
             )}
-            {isExistingTeacher === false && (
+            {!prefilled.current && isExistingTeacher === false && (
               <p className="text-xs text-green-600 mt-1">New account detected. Showing new teacher plans.</p>
             )}
           </div>
@@ -268,5 +432,13 @@ export default function SubscribePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SubscribePage() {
+  return (
+    <Suspense>
+      <SubscribeForm />
+    </Suspense>
   );
 }
