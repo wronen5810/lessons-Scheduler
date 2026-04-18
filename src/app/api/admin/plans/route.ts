@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
 
-  const { name, free_months, paid_months, monthly_cost, status } = await request.json();
+  const { name, description, free_months, paid_months, monthly_cost, status } = await request.json();
   if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
 
   const supabase = createServiceSupabase();
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     .from('subscription_plans')
     .insert({
       name,
+      description: description ?? null,
       free_months: free_months ?? 0,
       paid_months: paid_months ?? 1,
       monthly_cost: monthly_cost ?? 0,

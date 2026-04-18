@@ -6,7 +6,7 @@ export async function GET() {
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('subscription_plans')
-    .select('id, name, free_months, paid_months, monthly_cost')
+    .select('id, name, description, free_months, paid_months, monthly_cost')
     .eq('status', 'active')
     .order('monthly_cost', { ascending: true });
 

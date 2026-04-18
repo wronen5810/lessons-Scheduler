@@ -2,10 +2,10 @@
 
 const config: CapacitorConfig = {
   appId: 'com.lessonscheduler.app',
-  appName: 'My App',
+  appName: 'Lessons Scheduler',
   webDir: 'public',
   server: {
-    url: 'https://lessons-scheduler.vercel.app',
+    url: 'https://lessons-scheduler.com',
     cleartext: false,
     androidScheme: 'https'
   }

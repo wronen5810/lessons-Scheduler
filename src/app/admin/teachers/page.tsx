@@ -49,7 +49,7 @@ export default function AdminTeachersPage() {
   const [subsTeacher, setSubsTeacher] = useState<Teacher | null>(null);
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [subsLoading, setSubsLoading] = useState(false);
-  const [newSub, setNewSub] = useState({ start_date: '', end_date: '', cost: '0', notes: '', free_period_days: '0', monthly_charge: '' });
+  const [newSub, setNewSub] = useState({ start_date: '', end_date: '', cost: '0', notes: '', monthly_charge: '' });
   const [addingSub, setAddingSub] = useState(false);
   const [subError, setSubError] = useState('');
   const [editingSub, setEditingSub] = useState<Subscription | null>(null);
@@ -85,7 +85,7 @@ export default function AdminTeachersPage() {
     setSubsLoading(true);
     setSubs([]);
     setSubError('');
-    setNewSub({ start_date: '', end_date: '', cost: '0', notes: '', free_period_days: '0', monthly_charge: '' });
+    setNewSub({ start_date: '', end_date: '', cost: '0', notes: '', monthly_charge: '' });
     const [subRes, settingRes] = await Promise.all([
       fetch(`/api/admin/teacher-subscriptions?teacher_id=${teacher.id}`),
       fetch('/api/admin/settings?key=default_monthly_charge'),
@@ -121,7 +121,6 @@ export default function AdminTeachersPage() {
         end_date: newSub.end_date || null,
         cost: Number(newSub.cost) || 0,
         notes: newSub.notes || null,
-        free_period_days: Number(newSub.free_period_days) || 0,
         monthly_charge: newSub.monthly_charge !== '' ? Number(newSub.monthly_charge) : null,
       }),
     });
@@ -131,7 +130,7 @@ export default function AdminTeachersPage() {
       setSubError(data.error ?? 'Failed to add subscription');
     } else {
       setSubs((prev) => [data, ...prev]);
-      setNewSub({ start_date: '', end_date: '', cost: '0', notes: '', free_period_days: '0', monthly_charge: '' });
+      setNewSub({ start_date: '', end_date: '', cost: '0', notes: '', monthly_charge: '' });
     }
   }
 
@@ -153,7 +152,6 @@ export default function AdminTeachersPage() {
         end_date: editingSub.end_date || null,
         cost: Number(editingSub.cost) || 0,
         notes: editingSub.notes || null,
-        free_period_days: editingSub.free_period_days ?? 0,
         monthly_charge: editingSub.monthly_charge,
       }),
     });
@@ -426,30 +424,17 @@ export default function AdminTeachersPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Free period (days)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={newSub.free_period_days}
-                    onChange={(e) => setNewSub((s) => ({ ...s, free_period_days: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Monthly charge (₪) <span className="text-gray-400 font-normal">override</span></label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={newSub.monthly_charge}
-                    onChange={(e) => setNewSub((s) => ({ ...s, monthly_charge: e.target.value }))}
-                    placeholder={`default: ${defaultMonthlyCharge}`}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Monthly charge (₪) <span className="text-gray-400 font-normal">override</span></label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={newSub.monthly_charge}
+                  onChange={(e) => setNewSub((s) => ({ ...s, monthly_charge: e.target.value }))}
+                  placeholder={`default: ${defaultMonthlyCharge}`}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -508,21 +493,13 @@ export default function AdminTeachersPage() {
                             className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Free period (days)</label>
-                          <input type="number" min={0} step={1} value={editingSub.free_period_days ?? 0}
-                            onChange={(e) => setEditingSub({ ...editingSub, free_period_days: Number(e.target.value) })}
-                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Monthly charge (₪) <span className="text-gray-400 font-normal">override</span></label>
-                          <input type="number" min={0} step={0.01}
-                            value={editingSub.monthly_charge ?? ''}
-                            onChange={(e) => setEditingSub({ ...editingSub, monthly_charge: e.target.value !== '' ? Number(e.target.value) : null })}
-                            placeholder={`default: ${defaultMonthlyCharge}`}
-                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Monthly charge (₪) <span className="text-gray-400 font-normal">override</span></label>
+                        <input type="number" min={0} step={0.01}
+                          value={editingSub.monthly_charge ?? ''}
+                          onChange={(e) => setEditingSub({ ...editingSub, monthly_charge: e.target.value !== '' ? Number(e.target.value) : null })}
+                          placeholder={`default: ${defaultMonthlyCharge}`}
+                          className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -566,7 +543,6 @@ export default function AdminTeachersPage() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-500">
-                          {sub.free_period_days > 0 && `Free: ${sub.free_period_days}d · `}
                           {sub.monthly_charge != null
                             ? `₪${sub.monthly_charge}/mo`
                             : `₪${defaultMonthlyCharge}/mo (default)`}

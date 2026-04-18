@@ -8,6 +8,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 interface Plan {
   id: string;
   name: string;
+  description: string | null;
   free_months: number;
   paid_months: number;
   monthly_cost: number;
@@ -172,6 +173,9 @@ export default function SubscribePage() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900">{plan.name}</p>
+                    {plan.description && (
+                      <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>
+                    )}
                     <div className="flex flex-wrap gap-2 mt-1">
                       {plan.free_months > 0 && (
                         <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">

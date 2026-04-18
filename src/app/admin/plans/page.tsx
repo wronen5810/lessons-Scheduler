@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 interface Plan {
   id: string;
   name: string;
+  description: string | null;
   free_months: number;
   paid_months: number;
   monthly_cost: number;
@@ -13,8 +14,8 @@ interface Plan {
 }
 
 type PlanStatus = 'active' | 'inactive';
-type PlanForm = { name: string; free_months: string; paid_months: string; monthly_cost: string; status: PlanStatus };
-const emptyForm: PlanForm = { name: '', free_months: '0', paid_months: '1', monthly_cost: '0', status: 'active' };
+type PlanForm = { name: string; description: string; free_months: string; paid_months: string; monthly_cost: string; status: PlanStatus };
+const emptyForm: PlanForm = { name: '', description: '', free_months: '0', paid_months: '1', monthly_cost: '0', status: 'active' };
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -45,6 +46,7 @@ export default function AdminPlansPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: newPlan.name.trim(),
+        description: newPlan.description.trim() || null,
         free_months: Number(newPlan.free_months) || 0,
         paid_months: Number(newPlan.paid_months) || 1,
         monthly_cost: Number(newPlan.monthly_cost) || 0,
@@ -67,6 +69,7 @@ export default function AdminPlansPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: editing.name,
+        description: editing.description || null,
         free_months: editing.free_months,
         paid_months: editing.paid_months,
         monthly_cost: editing.monthly_cost,
@@ -123,6 +126,16 @@ export default function AdminPlansPage() {
               onChange={(e) => setNewPlan((p) => ({ ...p, name: e.target.value }))}
               placeholder="e.g. Standard, Premium..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Description <span className="text-gray-400 font-normal">(shown to teachers)</span></label>
+            <textarea
+              value={newPlan.description}
+              onChange={(e) => setNewPlan((p) => ({ ...p, description: e.target.value }))}
+              placeholder="Describe what this plan includes..."
+              rows={2}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -201,6 +214,15 @@ export default function AdminPlansPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Description <span className="text-gray-400 font-normal">(shown to teachers)</span></label>
+                  <textarea
+                    value={editing.description ?? ''}
+                    onChange={(e) => setEditing({ ...editing, description: e.target.value || null })}
+                    rows={2}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Free months</label>
@@ -259,6 +281,9 @@ export default function AdminPlansPage() {
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{planSummary(plan)}</p>
+                  {plan.description && (
+                    <p className="text-xs text-gray-500 mt-0.5 italic">{plan.description}</p>
+                  )}
                   <p className="text-xs text-gray-400 mt-0.5">
                     Total: ₪{(plan.monthly_cost * plan.paid_months).toFixed(0)} over {plan.free_months + plan.paid_months} months
                   </p>

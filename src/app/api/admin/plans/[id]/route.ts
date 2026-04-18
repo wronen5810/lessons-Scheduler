@@ -8,12 +8,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (auth.error) return auth.error;
 
   const { id } = await params;
-  const { name, free_months, paid_months, monthly_cost, status } = await request.json();
+  const { name, description, free_months, paid_months, monthly_cost, status } = await request.json();
 
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('subscription_plans')
-    .update({ name, free_months, paid_months, monthly_cost, status })
+    .update({ name, description, free_months, paid_months, monthly_cost, status })
     .eq('id', id)
     .select()
     .single();
