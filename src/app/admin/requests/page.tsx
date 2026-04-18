@@ -11,6 +11,8 @@ interface SubscriptionRequest {
   status: string;
   created_at: string;
   policies_accepted_at: string | null;
+  plan_id: string | null;
+  plan_name?: string;
 }
 
 export default function AdminRequestsPage() {
@@ -21,8 +23,14 @@ export default function AdminRequestsPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch(`/api/admin/subscription-requests?status=${filter}`);
-    setRequests(res.ok ? await res.json() : []);
+    const [reqRes, plansRes] = await Promise.all([
+      fetch(`/api/admin/subscription-requests?status=${filter}`),
+      fetch('/api/admin/plans'),
+    ]);
+    const reqs: SubscriptionRequest[] = reqRes.ok ? await reqRes.json() : [];
+    const plans: { id: string; name: string }[] = plansRes.ok ? await plansRes.json() : [];
+    const planMap = Object.fromEntries(plans.map((p) => [p.id, p.name]));
+    setRequests(reqs.map((r) => ({ ...r, plan_name: r.plan_id ? planMap[r.plan_id] : undefined })));
     setLoading(false);
   }
 
@@ -77,6 +85,16 @@ export default function AdminRequestsPage() {
               <p className="text-sm font-medium text-gray-900">{req.name}</p>
               <p className="text-xs text-gray-500">{req.email}</p>
               {req.phone && <p className="text-xs text-gray-400">{req.phone}</p>}
+              {req.plan_name && (
+                <span className="inline-block text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full mt-1">
+                  Plan: {req.plan_name}
+                </span>
+              )}
+              {!req.plan_id && (
+                <span className="inline-block text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full mt-1">
+                  No plan selected
+                </span>
+              )}
               {req.comments && (
                 <p className="text-xs text-gray-500 mt-1 italic">{req.comments}</p>
               )}

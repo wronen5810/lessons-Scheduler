@@ -1,9 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+
+interface Plan {
+  id: string;
+  name: string;
+  free_months: number;
+  paid_months: number;
+  monthly_cost: number;
+}
 
 export default function SubscribePage() {
   const { t } = useLanguage();
@@ -16,10 +24,28 @@ export default function SubscribePage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [plansLoading, setPlansLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/plans')
+      .then((r) => r.json())
+      .then((data: Plan[]) => {
+        setPlans(data ?? []);
+        if (data?.length === 1) setSelectedPlanId(data[0].id);
+      })
+      .finally(() => setPlansLoading(false));
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!policiesAccepted) {
       setError(t('subscribe.policyError'));
+      return;
+    }
+    if (plans.length > 0 && !selectedPlanId) {
+      setError(t('subscribe.planRequired'));
       return;
     }
     setSubmitting(true);
@@ -32,6 +58,7 @@ export default function SubscribePage() {
         email,
         phone,
         comments,
+        plan_id: selectedPlanId,
         policies_accepted_at: new Date().toISOString(),
       }),
     });
@@ -119,6 +146,50 @@ export default function SubscribePage() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
+
+          {/* Plan selection */}
+          {!plansLoading && plans.length > 0 && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                {t('subscribe.choosePlan')} <span className="text-red-500">*</span>
+              </label>
+              {plans.map((plan) => (
+                <label
+                  key={plan.id}
+                  className={`flex items-start gap-3 border rounded-xl p-4 cursor-pointer transition-colors ${
+                    selectedPlanId === plan.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="plan"
+                    value={plan.id}
+                    checked={selectedPlanId === plan.id}
+                    onChange={() => setSelectedPlanId(plan.id)}
+                    className="mt-0.5 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{plan.name}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {plan.free_months > 0 && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                          {plan.free_months} {t('subscribe.monthsFree')}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-500">
+                        ₪{plan.monthly_cost}/{t('subscribe.monthShort')} × {plan.paid_months} {t('subscribe.monthsLabel')}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        ({t('subscribe.total')}: ₪{(plan.monthly_cost * plan.paid_months).toFixed(0)})
+                      </span>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
 
           {/* Policy acceptance */}
           <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">

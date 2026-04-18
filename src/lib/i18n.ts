@@ -202,6 +202,12 @@ const en = {
   'subscribe.received': 'Request received!',
   'subscribe.receivedDesc': "We'll review your request and get back to you soon.",
   'subscribe.newTeacherQuestion': 'Want to join as a teacher?',
+  'subscribe.choosePlan': 'Choose a plan',
+  'subscribe.planRequired': 'Please choose a plan to continue.',
+  'subscribe.monthsFree': 'months free',
+  'subscribe.monthShort': 'mo',
+  'subscribe.monthsLabel': 'months',
+  'subscribe.total': 'total',
 };
 
 const he: typeof en = {
@@ -406,6 +412,12 @@ const he: typeof en = {
   'subscribe.received': '!הבקשה התקבלה',
   'subscribe.receivedDesc': 'נבדוק את בקשתך ונחזור אליך בקרוב.',
   'subscribe.newTeacherQuestion': 'רוצה להצטרף כמורה?',
+  'subscribe.choosePlan': 'בחר/י תוכנית',
+  'subscribe.planRequired': 'אנא בחר/י תוכנית כדי להמשיך.',
+  'subscribe.monthsFree': 'חודשים חינם',
+  'subscribe.monthShort': 'חודש',
+  'subscribe.monthsLabel': 'חודשים',
+  'subscribe.total': 'סה״כ',
 };
 
 export const translations: Record<Lang, typeof en> = { en, he };
