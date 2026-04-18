@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageToggle from '@/components/LanguageToggle';
 
 export default function SubscribePage() {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -16,7 +19,7 @@ export default function SubscribePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!policiesAccepted) {
-      setError('Please accept the Terms of Service, Privacy Policy, and Refund Policy to continue.');
+      setError(t('subscribe.policyError'));
       return;
     }
     setSubmitting(true);
@@ -35,7 +38,7 @@ export default function SubscribePage() {
     const data = await res.json();
     setSubmitting(false);
     if (!res.ok) {
-      setError(data.error ?? 'Something went wrong. Please try again.');
+      setError(data.error ?? t('common.noResults'));
     } else {
       setDone(true);
     }
@@ -46,9 +49,9 @@ export default function SubscribePage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-3">
           <div className="text-4xl">✓</div>
-          <h1 className="text-lg font-semibold text-gray-900">Request received!</h1>
-          <p className="text-sm text-gray-500">We&apos;ll review your request and get back to you soon.</p>
-          <Link href="/" className="block text-sm text-blue-600 hover:underline mt-2">← Back to home</Link>
+          <h1 className="text-lg font-semibold text-gray-900">{t('subscribe.received')}</h1>
+          <p className="text-sm text-gray-500">{t('subscribe.receivedDesc')}</p>
+          <Link href="/" className="block text-sm text-blue-600 hover:underline mt-2">{t('common.backHome')}</Link>
         </div>
       </div>
     );
@@ -58,15 +61,18 @@ export default function SubscribePage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
         <div>
-          <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 mb-4 block">← Back to home</Link>
-          <h1 className="text-xl font-semibold text-gray-900">Join as a Teacher</h1>
-          <p className="text-sm text-gray-500 mt-1">Fill in your details and we&apos;ll be in touch.</p>
+          <div className="flex items-center justify-between mb-4">
+            <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">{t('common.backHome')}</Link>
+            <LanguageToggle />
+          </div>
+          <h1 className="text-xl font-semibold text-gray-900">{t('subscribe.title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('subscribe.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Full name <span className="text-red-500">*</span>
+              {t('students.fullName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -80,7 +86,7 @@ export default function SubscribePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email <span className="text-red-500">*</span>
+              {t('common.email')} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
@@ -93,7 +99,7 @@ export default function SubscribePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.phone')}</label>
             <input
               type="tel"
               value={phone}
@@ -104,11 +110,11 @@ export default function SubscribePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('subscribe.comments')}</label>
             <textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              placeholder="Tell us about yourself, your subject, availability..."
+              placeholder={t('subscribe.commentsPlaceholder')}
               rows={3}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
@@ -127,19 +133,13 @@ export default function SubscribePage() {
                 className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-700 leading-snug">
-                I have read and agree to the{' '}
-                <Link href="/terms-of-service" target="_blank" className="text-blue-600 hover:underline font-medium">
-                  Terms of Service
-                </Link>
-                {', '}
-                <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline font-medium">
-                  Privacy Policy
-                </Link>
-                {', and '}
-                <Link href="/refund-policy" target="_blank" className="text-blue-600 hover:underline font-medium">
-                  Refund Policy
-                </Link>
-                . <span className="text-red-500">*</span>
+                {t('subscribe.policyAccept').split(/\{(terms|privacy|refund)\}/).map((p, i) => {
+                  if (p === 'terms') return <Link key={i} href="/terms-of-service" target="_blank" className="text-blue-600 hover:underline font-medium">{t('common.termsOfService')}</Link>;
+                  if (p === 'privacy') return <Link key={i} href="/privacy" target="_blank" className="text-blue-600 hover:underline font-medium">{t('common.privacyPolicy')}</Link>;
+                  if (p === 'refund') return <Link key={i} href="/refund-policy" target="_blank" className="text-blue-600 hover:underline font-medium">{t('common.refundPolicy')}</Link>;
+                  return p;
+                })}
+                {' '}<span className="text-red-500">*</span>
               </span>
             </label>
           </div>
@@ -151,7 +151,7 @@ export default function SubscribePage() {
             disabled={submitting || !policiesAccepted}
             className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {submitting ? 'Sending...' : 'Submit request'}
+            {submitting ? t('common.sending') : t('subscribe.submitRequest')}
           </button>
         </form>
       </div>

@@ -12,6 +12,9 @@ import WeekNav from '@/components/WeekNav';
 import { useSearchParams } from 'next/navigation';
 import { DAY_NAMES } from '@/lib/dates';
 import StudentNotebook from '@/components/StudentNotebook';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageToggle from '@/components/LanguageToggle';
+import { DAY_NAMES_HE } from '@/lib/i18n';
 
 type View = 'week' | 'month';
 type Section = 'schedule' | 'notebook';
@@ -33,6 +36,8 @@ interface StudentBooking {
 function StudentCalendar({ teacherId }: { teacherId: string }) {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') ?? '';
+  const { t, lang } = useLanguage();
+  const dayNames = lang === 'he' ? DAY_NAMES_HE : DAY_NAMES;
 
   const today = todayInIsrael();
   const [section, setSection] = useState<Section>('schedule');
@@ -112,22 +117,23 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">My Lessons</h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">{t('schedule.myLessons')}</h1>
             {email && <p className="text-xs text-gray-400 mt-0.5">{email}</p>}
           </div>
+          <LanguageToggle />
           {email && (
             <div className="flex rounded-xl border border-gray-200 bg-gray-50 overflow-hidden text-sm">
               <button
                 onClick={() => setSection('schedule')}
                 className={`px-4 py-2 font-medium transition-colors ${section === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                Schedule
+                {t('schedule.schedule')}
               </button>
               <button
                 onClick={() => setSection('notebook')}
                 className={`px-4 py-2 font-medium transition-colors ${section === 'notebook' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                Notebook
+                {t('common.notebook')}
               </button>
             </div>
           )}
@@ -168,19 +174,19 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                   onClick={() => setView('week')}
                   className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
-                  Week
+                  {t('common.week')}
                 </button>
                 <button
                   onClick={() => setView('month')}
                   className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
-                  Month
+                  {t('common.month')}
                 </button>
               </div>
             </div>
 
             {loading ? (
-              <div className="mt-8 text-center text-gray-400">Loading...</div>
+              <div className="mt-8 text-center text-gray-400">{t('common.loading')}</div>
             ) : (
               <div className="space-y-4">
                 {weekStarts.map((ws) => (
@@ -205,10 +211,10 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
             <div className="mt-5 flex flex-wrap gap-3">
               {[
-                { color: 'bg-emerald-400', label: 'Available' },
+                { color: 'bg-emerald-400', label: t('slot.available') },
                 ...(email ? [
-                  { color: 'bg-amber-400', label: 'Pending' },
-                  { color: 'bg-blue-500',  label: 'Confirmed' },
+                  { color: 'bg-amber-400', label: t('slot.pending') },
+                  { color: 'bg-blue-500',  label: t('slot.confirmed') },
                 ] : []),
               ].map(({ color, label }) => (
                 <span key={label} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
@@ -221,11 +227,11 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
             {/* My bookings */}
             {email && bookings.length > 0 && (
               <section className="mt-10">
-                <h2 className="text-base font-semibold text-gray-900 mb-3">My Bookings</h2>
+                <h2 className="text-base font-semibold text-gray-900 mb-3">{t('schedule.myBookings')}</h2>
                 <div className="space-y-2">
                   {bookings.map((b) => {
                     const label = b.booking_type === 'recurring'
-                      ? `Every ${DAY_NAMES[b.day_of_week ?? 0]} · ${b.start_time}–${b.end_time}`
+                      ? `${t('schedule.everyDay', { day: dayNames[b.day_of_week ?? 0] })} · ${b.start_time}–${b.end_time}`
                       : `${b.specific_date} · ${b.start_time}–${b.end_time}`;
                     const isPending = b.status === 'cancellation_requested';
                     return (
@@ -237,7 +243,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                             </p>
                             {b.is_group ? (
                               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                                Group · {b.booking_type === 'recurring' ? 'Recurring' : 'One-time'}
+                                {t('schedule.group')} · {b.booking_type === 'recurring' ? t('teacher.recurring') : t('schedule.oneTime')}
                               </span>
                             ) : (
                               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -245,7 +251,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                                   ? 'bg-violet-100 text-violet-700'
                                   : 'bg-sky-100 text-sky-700'
                               }`}>
-                                {b.booking_type === 'recurring' ? 'Recurring' : 'One-time'}
+                                {b.booking_type === 'recurring' ? t('teacher.recurring') : t('schedule.oneTime')}
                               </span>
                             )}
                           </div>
@@ -253,7 +259,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                             <p className="text-xs text-gray-400 mt-0.5">{label}</p>
                           )}
                           {isPending && (
-                            <p className="text-xs text-amber-600 mt-0.5">Cancellation pending teacher approval</p>
+                            <p className="text-xs text-amber-600 mt-0.5">{t('schedule.cancelPendingShort')}</p>
                           )}
                         </div>
                         {!isPending && !b.is_group && (
@@ -261,7 +267,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                             onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
                             className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap"
                           >
-                            Request cancel
+                            {t('schedule.requestCancel')}
                           </button>
                         )}
                       </div>
@@ -281,29 +287,27 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
         const isReadOnly = state === 'completed' || state === 'paid';
         const title = 'state' in cancelTarget
           ? `${(cancelTarget as ComputedSlot).date} · ${(cancelTarget as ComputedSlot).start_time}`
-          : 'Lesson';
+          : '';
         return (
           <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
-              <h3 className="font-semibold text-gray-900">{title}</h3>
+              {title && <h3 className="font-semibold text-gray-900">{title}</h3>}
               {isReadOnly ? (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700">
-                  This lesson has been {state === 'paid' ? 'paid' : 'completed'}.
+                  {t('schedule.lessonCompleted', { state: state === 'paid' ? t('slot.paid').toLowerCase() : t('slot.completed').toLowerCase() })}
                 </div>
               ) : isPending ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
-                  Cancellation request already submitted and pending teacher approval.
+                  {t('schedule.cancelPending')}
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-gray-500">
-                    Please provide a reason. Your teacher will review and approve the cancellation.
-                  </p>
+                  <p className="text-sm text-gray-500">{t('schedule.cancelReason')}</p>
                   <textarea
                     rows={3}
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
-                    placeholder="Reason for cancellation..."
+                    placeholder={t('schedule.cancelPlaceholder')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   {cancelError && <p className="text-sm text-red-600">{cancelError}</p>}
@@ -312,7 +316,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     disabled={cancelLoading || !cancelReason.trim()}
                     className="w-full bg-red-600 text-white text-sm font-medium rounded-lg py-2 hover:bg-red-700 disabled:opacity-50 transition-colors"
                   >
-                    {cancelLoading ? 'Submitting...' : 'Submit request'}
+                    {cancelLoading ? t('schedule.submitting') : t('schedule.submitRequest')}
                   </button>
                 </>
               )}
@@ -320,7 +324,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                 onClick={() => setCancelTarget(null)}
                 className="w-full border border-gray-300 text-gray-600 text-sm rounded-lg py-2 hover:bg-gray-50 transition-colors"
               >
-                Close
+                {t('common.close')}
               </button>
             </div>
           </div>

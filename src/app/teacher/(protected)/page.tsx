@@ -16,11 +16,14 @@ import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageToggle from '@/components/LanguageToggle';
 
 type View = 'week' | 'month';
 
 export default function TeacherDashboard() {
   const router = useRouter();
+  const { t } = useLanguage();
   const today = todayInIsrael();
 
   const [view, setView] = useState<View>('month');
@@ -118,22 +121,23 @@ export default function TeacherDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-        <h1 className="text-lg font-bold text-gray-900 tracking-tight">Schedule</h1>
+        <h1 className="text-lg font-bold text-gray-900 tracking-tight">{t('teacher.schedule')}</h1>
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
-          <Link href="/teacher/students" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Students</Link>
-          <Link href="/teacher/templates" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Slots</Link>
-          <Link href="/teacher/billing" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Billing</Link>
-          <Link href="/teacher/messages" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Messages</Link>
+          <Link href="/teacher/students" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('common.students')}</Link>
+          <Link href="/teacher/templates" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.slots')}</Link>
+          <Link href="/teacher/billing" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.billing')}</Link>
+          <Link href="/teacher/messages" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.messages')}</Link>
           <button
             onClick={() => { loadRequests(); if (view === 'week') loadWeek(weekStart); else loadMonth(month); }}
             className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
-            title="Refresh"
+            title={t('common.refresh')}
           >
             ↺
           </button>
-          <button onClick={() => setShowShareLink(true)} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Share student link">⚭ Share</button>
-          <button onClick={() => setShowSettings(true)} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Settings">⚙</button>
-          <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">Sign out</button>
+          <button onClick={() => setShowShareLink(true)} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title={t('teacher.shareLink')}>{t('teacher.shareLink')}</button>
+          <button onClick={() => setShowSettings(true)} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title={t('common.settings')}>⚙</button>
+          <LanguageToggle />
+          <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('common.signOut')}</button>
         </div>
       </header>
 
@@ -164,13 +168,13 @@ export default function TeacherDashboard() {
               onClick={() => setView('week')}
               className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
-              Week
+              {t('common.week')}
             </button>
             <button
               onClick={() => setView('month')}
               className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
-              Month
+              {t('common.month')}
             </button>
           </div>
         </div>
@@ -180,7 +184,7 @@ export default function TeacherDashboard() {
           <div className="mb-6 bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
               <h2 className="text-sm font-semibold text-gray-900">
-                Pending Requests <span className="ml-1.5 bg-red-100 text-red-700 text-xs font-medium px-1.5 py-0.5 rounded-full">{requests.length}</span>
+                {t('teacher.pendingRequests')} <span className="ml-1.5 bg-red-100 text-red-700 text-xs font-medium px-1.5 py-0.5 rounded-full">{requests.length}</span>
               </h2>
             </div>
             <div className="divide-y divide-gray-100">
@@ -197,20 +201,20 @@ export default function TeacherDashboard() {
                         <span className="text-sm font-medium text-gray-900">{req.student_name}</span>
                         <span className="text-xs text-gray-500">{req.student_email}</span>
                         <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${isAccess ? 'bg-violet-100 text-violet-700' : isCancel ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {isAccess ? 'Access request' : isCancel ? 'Cancel request' : 'Lesson request'}
+                          {isAccess ? t('teacher.accessRequest') : isCancel ? t('teacher.cancelRequest') : t('teacher.lessonRequest')}
                         </span>
                       </div>
                       {isAccess ? (
                         <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
                           {req.student_phone && <div>📞 {req.student_phone}</div>}
                           {req.student_note && <div className="italic">&ldquo;{req.student_note}&rdquo;</div>}
-                          {!req.student_phone && !req.student_note && <div>Not in your student list — add them to grant access</div>}
+                          {!req.student_phone && !req.student_note && <div>{t('teacher.notInList')}</div>}
                         </div>
                       ) : (
                         <>
                           <div className="text-xs text-gray-500 mt-0.5">
                             {req.date} &middot; {req.start_time}–{req.end_time}
-                            {isRecurring && !isCancel && (req.series_id ? ' · Recurring series' : ' · Recurring')}
+                            {isRecurring && !isCancel && (req.series_id ? ` · ${t('teacher.recurringSeries')}` : ` · ${t('teacher.recurring')}`)}
                           </div>
                           {isCancel && req.cancellation_reason && (
                             <div className="text-xs text-gray-500 mt-0.5 italic">&ldquo;{req.cancellation_reason}&rdquo;</div>
@@ -226,14 +230,14 @@ export default function TeacherDashboard() {
                             disabled={busy}
                             className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 text-white font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors"
                           >
-                            Add student
+                            {t('teacher.addStudent')}
                           </button>
                           <button
                             onClick={() => handleRequestAction(req, 'dismiss')}
                             disabled={busy}
                             className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
                           >
-                            Dismiss
+                            {t('common.dismiss')}
                           </button>
                         </>
                       ) : (
@@ -243,14 +247,14 @@ export default function TeacherDashboard() {
                             disabled={busy}
                             className="text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
                           >
-                            Approve
+                            {t('common.approve')}
                           </button>
                           <button
                             onClick={() => handleRequestAction(req, isCancel ? 'approve' : 'reject')}
                             disabled={busy}
                             className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
                           >
-                            {isCancel ? 'Deny' : 'Reject'}
+                            {isCancel ? t('common.deny') : t('common.reject')}
                           </button>
                         </>
                       )}
@@ -263,7 +267,7 @@ export default function TeacherDashboard() {
         )}
 
         {loading ? (
-          <div className="mt-8 text-center text-gray-400">Loading...</div>
+          <div className="mt-8 text-center text-gray-400">{t('common.loading')}</div>
         ) : (
           <TeacherCalendar
             slots={slots}
@@ -275,18 +279,18 @@ export default function TeacherDashboard() {
         )}
 
         <div className="mt-5 flex flex-wrap gap-3">
-          {[
-            { color: 'bg-emerald-400', label: 'Open' },
-            { color: 'bg-gray-400',    label: 'Blocked' },
-            { color: 'bg-amber-400',   label: 'Pending' },
-            { color: 'bg-blue-500',    label: 'Approved' },
-            { color: 'bg-purple-500',  label: 'Completed' },
-            { color: 'bg-emerald-500', label: 'Paid' },
-            { color: 'bg-orange-400',  label: 'Cancel req.' },
-          ].map(({ color, label }) => (
-            <span key={label} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
+          {([
+            { color: 'bg-emerald-400', key: 'slot.open' },
+            { color: 'bg-gray-400',    key: 'slot.blocked' },
+            { color: 'bg-amber-400',   key: 'slot.pending' },
+            { color: 'bg-blue-500',    key: 'slot.approved' },
+            { color: 'bg-purple-500',  key: 'slot.completed' },
+            { color: 'bg-emerald-500', key: 'slot.paid' },
+            { color: 'bg-orange-400',  key: 'slot.cancelReq' },
+          ] as const).map(({ color, key }) => (
+            <span key={key} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
               <span className={`w-2 h-2 rounded-full ${color}`} />
-              {label}
+              {t(key)}
             </span>
           ))}
         </div>
@@ -314,6 +318,7 @@ export default function TeacherDashboard() {
 function ShareLinkModal({ teacherId, onClose }: { teacherId: string; onClose: () => void }) {
   const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/join/${teacherId}`;
   const [copied, setCopied] = useState(false);
+  const { t } = useLanguage();
 
   function copy() {
     if (navigator.clipboard) {
@@ -344,27 +349,24 @@ function ShareLinkModal({ teacherId, onClose }: { teacherId: string; onClose: ()
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Student login link</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t('teacher.studentLoginLink')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
-        <p className="text-sm text-gray-500">
-          Share this link with your students. When they open it, they can log in and see your available slots.
-          If they&apos;re not in your student list yet, you&apos;ll get a notification.
-        </p>
+        <p className="text-sm text-gray-500">{t('teacher.shareLinkDesc')}</p>
         <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
           <span className="text-sm text-gray-700 truncate flex-1 select-all">{link}</span>
           <button
             onClick={copy}
             className="text-xs font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap flex-shrink-0"
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? t('common.copied') : t('common.copy')}
           </button>
         </div>
         <button
           onClick={onClose}
           className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors"
         >
-          Close
+          {t('common.close')}
         </button>
       </div>
     </div>
