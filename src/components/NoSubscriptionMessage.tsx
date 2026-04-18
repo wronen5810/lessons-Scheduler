@@ -1,9 +1,21 @@
 'use client';
 
 import { useLanguage } from '@/contexts/LanguageContext';
+import { createBrowserSupabase } from '@/lib/supabase-browser';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function NoSubscriptionMessage() {
   const { t } = useLanguage();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    await createBrowserSupabase().auth.signOut();
+    router.replace('/teacher/login');
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-sm w-full text-center space-y-4">
@@ -14,6 +26,13 @@ export default function NoSubscriptionMessage() {
         </div>
         <h1 className="text-lg font-semibold text-gray-900">{t('teacher.noSubscription')}</h1>
         <p className="text-sm text-gray-500">{t('teacher.noSubscriptionDesc')}</p>
+        <button
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className="w-full mt-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl py-2 hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          {signingOut ? '...' : t('common.signOut')}
+        </button>
       </div>
     </div>
   );
