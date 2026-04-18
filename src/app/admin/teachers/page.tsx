@@ -18,6 +18,8 @@ interface Subscription {
   end_date: string | null;
   cost: number;
   notes: string | null;
+  free_period_days: number;
+  monthly_charge: number | null;
   status: 'active' | 'inactive';
   created_at: string;
 }
@@ -47,12 +49,14 @@ export default function AdminTeachersPage() {
   const [subsTeacher, setSubsTeacher] = useState<Teacher | null>(null);
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [subsLoading, setSubsLoading] = useState(false);
-  const [newSub, setNewSub] = useState({ start_date: '', end_date: '', cost: '0', notes: '' });
+  const [newSub, setNewSub] = useState({ start_date: '', end_date: '', cost: '0', notes: '', free_period_days: '0', monthly_charge: '' });
   const [addingSub, setAddingSub] = useState(false);
   const [subError, setSubError] = useState('');
   const [editingSub, setEditingSub] = useState<Subscription | null>(null);
   const [editSubSaving, setEditSubSaving] = useState(false);
   const [editSubError, setEditSubError] = useState('');
+  const [defaultMonthlyCharge, setDefaultMonthlyCharge] = useState('20');
+  const [savingDefault, setSavingDefault] = useState(false);
 
   async function handleImpersonate(teacher: Teacher) {
     setImpersonating(teacher.id);
@@ -81,10 +85,27 @@ export default function AdminTeachersPage() {
     setSubsLoading(true);
     setSubs([]);
     setSubError('');
-    setNewSub({ start_date: '', end_date: '', cost: '0', notes: '' });
-    const res = await fetch(`/api/admin/teacher-subscriptions?teacher_id=${teacher.id}`);
-    setSubs(res.ok ? await res.json() : []);
+    setNewSub({ start_date: '', end_date: '', cost: '0', notes: '', free_period_days: '0', monthly_charge: '' });
+    const [subRes, settingRes] = await Promise.all([
+      fetch(`/api/admin/teacher-subscriptions?teacher_id=${teacher.id}`),
+      fetch('/api/admin/settings?key=default_monthly_charge'),
+    ]);
+    setSubs(subRes.ok ? await subRes.json() : []);
+    if (settingRes.ok) {
+      const setting = await settingRes.json();
+      setDefaultMonthlyCharge(setting.value ?? '20');
+    }
     setSubsLoading(false);
+  }
+
+  async function handleSaveDefaultCharge() {
+    setSavingDefault(true);
+    await fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'default_monthly_charge', value: defaultMonthlyCharge }),
+    });
+    setSavingDefault(false);
   }
 
   async function handleAddSub() {
@@ -100,6 +121,8 @@ export default function AdminTeachersPage() {
         end_date: newSub.end_date || null,
         cost: Number(newSub.cost) || 0,
         notes: newSub.notes || null,
+        free_period_days: Number(newSub.free_period_days) || 0,
+        monthly_charge: newSub.monthly_charge !== '' ? Number(newSub.monthly_charge) : null,
       }),
     });
     const data = await res.json();
@@ -108,7 +131,7 @@ export default function AdminTeachersPage() {
       setSubError(data.error ?? 'Failed to add subscription');
     } else {
       setSubs((prev) => [data, ...prev]);
-      setNewSub({ start_date: '', end_date: '', cost: '0', notes: '' });
+      setNewSub({ start_date: '', end_date: '', cost: '0', notes: '', free_period_days: '0', monthly_charge: '' });
     }
   }
 
@@ -130,6 +153,8 @@ export default function AdminTeachersPage() {
         end_date: editingSub.end_date || null,
         cost: Number(editingSub.cost) || 0,
         notes: editingSub.notes || null,
+        free_period_days: editingSub.free_period_days ?? 0,
+        monthly_charge: editingSub.monthly_charge,
       }),
     });
     const data = await res.json();
@@ -352,6 +377,32 @@ export default function AdminTeachersPage() {
               <button onClick={() => setSubsTeacher(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
 
+            {/* Default monthly charge setting */}
+            <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-2">
+              <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Default plan</h4>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-600 mb-1">Default monthly charge (₪)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={defaultMonthlyCharge}
+                    onChange={(e) => setDefaultMonthlyCharge(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveDefaultCharge}
+                  disabled={savingDefault}
+                  className="mt-5 text-xs bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  {savingDefault ? 'Saving...' : 'Save default'}
+                </button>
+              </div>
+              <p className="text-xs text-blue-600">Subscriptions with no override will use this rate.</p>
+            </div>
+
             {/* Add subscription form */}
             <div className="border border-gray-200 rounded-xl p-4 space-y-3">
               <h4 className="text-sm font-medium text-gray-700">Add subscription</h4>
@@ -377,7 +428,32 @@ export default function AdminTeachersPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Cost</label>
+                  <label className="block text-xs text-gray-600 mb-1">Free period (days)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={newSub.free_period_days}
+                    onChange={(e) => setNewSub((s) => ({ ...s, free_period_days: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Monthly charge (₪) <span className="text-gray-400 font-normal">override</span></label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={newSub.monthly_charge}
+                    onChange={(e) => setNewSub((s) => ({ ...s, monthly_charge: e.target.value }))}
+                    placeholder={`default: ${defaultMonthlyCharge}`}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Cost (one-time)</label>
                   <input
                     type="number"
                     min={0}
@@ -434,7 +510,23 @@ export default function AdminTeachersPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Cost</label>
+                          <label className="block text-xs text-gray-600 mb-1">Free period (days)</label>
+                          <input type="number" min={0} step={1} value={editingSub.free_period_days ?? 0}
+                            onChange={(e) => setEditingSub({ ...editingSub, free_period_days: Number(e.target.value) })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Monthly charge (₪) <span className="text-gray-400 font-normal">override</span></label>
+                          <input type="number" min={0} step={0.01}
+                            value={editingSub.monthly_charge ?? ''}
+                            onChange={(e) => setEditingSub({ ...editingSub, monthly_charge: e.target.value !== '' ? Number(e.target.value) : null })}
+                            placeholder={`default: ${defaultMonthlyCharge}`}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Cost (one-time)</label>
                           <input type="number" min={0} step={0.01} value={editingSub.cost}
                             onChange={(e) => setEditingSub({ ...editingSub, cost: Number(e.target.value) })}
                             className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -474,7 +566,12 @@ export default function AdminTeachersPage() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-500">
-                          Cost: {sub.cost}{sub.notes && ` · ${sub.notes}`}
+                          {sub.free_period_days > 0 && `Free: ${sub.free_period_days}d · `}
+                          {sub.monthly_charge != null
+                            ? `₪${sub.monthly_charge}/mo`
+                            : `₪${defaultMonthlyCharge}/mo (default)`}
+                          {sub.cost > 0 && ` · Setup: ₪${sub.cost}`}
+                          {sub.notes && ` · ${sub.notes}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 ml-4">

@@ -9,7 +9,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (auth.error) return auth.error;
 
   const { id } = await params;
-  const { start_date, end_date, cost, notes } = await request.json();
+  const { start_date, end_date, cost, notes, free_period_days, monthly_charge } = await request.json();
   if (!start_date) return NextResponse.json({ error: 'start_date is required' }, { status: 400 });
 
   const supabase = createServiceSupabase();
@@ -27,7 +27,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { data, error } = await supabase
     .from('teacher_subscriptions')
-    .update({ start_date, end_date: end_date || null, cost: cost ?? 0, notes: notes?.trim() || null })
+    .update({
+      start_date,
+      end_date: end_date || null,
+      cost: cost ?? 0,
+      notes: notes?.trim() || null,
+      free_period_days: free_period_days ?? 0,
+      monthly_charge: monthly_charge != null && monthly_charge !== '' ? Number(monthly_charge) : null,
+    })
     .eq('id', id)
     .select()
     .single();
