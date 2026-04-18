@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -9,6 +9,7 @@ interface Plan {
   id: string;
   name: string;
   description: string | null;
+  plan_type: 'new' | 'renewal' | 'both';
   free_months: number;
   paid_months: number;
   monthly_cost: number;
@@ -27,17 +28,34 @@ export default function SubscribePage() {
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [isExistingTeacher, setIsExistingTeacher] = useState<boolean | null>(null);
+  const checkedEmail = useRef('');
 
-  useEffect(() => {
-    fetch('/api/plans')
-      .then((r) => r.json())
-      .then((data: Plan[]) => {
-        setPlans(data ?? []);
-        if (data?.length === 1) setSelectedPlanId(data[0].id);
-      })
-      .finally(() => setPlansLoading(false));
-  }, []);
+  async function loadPlans(type: 'new' | 'renewal') {
+    setPlansLoading(true);
+    setSelectedPlanId(null);
+    const res = await fetch(`/api/plans?type=${type}`);
+    const data: Plan[] = res.ok ? await res.json() : [];
+    setPlans(data);
+    if (data.length === 1) setSelectedPlanId(data[0].id);
+    setPlansLoading(false);
+  }
+
+  async function handleEmailBlur() {
+    const normalized = email.toLowerCase().trim();
+    if (!normalized || normalized === checkedEmail.current) return;
+    checkedEmail.current = normalized;
+
+    setIsExistingTeacher(null);
+    setPlans([]);
+    setSelectedPlanId(null);
+
+    const res = await fetch(`/api/check-teacher?email=${encodeURIComponent(normalized)}`);
+    const { exists } = await res.json();
+    setIsExistingTeacher(exists);
+    await loadPlans(exists ? 'renewal' : 'new');
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -120,10 +138,25 @@ export default function SubscribePage() {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                // Reset check if email changes
+                if (e.target.value.toLowerCase().trim() !== checkedEmail.current) {
+                  setIsExistingTeacher(null);
+                  setPlans([]);
+                  setSelectedPlanId(null);
+                }
+              }}
+              onBlur={handleEmailBlur}
               placeholder="jane@example.com"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {isExistingTeacher === true && (
+              <p className="text-xs text-blue-600 mt-1">{t('subscribe.existingTeacher') ?? 'Welcome back! Showing renewal plans.'}</p>
+            )}
+            {isExistingTeacher === false && (
+              <p className="text-xs text-green-600 mt-1">{t('subscribe.newTeacher') ?? 'New account detected. Showing new teacher plans.'}</p>
+            )}
           </div>
 
           <div>
@@ -149,12 +182,16 @@ export default function SubscribePage() {
           </div>
 
           {/* Plan selection */}
-          {!plansLoading && plans.length > 0 && (
+          {isExistingTeacher !== null && (
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
                 {t('subscribe.choosePlan')} <span className="text-red-500">*</span>
               </label>
-              {plans.map((plan) => (
+              {plansLoading ? (
+                <p className="text-xs text-gray-400">Loading plans...</p>
+              ) : plans.length === 0 ? (
+                <p className="text-xs text-gray-400">No plans available.</p>
+              ) : plans.map((plan) => (
                 <label
                   key={plan.id}
                   className={`flex items-start gap-3 border rounded-xl p-4 cursor-pointer transition-colors ${

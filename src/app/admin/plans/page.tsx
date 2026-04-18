@@ -6,6 +6,7 @@ interface Plan {
   id: string;
   name: string;
   description: string | null;
+  plan_type: 'new' | 'renewal' | 'both';
   free_months: number;
   paid_months: number;
   monthly_cost: number;
@@ -14,8 +15,9 @@ interface Plan {
 }
 
 type PlanStatus = 'active' | 'inactive';
-type PlanForm = { name: string; description: string; free_months: string; paid_months: string; monthly_cost: string; status: PlanStatus };
-const emptyForm: PlanForm = { name: '', description: '', free_months: '0', paid_months: '1', monthly_cost: '0', status: 'active' };
+type PlanType = 'new' | 'renewal' | 'both';
+type PlanForm = { name: string; description: string; plan_type: PlanType; free_months: string; paid_months: string; monthly_cost: string; status: PlanStatus };
+const emptyForm: PlanForm = { name: '', description: '', plan_type: 'new', free_months: '0', paid_months: '1', monthly_cost: '0', status: 'active' };
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -47,6 +49,7 @@ export default function AdminPlansPage() {
       body: JSON.stringify({
         name: newPlan.name.trim(),
         description: newPlan.description.trim() || null,
+        plan_type: newPlan.plan_type,
         free_months: Number(newPlan.free_months) || 0,
         paid_months: Number(newPlan.paid_months) || 1,
         monthly_cost: Number(newPlan.monthly_cost) || 0,
@@ -70,6 +73,7 @@ export default function AdminPlansPage() {
       body: JSON.stringify({
         name: editing.name,
         description: editing.description || null,
+        plan_type: editing.plan_type,
         free_months: editing.free_months,
         paid_months: editing.paid_months,
         monthly_cost: editing.monthly_cost,
@@ -137,6 +141,18 @@ export default function AdminPlansPage() {
               rows={2}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Plan type</label>
+            <select
+              value={newPlan.plan_type}
+              onChange={(e) => setNewPlan((p) => ({ ...p, plan_type: e.target.value as PlanType }))}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="new">New teachers only</option>
+              <option value="renewal">Renewal (existing teachers)</option>
+              <option value="both">Both</option>
+            </select>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -223,6 +239,16 @@ export default function AdminPlansPage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Plan type</label>
+                  <select value={editing.plan_type}
+                    onChange={(e) => setEditing({ ...editing, plan_type: e.target.value as PlanType })}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="new">New teachers only</option>
+                    <option value="renewal">Renewal (existing teachers)</option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Free months</label>
@@ -267,7 +293,7 @@ export default function AdminPlansPage() {
             ) : (
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-gray-900">{plan.name}</p>
                     <button
                       onClick={() => toggleStatus(plan)}
@@ -279,6 +305,9 @@ export default function AdminPlansPage() {
                     >
                       {plan.status}
                     </button>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
+                      {plan.plan_type === 'new' ? 'New' : plan.plan_type === 'renewal' ? 'Renewal' : 'Both'}
+                    </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{planSummary(plan)}</p>
                   {plan.description && (
