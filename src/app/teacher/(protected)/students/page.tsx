@@ -253,42 +253,50 @@ export default function StudentsPage() {
               ) : students.length === 0 ? (
                 <div className="px-5 py-8 text-center text-sm text-gray-400">No students yet.</div>
               ) : students.map((student) => (
-                <div key={student.id}>
-                  <div className="flex items-center justify-between px-5 py-3 gap-4">
-                    <div className="min-w-0">
+                <div key={student.id} className="px-4 py-3">
+                  {/* Name + status row */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{student.name}</p>
                       <p className="text-xs text-gray-400 truncate">{student.email}</p>
-                      <div className="flex flex-wrap gap-3 mt-1">
-                        {student.phone && <span className="text-xs text-gray-500">📞 {student.phone}</span>}
-                        {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}/lesson</span>}
-                        {student.notes && <span className="text-xs text-gray-400 italic truncate max-w-[200px]">{student.notes}</span>}
-                      </div>
+                      {(student.phone || student.rate != null) && (
+                        <div className="flex flex-wrap gap-3 mt-0.5">
+                          {student.phone && <span className="text-xs text-gray-500">📞 {student.phone}</span>}
+                          {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}/lesson</span>}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button onClick={() => setEditing({ ...student })}
-                        className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
-                        Edit
-                      </button>
-                      <button onClick={() => openLoginHistory(student)}
-                        className="text-xs text-teal-600 hover:text-teal-800 px-2 py-1 rounded hover:bg-teal-50 transition-colors">
-                        Logins
-                      </button>
-                      <button onClick={() => openNotes(student)}
-                        className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors">
-                        Notes
-                      </button>
-                      <button onClick={() => setNotebookStudent(student)}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">
-                        Notebook
-                      </button>
-                      <button onClick={() => toggleActive(student)}
-                        className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
-                          student.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}>
-                        {student.is_active ? 'Active' : 'Inactive'}
-                      </button>
-                      <button onClick={() => handleDelete(student)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
-                    </div>
+                    <button
+                      onClick={() => toggleActive(student)}
+                      className={`flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+                        student.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {student.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                  </div>
+                  {/* Actions row — wraps on narrow screens */}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    <button onClick={() => setEditing({ ...student })}
+                      className="text-xs text-blue-600 hover:text-blue-800 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                      Edit
+                    </button>
+                    <button onClick={() => openNotes(student)}
+                      className="text-xs text-purple-600 hover:text-purple-800 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
+                      Notes
+                    </button>
+                    <button onClick={() => setNotebookStudent(student)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                      Notebook
+                    </button>
+                    <button onClick={() => openLoginHistory(student)}
+                      className="text-xs text-teal-600 hover:text-teal-800 px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 transition-colors">
+                      Logins
+                    </button>
+                    <button onClick={() => handleDelete(student)}
+                      className="text-xs text-red-400 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}
@@ -341,9 +349,9 @@ export default function StudentsPage() {
                   : null;
 
                 return (
-                  <div key={group.id} className="px-5 py-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
+                  <div key={group.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-900">{group.name}</p>
                         <div className="flex flex-wrap gap-3 mt-0.5">
                           <span className="text-xs text-gray-500">{memberCount} student{memberCount !== 1 ? 's' : ''}</span>
@@ -355,26 +363,26 @@ export default function StudentsPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => setManagingGroup(managingGroup?.id === group.id ? null : { ...group })}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded hover:bg-indigo-50 transition-colors"
-                        >
-                          Members
-                        </button>
-                        <button onClick={() => setNotebookGroup({ ...group })}
-                          className="text-xs text-violet-600 hover:text-violet-800 px-2 py-1 rounded hover:bg-violet-50 transition-colors">
-                          Notebook
-                        </button>
-                        <button onClick={() => setEditingGroup({ ...group })}
-                          className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
-                          Edit
-                        </button>
-                        <button onClick={() => handleDeleteGroup(group)}
-                          className="text-xs text-red-400 hover:text-red-600">
-                          Delete
-                        </button>
-                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      <button
+                        onClick={() => setManagingGroup(managingGroup?.id === group.id ? null : { ...group })}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                      >
+                        Members
+                      </button>
+                      <button onClick={() => setNotebookGroup({ ...group })}
+                        className="text-xs text-violet-600 hover:text-violet-800 px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors">
+                        Notebook
+                      </button>
+                      <button onClick={() => setEditingGroup({ ...group })}
+                        className="text-xs text-blue-600 hover:text-blue-800 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                        Edit
+                      </button>
+                      <button onClick={() => handleDeleteGroup(group)}
+                        className="text-xs text-red-400 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">
+                        Delete
+                      </button>
                     </div>
 
                     {/* Members panel */}
