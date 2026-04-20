@@ -40,7 +40,7 @@ export default function TeacherLogin() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
         {/* Teacher illustration */}
         <div className="flex justify-center mb-6">
-          <svg width="120" height="105" viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="160" height="140" viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="25" y="15" width="90" height="110" rx="6" fill="#1e40af"/>
             <rect x="35" y="15" width="80" height="110" rx="4" fill="#eff6ff"/>
             <circle cx="30" cy="35" r="4" fill="#1e40af"/>

@@ -79,7 +79,7 @@ export default function StudentEntryPage() {
         {/* Student illustration — only on the entry step */}
         {step === 'email' && (
           <div className="flex justify-center mb-5">
-            <svg width="120" height="105" viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="160" height="140" viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="80" cy="58" r="28" fill="#fde68a"/>
               <path d="M52 58 Q52 28 80 28 Q108 28 108 58" stroke="#7c3aed" strokeWidth="6" fill="none" strokeLinecap="round"/>
               <rect x="44" y="52" width="14" height="20" rx="6" fill="#7c3aed"/>
