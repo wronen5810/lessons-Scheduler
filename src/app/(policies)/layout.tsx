@@ -2,7 +2,7 @@ import '../globals.css';
 
 export default function PoliciesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="he" dir="auto">
       <body className="bg-white text-gray-800 font-sans antialiased">
         <div className="max-w-3xl mx-auto px-6 py-12">
           <div className="mb-8">
