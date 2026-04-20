@@ -79,22 +79,9 @@ export default function StudentEntryPage() {
         {/* Student illustration — only on the entry step */}
         {step === 'email' && (
           <div className="flex justify-center mb-5">
-            <svg width="160" height="140" viewBox="0 0 160 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="80" cy="58" r="28" fill="#fde68a"/>
-              <path d="M52 58 Q52 28 80 28 Q108 28 108 58" stroke="#7c3aed" strokeWidth="6" fill="none" strokeLinecap="round"/>
-              <rect x="44" y="52" width="14" height="20" rx="6" fill="#7c3aed"/>
-              <rect x="102" y="52" width="14" height="20" rx="6" fill="#7c3aed"/>
-              <circle cx="72" cy="55" r="3" fill="#92400e"/>
-              <circle cx="88" cy="55" r="3" fill="#92400e"/>
-              <path d="M70 68 Q80 76 90 68" stroke="#92400e" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-              <text x="112" y="40" fontSize="22" fill="#7c3aed" opacity="0.9">♪</text>
-              <text x="28" y="35" fontSize="16" fill="#a78bfa" opacity="0.8">♩</text>
-              <text x="118" y="65" fontSize="14" fill="#c4b5fd" opacity="0.7">♫</text>
-              <text x="22" y="60" fontSize="18" fill="#7c3aed" opacity="0.6">♬</text>
-              <rect x="60" y="88" width="40" height="30" rx="8" fill="#8b5cf6"/>
-              <rect x="40" y="90" width="20" height="10" rx="5" fill="#8b5cf6"/>
-              <rect x="100" y="90" width="20" height="10" rx="5" fill="#8b5cf6"/>
-            </svg>
+            <div className="w-24 h-24 rounded-full bg-purple-100 flex items-center justify-center text-5xl">
+              🎧
+            </div>
           </div>
         )}
 
