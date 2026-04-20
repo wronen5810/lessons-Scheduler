@@ -194,7 +194,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'homework', label: 'Homework' },
+    { key: 'homework', label: 'Tasks' },
     { key: 'notes', label: 'Notes' },
     { key: 'resources', label: 'Resources' },
   ];
@@ -237,7 +237,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                   <tbody>
                     {homework.length === 0 && !addingHomework ? (
                       <tr>
-                        <td colSpan={3} className="py-6 text-center text-gray-400 text-sm">No homework yet.</td>
+                        <td colSpan={3} className="py-6 text-center text-gray-400 text-sm">No tasks yet.</td>
                       </tr>
                     ) : (
                       homework.map((hw) =>
@@ -310,7 +310,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                             type="text"
                             value={newHwNotes}
                             onChange={(e) => setNewHwNotes(e.target.value)}
-                            placeholder="Homework description..."
+                            placeholder="Task description..."
                             autoFocus
                             className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
@@ -331,7 +331,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                 {!addingHomework && (
                   <button onClick={() => setAddingHomework(true)}
                     className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                    + Add homework
+                    + Add task
                   </button>
                 )}
               </div>
