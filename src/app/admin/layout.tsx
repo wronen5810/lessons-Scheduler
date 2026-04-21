@@ -1,17 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import SessionGuard from '@/components/SessionGuard';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isLoginPage = pathname === '/admin/login';
 
   async function handleSignOut() {
     await createBrowserSupabase().auth.signOut();
     router.push('/admin/login');
   }
+
+  if (isLoginPage) return <>{children}</>;
 
   return (
     <SessionGuard loginPath="/admin/login">
