@@ -63,7 +63,7 @@ export interface OneTimeBooking {
   start_time: string;
   student_name: string;
   student_email: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'cancellation_requested' | 'completed' | 'paid';
   booked_by: 'teacher' | 'student';
   cancel_token: string;
   reminder_sent: boolean;
