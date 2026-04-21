@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import { toSlug } from '@/lib/slug';
 
 type View = 'week' | 'month';
 
@@ -30,11 +31,20 @@ export default function TeacherDashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [showShareLink, setShowShareLink] = useState(false);
   const [teacherId, setTeacherId] = useState('');
+  const [teacherName, setTeacherName] = useState('');
   const { settings, save: saveSettings } = useTeacherSettings();
 
   useEffect(() => {
-    createBrowserSupabase().auth.getUser().then(({ data }) => {
-      if (data.user) setTeacherId(data.user.id);
+    const supabase = createBrowserSupabase();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      setTeacherId(data.user.id);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', data.user.id)
+        .single();
+      if (profile?.display_name) setTeacherName(profile.display_name);
     });
   }, []);
   const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
@@ -309,14 +319,16 @@ export default function TeacherDashboard() {
       )}
 
       {showShareLink && teacherId && (
-        <ShareLinkModal teacherId={teacherId} onClose={() => setShowShareLink(false)} />
+        <ShareLinkModal teacherId={teacherId} teacherName={teacherName} onClose={() => setShowShareLink(false)} />
       )}
     </div>
   );
 }
 
-function ShareLinkModal({ teacherId, onClose }: { teacherId: string; onClose: () => void }) {
-  const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/join/${teacherId}`;
+function ShareLinkModal({ teacherId, teacherName, onClose }: { teacherId: string; teacherName: string; onClose: () => void }) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://lessons-scheduler.com';
+  const slug = toSlug(teacherName);
+  const link = slug ? `${origin}/${slug}` : `${origin}/join/${teacherId}`;
   const [copied, setCopied] = useState(false);
   const { t } = useLanguage();
 

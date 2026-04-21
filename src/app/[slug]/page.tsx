@@ -1,15 +1,11 @@
-import { redirect, notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { createServiceSupabase } from '@/lib/supabase-server';
-
-function nameToSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-}
+import { toSlug } from '@/lib/slug';
+import JoinForm from '@/components/JoinForm';
+import { Suspense } from 'react';
 
 export default async function TeacherSlugPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const normalized = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
 
   const supabase = createServiceSupabase();
   const { data: teachers } = await supabase
@@ -20,24 +16,17 @@ export default async function TeacherSlugPage({ params }: { params: Promise<{ sl
 
   if (!teachers || teachers.length === 0) notFound();
 
-  // Try matching against display_name slug first
-  let match = teachers.find((t) => nameToSlug(t.display_name ?? '') === normalized);
-
-  // Fallback: match against email username (e.g. "oritjaschek" from "orit.jaschek@...")
-  if (!match) {
-    const enriched = await Promise.all(
-      teachers.map(async (t) => {
-        const { data: { user } } = await supabase.auth.admin.getUserById(t.id);
-        return { ...t, email: user?.email ?? '' };
-      })
-    );
-    match = enriched.find((t) => {
-      const username = (t.email ?? '').split('@')[0];
-      return nameToSlug(username) === normalized;
-    });
-  }
+  const match = teachers.find((t) => toSlug(t.display_name ?? '') === slug);
 
   if (!match) notFound();
 
-  redirect(`/join/${match!.id}`);
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
+        <Suspense fallback={<p className="text-center text-gray-400 text-sm">Loading...</p>}>
+          <JoinForm teacherId={match.id} />
+        </Suspense>
+      </div>
+    </div>
+  );
 }
