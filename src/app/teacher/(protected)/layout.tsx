@@ -2,6 +2,7 @@ import { createAuthSupabase, createServiceSupabase } from '@/lib/supabase-server
 import { redirect } from 'next/navigation';
 import SessionGuard from '@/components/SessionGuard';
 import NoSubscriptionMessage from '@/components/NoSubscriptionMessage';
+import TeacherNav from '@/components/TeacherNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,5 +49,12 @@ export default async function TeacherProtectedLayout({ children }: { children: R
     );
   }
 
-  return <SessionGuard loginPath="/teacher/login">{children}</SessionGuard>;
+  return (
+    <SessionGuard loginPath="/teacher/login">
+      <div className="min-h-screen bg-slate-50">
+        <TeacherNav />
+        {children}
+      </div>
+    </SessionGuard>
+  );
 }
