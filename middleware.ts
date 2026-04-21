@@ -30,7 +30,10 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isTeacherRoute = pathname.startsWith('/teacher') && !pathname.startsWith('/teacher/login');
+  const isTeacherRoute = pathname.startsWith('/teacher') &&
+    !pathname.startsWith('/teacher/login') &&
+    !pathname.startsWith('/teacher/forgot-password') &&
+    !pathname.startsWith('/teacher/reset-password');
   const isAdminRoute = pathname.startsWith('/admin') && !pathname.startsWith('/admin/login');
 
   if ((isTeacherRoute || isAdminRoute) && !user) {
