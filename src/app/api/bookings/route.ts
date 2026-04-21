@@ -58,11 +58,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (booking_type === 'recurring') {
-    // Check no existing approved/pending lessons overlap on this template in the date range
+    const maxParticipants = template?.max_participants ?? 1;
     const stopDate = end_date ?? date;
+
     const { data: existing } = await supabase
       .from('recurring_bookings')
-      .select('lesson_date')
+      .select('lesson_date, student_email')
       .eq('template_id', template_id)
       .eq('teacher_id', teacher_id)
       .in('status', ['pending', 'approved'])
@@ -70,7 +71,23 @@ export async function POST(request: NextRequest) {
       .lte('lesson_date', stopDate);
 
     if (existing && existing.length > 0) {
-      return NextResponse.json({ error: 'One or more dates in that range are no longer available' }, { status: 409 });
+      if (maxParticipants <= 1) {
+        return NextResponse.json({ error: 'One or more dates in that range are no longer available' }, { status: 409 });
+      }
+      // Multi-participant: check student isn't already booked and no date is full
+      if (existing.some((b) => b.student_email?.toLowerCase() === student_email)) {
+        return NextResponse.json({ error: 'You already have a booking for this slot in the selected range' }, { status: 409 });
+      }
+      const countByDate = new Map<string, number>();
+      for (const b of existing) countByDate.set(b.lesson_date, (countByDate.get(b.lesson_date) ?? 0) + 1);
+      let cur = new Date(date);
+      const stop = new Date(stopDate);
+      while (cur <= stop) {
+        if ((countByDate.get(cur.toISOString().slice(0, 10)) ?? 0) >= maxParticipants) {
+          return NextResponse.json({ error: 'One or more dates in that range are no longer available' }, { status: 409 });
+        }
+        cur.setDate(cur.getDate() + 7);
+      }
     }
 
     const seriesId = randomUUID();
@@ -114,17 +131,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Date out of allowed range' }, { status: 400 });
   }
 
+  let maxParticipantsOt = 1;
+  if (one_time_slot_id) {
+    const { data: otSlot } = await supabase.from('one_time_slots').select('max_participants').eq('id', one_time_slot_id).single();
+    maxParticipantsOt = otSlot?.max_participants ?? 1;
+  } else {
+    maxParticipantsOt = template?.max_participants ?? 1;
+  }
+
   const { data: existingOt } = await supabase
     .from('one_time_bookings')
-    .select('id')
+    .select('id, student_email')
     .eq('specific_date', date)
     .eq('start_time', start_time)
     .eq('teacher_id', teacher_id)
-    .in('status', ['pending', 'approved'])
-    .limit(1);
+    .in('status', ['pending', 'approved']);
 
   if (existingOt && existingOt.length > 0) {
-    return NextResponse.json({ error: 'Slot is no longer available' }, { status: 409 });
+    if (existingOt.some((b) => (b.student_email as string)?.toLowerCase() === student_email)) {
+      return NextResponse.json({ error: 'You already have a booking for this slot' }, { status: 409 });
+    }
+    if (existingOt.length >= maxParticipantsOt) {
+      return NextResponse.json({ error: 'Slot is no longer available' }, { status: 409 });
+    }
   }
 
   const { data: booking, error } = await supabase

@@ -5,6 +5,7 @@ import type {
   ComputedSlot,
   OneTimeBooking,
   OneTimeSlot,
+  ParticipantInfo,
   RecurringBooking,
   SlotOverride,
   SlotTemplate,
@@ -83,6 +84,8 @@ export async function computeWeekSlots(
       const startTime = formatTime(template.start_time);
       const duration = template.duration_minutes ?? 45;
       const endTime = getEndTime(startTime, duration);
+      const title = template.title ?? undefined;
+      const maxParticipants = template.max_participants ?? 1;
 
       const override = overrideList.find(
         (o) => o.template_id === template.id && o.specific_date === dateStr
@@ -90,41 +93,216 @@ export async function computeWeekSlots(
 
       if (override?.is_blocked) {
         if (forTeacher) {
-          slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'blocked', template_id: template.id, override_id: override.id });
+          slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'blocked', template_id: template.id, override_id: override.id, title, max_participants: maxParticipants });
         }
         continue;
       }
 
-      // One-time booking on this date takes priority over recurring
+      // One-time booking on this date takes priority over recurring (single-participant only)
       const otBooking = otBookingList.find(
         (o) => o.specific_date === dateStr && formatTime(o.start_time) === startTime
       );
 
-      const recBooking = recurringList.find(
-        (r) =>
-          r.template_id === template.id &&
-          r.lesson_date === dateStr &&
-          (forTeacher || ['pending', 'approved', 'cancellation_requested'].includes(r.status))
+      if (maxParticipants <= 1) {
+        // ── Single-participant ────────────────────────────────────────
+        const recBooking = recurringList.find(
+          (r) =>
+            r.template_id === template.id &&
+            r.lesson_date === dateStr &&
+            (forTeacher || ['pending', 'approved', 'cancellation_requested'].includes(r.status))
+        );
+
+        const booking = otBooking || recBooking;
+
+        if (!booking) {
+          slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'available', template_id: template.id, title, max_participants: 1 });
+          continue;
+        }
+
+        const bookingGroupId = (booking as { group_id?: string | null }).group_id;
+        const isOwnBooking = (!!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase())
+          || (!!bookingGroupId && !!studentGroupIds && studentGroupIds.has(bookingGroupId));
+        const slot: ComputedSlot = {
+          date: dateStr,
+          start_time: startTime,
+          end_time: endTime,
+          duration_minutes: duration,
+          state: forTeacher ? bookingToState(booking.status) : (isOwnBooking ? bookingToState(booking.status) : 'unavailable'),
+          template_id: template.id,
+          title,
+          max_participants: 1,
+          booking_type: otBooking ? 'one_time' : 'recurring',
+          booking_id: booking.id,
+          booking_status: booking.status,
+        };
+
+        if (forTeacher || isOwnBooking) {
+          slot.student_name = booking.student_name;
+          slot.student_email = booking.student_email;
+          slot.cancel_token = booking.cancel_token;
+          slot.cancellation_reason = booking.cancellation_reason ?? undefined;
+        }
+
+        if (bookingGroupId) {
+          slot.group_id = bookingGroupId;
+          slot.group_name = groupNameMap.get(bookingGroupId);
+          slot.group_member_count = groupMemberCountMap.get(bookingGroupId);
+        }
+
+        slots.push(slot);
+      } else {
+        // ── Multi-participant ─────────────────────────────────────────
+        const recBookings = recurringList.filter(
+          (r) =>
+            r.template_id === template.id &&
+            r.lesson_date === dateStr &&
+            (forTeacher || ['pending', 'approved', 'cancellation_requested'].includes(r.status))
+        );
+
+        const participantCount = recBookings.length;
+        const isFull = participantCount >= maxParticipants;
+
+        if (forTeacher) {
+          const participants: ParticipantInfo[] = recBookings.map((b) => ({
+            booking_id: b.id,
+            booking_type: 'recurring' as const,
+            student_name: b.student_name,
+            student_email: b.student_email,
+            status: b.status,
+            cancel_token: b.cancel_token,
+          }));
+
+          let state: import('./types').SlotState;
+          if (!isFull) {
+            state = 'available';
+          } else if (recBookings.some((b) => b.status === 'cancellation_requested')) {
+            state = 'cancellation_requested';
+          } else if (recBookings.some((b) => b.status === 'pending')) {
+            state = 'pending';
+          } else if (recBookings.some((b) => b.status === 'completed')) {
+            state = 'completed';
+          } else if (recBookings.some((b) => b.status === 'paid')) {
+            state = 'paid';
+          } else {
+            state = 'confirmed';
+          }
+
+          slots.push({
+            date: dateStr,
+            start_time: startTime,
+            end_time: endTime,
+            duration_minutes: duration,
+            state,
+            template_id: template.id,
+            title,
+            max_participants: maxParticipants,
+            participant_count: participantCount,
+            ...(participants.length > 0 && { participants }),
+          });
+        } else {
+          // Student view
+          const ownBooking = recBookings.find((r) => {
+            const gid = (r as { group_id?: string | null }).group_id;
+            return (
+              (!!studentEmail && r.student_email.toLowerCase() === studentEmail.toLowerCase()) ||
+              (!!gid && !!studentGroupIds && studentGroupIds.has(gid))
+            );
+          });
+
+          if (ownBooking) {
+            const bookingGroupId = (ownBooking as { group_id?: string | null }).group_id;
+            const slot: ComputedSlot = {
+              date: dateStr,
+              start_time: startTime,
+              end_time: endTime,
+              duration_minutes: duration,
+              state: bookingToState(ownBooking.status),
+              template_id: template.id,
+              title,
+              max_participants: maxParticipants,
+              participant_count: participantCount,
+              booking_type: 'recurring',
+              booking_id: ownBooking.id,
+              booking_status: ownBooking.status,
+              student_name: ownBooking.student_name,
+              student_email: ownBooking.student_email,
+              cancel_token: ownBooking.cancel_token,
+              cancellation_reason: ownBooking.cancellation_reason ?? undefined,
+            };
+            if (bookingGroupId) {
+              slot.group_id = bookingGroupId;
+              slot.group_name = groupNameMap.get(bookingGroupId);
+              slot.group_member_count = groupMemberCountMap.get(bookingGroupId);
+            }
+            slots.push(slot);
+          } else if (!isFull) {
+            slots.push({
+              date: dateStr,
+              start_time: startTime,
+              end_time: endTime,
+              duration_minutes: duration,
+              state: 'available',
+              template_id: template.id,
+              title,
+              max_participants: maxParticipants,
+              participant_count: participantCount,
+            });
+          } else {
+            slots.push({
+              date: dateStr,
+              start_time: startTime,
+              end_time: endTime,
+              duration_minutes: duration,
+              state: 'unavailable',
+              template_id: template.id,
+              title,
+              max_participants: maxParticipants,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // ── Teacher-created one-time slots ───────────────────────────────
+  for (const otSlot of otSlotList) {
+    const startTime = formatTime(otSlot.start_time);
+    const duration = otSlot.duration_minutes ?? 45;
+    const endTime = getEndTime(startTime, duration);
+    const dateStr = otSlot.specific_date;
+    const title = otSlot.title ?? undefined;
+    const maxParticipants = otSlot.max_participants ?? 1;
+
+    // Skip if a template slot already occupies this date+time
+    const alreadyCovered = slots.some((s) => s.date === dateStr && s.start_time === startTime);
+    if (alreadyCovered) continue;
+
+    if (maxParticipants <= 1) {
+      // ── Single-participant ──────────────────────────────────────────
+      const booking = otBookingList.find(
+        (o) =>
+          o.one_time_slot_id === otSlot.id ||
+          (o.one_time_slot_id == null && o.specific_date === dateStr && formatTime(o.start_time) === startTime)
       );
 
-      const booking = otBooking || recBooking;
-
       if (!booking) {
-        slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'available', template_id: template.id });
+        slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'available', one_time_slot_id: otSlot.id, title, max_participants: 1 });
         continue;
       }
 
-      const bookingGroupId = (booking as { group_id?: string | null }).group_id;
+      const otBookingGroupId = (booking as { group_id?: string | null }).group_id;
       const isOwnBooking = (!!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase())
-        || (!!bookingGroupId && !!studentGroupIds && studentGroupIds.has(bookingGroupId));
+        || (!!otBookingGroupId && !!studentGroupIds && studentGroupIds.has(otBookingGroupId));
       const slot: ComputedSlot = {
         date: dateStr,
         start_time: startTime,
         end_time: endTime,
         duration_minutes: duration,
         state: forTeacher ? bookingToState(booking.status) : (isOwnBooking ? bookingToState(booking.status) : 'unavailable'),
-        template_id: template.id,
-        booking_type: otBooking ? 'one_time' : 'recurring',
+        one_time_slot_id: otSlot.id,
+        title,
+        max_participants: 1,
+        booking_type: 'one_time',
         booking_id: booking.id,
         booking_status: booking.status,
       };
@@ -136,67 +314,115 @@ export async function computeWeekSlots(
         slot.cancellation_reason = booking.cancellation_reason ?? undefined;
       }
 
-      if (bookingGroupId) {
-        slot.group_id = bookingGroupId;
-        slot.group_name = groupNameMap.get(bookingGroupId);
-        slot.group_member_count = groupMemberCountMap.get(bookingGroupId);
+      if (otBookingGroupId) {
+        slot.group_id = otBookingGroupId;
+        slot.group_name = groupNameMap.get(otBookingGroupId);
+        slot.group_member_count = groupMemberCountMap.get(otBookingGroupId);
       }
 
       slots.push(slot);
+    } else {
+      // ── Multi-participant one-time slot ─────────────────────────────
+      const slotBookings = otBookingList.filter(
+        (o) =>
+          o.one_time_slot_id === otSlot.id ||
+          (o.one_time_slot_id == null && o.specific_date === dateStr && formatTime(o.start_time) === startTime)
+      );
+
+      const participantCount = slotBookings.length;
+      const isFull = participantCount >= maxParticipants;
+
+      if (forTeacher) {
+        const participants: ParticipantInfo[] = slotBookings.map((b) => ({
+          booking_id: b.id,
+          booking_type: 'one_time' as const,
+          student_name: b.student_name,
+          student_email: b.student_email,
+          status: b.status,
+          cancel_token: b.cancel_token,
+        }));
+
+        let state: import('./types').SlotState;
+        if (!isFull) {
+          state = 'available';
+        } else if (slotBookings.some((b) => b.status === 'cancellation_requested')) {
+          state = 'cancellation_requested';
+        } else if (slotBookings.some((b) => b.status === 'pending')) {
+          state = 'pending';
+        } else if (slotBookings.some((b) => b.status === 'completed')) {
+          state = 'completed';
+        } else if (slotBookings.some((b) => b.status === 'paid')) {
+          state = 'paid';
+        } else {
+          state = 'confirmed';
+        }
+
+        slots.push({
+          date: dateStr,
+          start_time: startTime,
+          end_time: endTime,
+          duration_minutes: duration,
+          state,
+          one_time_slot_id: otSlot.id,
+          title,
+          max_participants: maxParticipants,
+          participant_count: participantCount,
+          ...(participants.length > 0 && { participants }),
+        });
+      } else {
+        const ownBooking = slotBookings.find((b) => {
+          const gid = (b as { group_id?: string | null }).group_id;
+          return (
+            (!!studentEmail && b.student_email.toLowerCase() === studentEmail.toLowerCase()) ||
+            (!!gid && !!studentGroupIds && studentGroupIds.has(gid))
+          );
+        });
+
+        if (ownBooking) {
+          slots.push({
+            date: dateStr,
+            start_time: startTime,
+            end_time: endTime,
+            duration_minutes: duration,
+            state: bookingToState(ownBooking.status),
+            one_time_slot_id: otSlot.id,
+            title,
+            max_participants: maxParticipants,
+            participant_count: participantCount,
+            booking_type: 'one_time',
+            booking_id: ownBooking.id,
+            booking_status: ownBooking.status,
+            student_name: ownBooking.student_name,
+            student_email: ownBooking.student_email,
+            cancel_token: ownBooking.cancel_token,
+            cancellation_reason: ownBooking.cancellation_reason ?? undefined,
+          });
+        } else if (!isFull) {
+          slots.push({
+            date: dateStr,
+            start_time: startTime,
+            end_time: endTime,
+            duration_minutes: duration,
+            state: 'available',
+            one_time_slot_id: otSlot.id,
+            title,
+            max_participants: maxParticipants,
+            participant_count: participantCount,
+          });
+        } else {
+          slots.push({
+            date: dateStr,
+            start_time: startTime,
+            end_time: endTime,
+            duration_minutes: duration,
+            state: 'unavailable',
+            one_time_slot_id: otSlot.id,
+            title,
+            max_participants: maxParticipants,
+          });
+        }
+      }
     }
-  }
-
-  // ── Teacher-created one-time slots ───────────────────────────────
-  for (const otSlot of otSlotList) {
-    const startTime = formatTime(otSlot.start_time);
-    const duration = otSlot.duration_minutes ?? 45;
-    const endTime = getEndTime(startTime, duration);
-    const dateStr = otSlot.specific_date;
-
-    // Skip if a template slot already occupies this date+time
-    const alreadyCovered = slots.some((s) => s.date === dateStr && s.start_time === startTime);
-    if (alreadyCovered) continue;
-
-    const booking = otBookingList.find(
-      (o) =>
-        o.one_time_slot_id === otSlot.id ||
-        (o.one_time_slot_id == null && o.specific_date === dateStr && formatTime(o.start_time) === startTime)
-    );
-
-    if (!booking) {
-      slots.push({ date: dateStr, start_time: startTime, end_time: endTime, duration_minutes: duration, state: 'available', one_time_slot_id: otSlot.id });
-      continue;
-    }
-
-    const otBookingGroupId = (booking as { group_id?: string | null }).group_id;
-    const isOwnBooking = (!!studentEmail && booking.student_email.toLowerCase() === studentEmail.toLowerCase())
-      || (!!otBookingGroupId && !!studentGroupIds && studentGroupIds.has(otBookingGroupId));
-    const slot: ComputedSlot = {
-      date: dateStr,
-      start_time: startTime,
-      end_time: endTime,
-      duration_minutes: duration,
-      state: forTeacher ? bookingToState(booking.status) : (isOwnBooking ? bookingToState(booking.status) : 'unavailable'),
-      one_time_slot_id: otSlot.id,
-      booking_type: 'one_time',
-      booking_id: booking.id,
-      booking_status: booking.status,
-    };
-
-    if (forTeacher || isOwnBooking) {
-      slot.student_name = booking.student_name;
-      slot.student_email = booking.student_email;
-      slot.cancel_token = booking.cancel_token;
-      slot.cancellation_reason = booking.cancellation_reason ?? undefined;
-    }
-
-    if (otBookingGroupId) {
-      slot.group_id = otBookingGroupId;
-      slot.group_name = groupNameMap.get(otBookingGroupId);
-      slot.group_member_count = groupMemberCountMap.get(otBookingGroupId);
-    }
-
-    slots.push(slot);
   }
 
   slots.sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time));

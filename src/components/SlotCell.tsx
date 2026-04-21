@@ -39,28 +39,47 @@ export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat 
         <span className="font-semibold tabular-nums">{formatTimeDisplay(slot.start_time, timeFormat)}</span>
       </div>
 
-      {isTeacher && slot.student_name && (
+      {/* Title */}
+      {slot.title && (
+        <div className="mt-0.5 ml-3 truncate font-medium text-[11px]">{slot.title}</div>
+      )}
+
+      {/* Teacher: multi-participant count */}
+      {isTeacher && (slot.max_participants ?? 1) > 1 && (
+        <div className="mt-0.5 ml-3 text-[10px] opacity-75">
+          {slot.participant_count ?? 0}/{slot.max_participants} students
+        </div>
+      )}
+
+      {/* Teacher: student name (single-participant only) */}
+      {isTeacher && slot.student_name && (slot.max_participants ?? 1) <= 1 && (
         <div className="mt-0.5 ml-3 truncate font-medium">{slot.student_name}</div>
       )}
 
-      {isTeacher && cfg.label && !slot.student_name && (
+      {/* Teacher: state label (no student, single-participant) */}
+      {isTeacher && cfg.label && !slot.student_name && (slot.max_participants ?? 1) <= 1 && (
         <div className="mt-0.5 ml-3 opacity-70">{cfg.label}</div>
       )}
 
-      {isTeacher && slot.booking_type && (
+      {/* Teacher: booking type (single-participant only) */}
+      {isTeacher && slot.booking_type && (slot.max_participants ?? 1) <= 1 && (
         <div className="mt-0.5 ml-3 opacity-60 text-[10px]">
           {slot.booking_type === 'one_time' ? 'One-time' : 'Recurring'}
         </div>
       )}
 
+      {/* Student: available slot info */}
       {!isTeacher && slot.state === 'available' && (
-        <div className="mt-0.5 ml-3 opacity-70">
-          {slot.one_time_slot_id ? 'One-time' : 'Recurring'}
+        <div className="mt-0.5 ml-3 opacity-70 text-[10px]">
+          {(slot.max_participants ?? 1) > 1
+            ? `${(slot.max_participants ?? 1) - (slot.participant_count ?? 0)} spot${(slot.max_participants ?? 1) - (slot.participant_count ?? 0) !== 1 ? 's' : ''} left`
+            : (slot.one_time_slot_id ? 'One-time' : 'Recurring')}
         </div>
       )}
 
+      {/* Student: booked state info */}
       {!isTeacher && slot.state !== 'available' && slot.state !== 'unavailable' && slot.booking_type && (
-        <div className="mt-0.5 ml-3 opacity-70">
+        <div className="mt-0.5 ml-3 opacity-70 text-[10px]">
           {slot.booking_type === 'one_time' ? 'One-time' : 'Recurring'}
         </div>
       )}

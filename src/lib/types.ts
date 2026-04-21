@@ -5,6 +5,8 @@ export interface SlotTemplate {
   duration_minutes: number;
   is_active: boolean;
   created_at: string;
+  title: string | null;
+  max_participants: number;
 }
 
 export interface OneTimeSlot {
@@ -14,6 +16,17 @@ export interface OneTimeSlot {
   duration_minutes: number;
   is_active: boolean;
   created_at: string;
+  title: string | null;
+  max_participants: number;
+}
+
+export interface ParticipantInfo {
+  booking_id: string;
+  booking_type: 'recurring' | 'one_time';
+  student_name: string;
+  student_email: string;
+  status: string;
+  cancel_token: string;
 }
 
 export interface SlotOverride {
@@ -81,6 +94,10 @@ export interface ComputedSlot {
   group_id?: string;
   group_name?: string;
   group_member_count?: number;
+  title?: string | null;
+  max_participants?: number;
+  participant_count?: number;
+  participants?: ParticipantInfo[];
 }
 
 export interface StudentGroup {

@@ -21,6 +21,8 @@ export default function TemplatesPage() {
   const [newHour, setNewHour] = useState(16);
   const [newMinute, setNewMinute] = useState(0);
   const [newDuration, setNewDuration] = useState(45);
+  const [newTitle, setNewTitle] = useState('');
+  const [newMaxParticipants, setNewMaxParticipants] = useState(1);
 
   const newTime = `${String(newHour).padStart(2, '0')}:${String(newMinute).padStart(2, '0')}`;
 
@@ -68,7 +70,7 @@ export default function TemplatesPage() {
     const res = await fetch('/api/teacher/one-time-slots', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ specific_date: newDate, start_time: newTime, duration_minutes: newDuration }),
+      body: JSON.stringify({ specific_date: newDate, start_time: newTime, duration_minutes: newDuration, title: newTitle.trim() || null, max_participants: newMaxParticipants }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -78,6 +80,8 @@ export default function TemplatesPage() {
     }
     setShowAdd(false);
     setNewDate('');
+    setNewTitle('');
+    setNewMaxParticipants(1);
     load();
   }
 
@@ -121,6 +125,16 @@ export default function TemplatesPage() {
               {showAdd && (
                 <form onSubmit={handleAddOneTime} className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 space-y-3">
                   <h3 className="text-sm font-medium text-blue-900">New one-time slot</h3>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Title (optional)</label>
+                    <input
+                      type="text"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="e.g. Group class, Piano lesson..."
+                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="block text-xs text-gray-600 mb-1">Date</label>
@@ -168,6 +182,17 @@ export default function TemplatesPage() {
                         className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
+                    <div className="w-24">
+                      <label className="block text-xs text-gray-600 mb-1">Max students</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={newMaxParticipants}
+                        onChange={(e) => setNewMaxParticipants(Math.max(1, Number(e.target.value)))}
+                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                   {addError && <p className="text-xs text-red-600">{addError}</p>}
                   <div className="flex gap-2">
@@ -191,9 +216,15 @@ export default function TemplatesPage() {
                     return (
                       <li key={s.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3">
                         <div>
-                          <span className="text-sm font-medium text-gray-900">{s.specific_date}</span>
-                          <span className="text-sm text-gray-500 ml-2">{formatTimeDisplay(start, settings.time_format)} – {formatTimeDisplay(end, settings.time_format)}</span>
-                          <span className="text-xs text-gray-400 ml-2">({s.duration_minutes ?? 45} min)</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">{s.specific_date}</span>
+                            <span className="text-sm text-gray-500">{formatTimeDisplay(start, settings.time_format)} – {formatTimeDisplay(end, settings.time_format)}</span>
+                            <span className="text-xs text-gray-400">({s.duration_minutes ?? 45} min)</span>
+                            {(s.max_participants ?? 1) > 1 && (
+                              <span className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">{s.max_participants} max</span>
+                            )}
+                          </div>
+                          {s.title && <div className="text-xs text-gray-500 mt-0.5">{s.title}</div>}
                         </div>
                         <button onClick={() => deleteOneTimeSlot(s.id)} className="text-xs text-red-500 hover:text-red-700 underline">
                           Delete

@@ -37,8 +37,9 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
   const [payingStudentId, setPayingStudentId] = useState<string | null>(null);
 
   const dayOfWeek = parseISO(slot.date).getDay();
-  const hasBooking = !!slot.booking_id && !!slot.booking_type;
-  const isGroupBooking = !!slot.group_id;
+  const isMultiParticipant = (slot.max_participants ?? 1) > 1;
+  const hasBooking = !!slot.booking_id && !!slot.booking_type && !isMultiParticipant;
+  const isGroupBooking = !!slot.group_id && !isMultiParticipant;
   const showGroupPayments = isGroupBooking && ['completed', 'paid'].includes(slot.state);
 
   useEffect(() => {
@@ -112,6 +113,18 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
     loadNotes();
   }
 
+  async function patchParticipant(bookingId: string, bookingType: 'recurring' | 'one_time', action: string) {
+    setLoading(true);
+    const res = await fetch(`/api/bookings/${bookingId}?type=${bookingType}&action=${action}`, { method: 'PATCH' });
+    setLoading(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Action failed. Please try again.');
+      return;
+    }
+    onAction();
+  }
+
   async function patchBooking(action: 'approve' | 'reject' | 'cancel' | 'complete' | 'pay' | 'approve-cancellation', endDate?: string) {
     if (!slot.booking_id || !slot.booking_type) return;
     setLoading(true);
@@ -153,6 +166,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
               {formatTimeDisplay(slot.start_time, timeFormat)} – {formatTimeDisplay(slot.end_time, timeFormat)}
             </div>
             <div className="text-sm text-gray-500 mt-0.5">{formatDisplayDateLong(slot.date)}</div>
+            {slot.title && <div className="text-sm font-semibold text-gray-800 mt-0.5">{slot.title}</div>}
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-xl transition-colors">
             &times;
@@ -188,8 +202,83 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
+          {/* Multi-participant: participant list */}
+          {isMultiParticipant && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Participants</h3>
+                <span className="text-xs text-gray-400">{slot.participant_count ?? 0} / {slot.max_participants}</span>
+              </div>
+
+              {(!slot.participants || slot.participants.length === 0) ? (
+                <p className="text-sm text-gray-400 text-center py-3">No participants yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {slot.participants.map((p) => {
+                    const BADGE: Record<string, { bg: string; text: string; label: string }> = {
+                      pending: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Pending' },
+                      approved: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Approved' },
+                      completed: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Done' },
+                      paid: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Paid' },
+                      rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
+                      cancellation_requested: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Cancel req.' },
+                      cancelled: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Cancelled' },
+                    };
+                    const badge = BADGE[p.status] ?? BADGE.cancelled;
+                    return (
+                      <div key={p.booking_id} className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{p.student_name}</p>
+                            <p className="text-xs text-gray-500 truncate">{p.student_email}</p>
+                          </div>
+                          <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>{badge.label}</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {p.status === 'pending' && (
+                            <>
+                              <button onClick={() => patchParticipant(p.booking_id, p.booking_type, 'approve')} disabled={loading}
+                                className="text-xs px-2 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">Approve</button>
+                              <button onClick={() => patchParticipant(p.booking_id, p.booking_type, 'reject')} disabled={loading}
+                                className="text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">Reject</button>
+                            </>
+                          )}
+                          {p.status === 'approved' && (
+                            <button onClick={() => patchParticipant(p.booking_id, p.booking_type, 'complete')} disabled={loading}
+                              className="text-xs px-2 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50">Mark done</button>
+                          )}
+                          {p.status === 'completed' && (
+                            <button onClick={() => patchParticipant(p.booking_id, p.booking_type, 'pay')} disabled={loading}
+                              className="text-xs px-2 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">Mark paid</button>
+                          )}
+                          {['pending', 'approved', 'completed'].includes(p.status) && (
+                            <button onClick={() => patchParticipant(p.booking_id, p.booking_type, 'cancel')} disabled={loading}
+                              className="text-xs px-2 py-1 border border-red-200 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50">Cancel</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add student if not full */}
+              {(slot.participant_count ?? 0) < (slot.max_participants ?? 1) && !showBookForm && (
+                <button onClick={() => setShowBookForm(true)}
+                  className="mt-3 w-full py-2.5 px-4 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+                  + Add student
+                </button>
+              )}
+              {(slot.participant_count ?? 0) < (slot.max_participants ?? 1) && showBookForm && (
+                <div className="mt-3">
+                  <DirectBookForm slot={slot} onCancel={() => setShowBookForm(false)} onDone={onAction} />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Actions */}
-          {slot.state === 'available' && !showBookForm && (
+          {!isMultiParticipant && slot.state === 'available' && !showBookForm && (
             <div className="space-y-2">
               <button onClick={() => setShowBookForm(true)}
                 className="w-full py-2.5 px-4 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -202,7 +291,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {slot.state === 'available' && showBookForm && (
+          {!isMultiParticipant && slot.state === 'available' && showBookForm && (
             <DirectBookForm slot={slot} onCancel={() => setShowBookForm(false)} onDone={onAction} />
           )}
 
@@ -213,7 +302,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </button>
           )}
 
-          {slot.state === 'pending' && (
+          {!isMultiParticipant && slot.state === 'pending' && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('approve')} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
@@ -226,7 +315,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {slot.state === 'confirmed' && (
+          {!isMultiParticipant && slot.state === 'confirmed' && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('complete')} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
@@ -239,7 +328,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {slot.state === 'completed' && !isGroupBooking && (
+          {!isMultiParticipant && slot.state === 'completed' && !isGroupBooking && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('pay')} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -256,7 +345,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {slot.state === 'cancellation_requested' && (
+          {!isMultiParticipant && slot.state === 'cancellation_requested' && (
             <div className="space-y-3">
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-sm text-orange-800">
                 <p className="font-medium">Student requested cancellation</p>
@@ -273,7 +362,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {slot.state === 'paid' && !isGroupBooking && (
+          {!isMultiParticipant && slot.state === 'paid' && !isGroupBooking && (
             <div className="space-y-2">
               <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center font-medium">
                 Paid

@@ -19,6 +19,8 @@ export default function TemplateManager({ templates, onUpdate, defaultDuration =
   const [newHour, setNewHour] = useState(16);
   const [newMinute, setNewMinute] = useState(0);
   const [newDuration, setNewDuration] = useState(defaultDuration);
+  const [newTitle, setNewTitle] = useState('');
+  const [newMaxParticipants, setNewMaxParticipants] = useState(1);
 
   const newTime = `${String(newHour).padStart(2, '0')}:${String(newMinute).padStart(2, '0')}`;
 
@@ -50,7 +52,7 @@ export default function TemplateManager({ templates, onUpdate, defaultDuration =
     const res = await fetch('/api/templates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ day_of_week: newDay, start_time: newTime, duration_minutes: newDuration }),
+      body: JSON.stringify({ day_of_week: newDay, start_time: newTime, duration_minutes: newDuration, title: newTitle.trim() || null, max_participants: newMaxParticipants }),
     });
 
     setSaving(false);
@@ -62,6 +64,8 @@ export default function TemplateManager({ templates, onUpdate, defaultDuration =
     }
 
     setShowAdd(false);
+    setNewTitle('');
+    setNewMaxParticipants(1);
     onUpdate();
   }
 
@@ -86,6 +90,17 @@ export default function TemplateManager({ templates, onUpdate, defaultDuration =
       {showAdd && (
         <form onSubmit={handleAdd} className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 space-y-3">
           <h3 className="text-sm font-medium text-blue-900">New recurring slot</h3>
+
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Title (optional)</label>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="e.g. Group class, Piano lesson..."
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
           <div className="flex gap-3">
             <div className="flex-1">
@@ -137,6 +152,18 @@ export default function TemplateManager({ templates, onUpdate, defaultDuration =
                 className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            <div className="w-24">
+              <label className="block text-xs text-gray-600 mb-1">Max students</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={newMaxParticipants}
+                onChange={(e) => setNewMaxParticipants(Math.max(1, Number(e.target.value)))}
+                className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           {addError && <p className="text-xs text-red-600">{addError}</p>}
@@ -162,9 +189,15 @@ export default function TemplateManager({ templates, onUpdate, defaultDuration =
             return (
               <li key={t.id} className="flex items-center justify-between rounded-lg border px-4 py-3 bg-white border-gray-200">
                 <div>
-                  <span className="text-sm font-medium text-gray-900">{DAY_NAMES[t.day_of_week]}</span>
-                  <span className="text-sm text-gray-500 ml-2">{formatTimeDisplay(start, timeFormat)} – {formatTimeDisplay(end, timeFormat)}</span>
-                  <span className="text-xs text-gray-400 ml-2">({t.duration_minutes ?? 45} min)</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900">{DAY_NAMES[t.day_of_week]}</span>
+                    <span className="text-sm text-gray-500">{formatTimeDisplay(start, timeFormat)} – {formatTimeDisplay(end, timeFormat)}</span>
+                    <span className="text-xs text-gray-400">({t.duration_minutes ?? 45} min)</span>
+                    {(t.max_participants ?? 1) > 1 && (
+                      <span className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">{t.max_participants} max</span>
+                    )}
+                  </div>
+                  {t.title && <div className="text-xs text-gray-500 mt-0.5">{t.title}</div>}
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => deleteTemplate(t.id)} className="text-xs text-red-500 hover:text-red-700 underline">

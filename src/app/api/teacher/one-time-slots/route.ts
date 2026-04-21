@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
 
-  const { specific_date, start_time, duration_minutes } = await request.json();
+  const { specific_date, start_time, duration_minutes, title, max_participants } = await request.json();
   if (!specific_date || !start_time) {
     return NextResponse.json({ error: 'Date and start time are required' }, { status: 400 });
   }
@@ -37,7 +37,14 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('one_time_slots')
-    .insert({ specific_date, start_time, duration_minutes: duration_minutes ?? 45, teacher_id: auth.user.id })
+    .insert({
+      specific_date,
+      start_time,
+      duration_minutes: duration_minutes ?? 45,
+      teacher_id: auth.user.id,
+      title: title?.trim() || null,
+      max_participants: max_participants ?? 1,
+    })
     .select()
     .single();
 
