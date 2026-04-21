@@ -58,7 +58,8 @@ export default function ResetPasswordPage() {
     if (error) { setError(error.message); return; }
 
     setPageState('done');
-    setTimeout(() => router.replace('/teacher/login'), 2500);
+    await supabase.auth.signOut();
+    setTimeout(() => router.replace('/teacher/login'), 2000);
   }
 
   return (
