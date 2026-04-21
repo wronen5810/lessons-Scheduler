@@ -35,17 +35,12 @@ export default function TeacherDashboard() {
   const { settings, save: saveSettings } = useTeacherSettings();
 
   useEffect(() => {
-    const supabase = createBrowserSupabase();
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      setTeacherId(data.user.id);
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', data.user.id)
-        .single();
-      if (profile?.display_name) setTeacherName(profile.display_name);
+    createBrowserSupabase().auth.getUser().then(({ data }) => {
+      if (data.user) setTeacherId(data.user.id);
     });
+    fetch('/api/teacher/me/subscription').then(r => r.json()).then(data => {
+      if (data.teacher?.name) setTeacherName(data.teacher.name);
+    }).catch(() => {});
   }, []);
   const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
   const [month, setMonth] = useState(() => getMonthStr(today));
