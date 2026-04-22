@@ -126,17 +126,25 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: question.trim() }],
-  });
+  let raw = '';
+  try {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: question.trim() }],
+    });
+    raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `AI error: ${msg}` }, { status: 502 });
+  }
 
-  const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+  // Strip markdown code fences if present
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(cleaned);
     return NextResponse.json(parsed);
   } catch {
     return NextResponse.json({ type: 'help', title: 'Answer', steps: [{ text: raw }] });

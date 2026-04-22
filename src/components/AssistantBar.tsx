@@ -69,12 +69,12 @@ export default function AssistantBar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question }),
       });
+      const d = await res.json().catch(() => null);
       if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        setError(d.error || 'Something went wrong. Please try again.');
+        setError(d?.error || `Error ${res.status} — please try again.`);
         return;
       }
-      setResponse(await res.json());
+      setResponse(d);
       setQuestion('');
     } catch {
       setError('Network error. Please try again.');
