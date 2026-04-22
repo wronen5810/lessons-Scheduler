@@ -94,7 +94,7 @@ export default function TemplatesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-4">
-        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">&larr; Back</Link>
+        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">&larr; Dashboard</Link>
         <h1 className="text-lg font-semibold text-gray-900">Manage Slots</h1>
       </header>
 

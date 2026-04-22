@@ -123,7 +123,7 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">Send Message</h1>
-        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">← Schedule</Link>
+        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">← Dashboard</Link>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

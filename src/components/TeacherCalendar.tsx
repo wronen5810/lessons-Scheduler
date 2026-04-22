@@ -10,14 +10,16 @@ interface Props {
   weekStarts: string[];
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
+  onAddSlot?: (date: string) => void;
   timeFormat?: '24h' | '12h';
 }
 
-function WeekRow({ weekStart, slots, today, onSelectSlot, timeFormat = '24h' }: {
+function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat = '24h' }: {
   weekStart: string;
   slots: ComputedSlot[];
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
+  onAddSlot?: (date: string) => void;
   timeFormat?: '24h' | '12h';
 }) {
   const days = Array.from({ length: 7 }, (_, i) => formatDate(addDays(parseISO(weekStart), i)));
@@ -32,12 +34,19 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, timeFormat = '24h' }: 
 
         return (
           <div key={date}>
-            <div className="flex flex-col items-center mb-2 pb-2 border-b border-gray-100">
+            <div className="flex flex-col items-center mb-2 pb-2 border-b border-gray-100 relative">
               <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{DAY_NAMES_SHORT[i]}</span>
               <span className={`mt-0.5 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold
                 ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700'}`}>
                 {dayNum}
               </span>
+              {onAddSlot && (
+                <button
+                  onClick={() => onAddSlot(date)}
+                  className="absolute -bottom-0.5 right-0 w-4 h-4 flex items-center justify-center text-gray-300 hover:text-blue-500 text-sm leading-none transition-colors"
+                  title="Add slot"
+                >+</button>
+              )}
             </div>
 
             {daySlots.length === 0 ? (
@@ -60,7 +69,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, timeFormat = '24h' }: 
   );
 }
 
-export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, timeFormat = '24h' }: Props) {
+export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, onAddSlot, timeFormat = '24h' }: Props) {
   return (
     <div className="space-y-6">
       {weekStarts.map((weekStart) => (
@@ -70,6 +79,7 @@ export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot
             slots={slots}
             today={today}
             onSelectSlot={onSelectSlot}
+            onAddSlot={onAddSlot}
             timeFormat={timeFormat}
           />
         </div>

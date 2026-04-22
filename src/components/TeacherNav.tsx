@@ -96,9 +96,9 @@ export default function TeacherNav({ title }: { title?: string }) {
   return (
     <>
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-        <h1 className="text-lg font-bold text-gray-900 tracking-tight">{title ?? t('teacher.schedule')}</h1>
+        <Link href="/teacher" className="text-lg font-bold text-gray-900 tracking-tight hover:text-blue-600 transition-colors">{title ?? 'Lessons Scheduler'}</Link>
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
-          <Link href="/teacher" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.schedule')}</Link>
+          <Link href="/teacher/schedule" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.schedule')}</Link>
           <Link href="/teacher/students" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('common.students')}</Link>
           <Link href="/teacher/templates" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.slots')}</Link>
           {features.billing && <Link href="/teacher/billing" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.billing')}</Link>}

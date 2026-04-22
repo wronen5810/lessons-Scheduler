@@ -35,6 +35,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
     billing:  settings.features?.billing  ?? true,
     messages: settings.features?.messages ?? true,
     groups:   settings.features?.groups   ?? true,
+    notebook: settings.features?.notebook ?? true,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -113,6 +114,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
               { key: 'billing',  label: 'Billing',   desc: 'Billing page in menu' },
               { key: 'messages', label: 'Messages',  desc: 'Messages page in menu' },
               { key: 'groups',   label: 'Groups',    desc: 'Groups tab in student screen' },
+              { key: 'notebook', label: 'Notebook',  desc: 'Student notebook (tasks, notes, resources, grades)' },
             ] as { key: keyof TeacherFeatures; label: string; desc: string }[]).map(({ key, label, desc }) => (
               <label key={key} className="flex items-center gap-3 cursor-pointer">
                 <input

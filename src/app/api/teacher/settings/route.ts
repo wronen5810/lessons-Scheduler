@@ -7,12 +7,14 @@ export interface TeacherFeatures {
   billing: boolean;
   messages: boolean;
   groups: boolean;
+  notebook: boolean;
 }
 
 const DEFAULT_FEATURES: TeacherFeatures = {
   billing: true,
   messages: true,
   groups: true,
+  notebook: true,
 };
 
 function mergeFeatures(raw: unknown): TeacherFeatures {
@@ -21,6 +23,7 @@ function mergeFeatures(raw: unknown): TeacherFeatures {
     billing:  f.billing  ?? DEFAULT_FEATURES.billing,
     messages: f.messages ?? DEFAULT_FEATURES.messages,
     groups:   f.groups   ?? DEFAULT_FEATURES.groups,
+    notebook: f.notebook ?? DEFAULT_FEATURES.notebook,
   };
 }
 

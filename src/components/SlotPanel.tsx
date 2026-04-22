@@ -30,6 +30,12 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
   const [addingNote, setAddingNote] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelEndDate, setCancelEndDate] = useState(slot.date);
+  const [showEditSlot, setShowEditSlot] = useState(false);
+  const [editSlotTime, setEditSlotTime] = useState(slot.start_time.slice(0, 5));
+  const [editSlotDuration, setEditSlotDuration] = useState(slot.duration_minutes ?? 45);
+  const [editSlotTitle, setEditSlotTitle] = useState(slot.title ?? '');
+  const [editSlotMax, setEditSlotMax] = useState(slot.max_participants ?? 1);
+  const [editSlotSaving, setEditSlotSaving] = useState(false);
 
   // Group payment state
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
@@ -137,6 +143,30 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
       return;
     }
     onAction();
+  }
+
+  async function saveSlotEdit() {
+    if (!slot.one_time_slot_id) return;
+    setEditSlotSaving(true);
+    await fetch(`/api/teacher/one-time-slots/${slot.one_time_slot_id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_time: editSlotTime, duration_minutes: editSlotDuration, title: editSlotTitle.trim() || null, max_participants: editSlotMax }),
+    });
+    setEditSlotSaving(false);
+    setShowEditSlot(false);
+    onAction();
+    onClose();
+  }
+
+  async function deleteSlot() {
+    if (!slot.one_time_slot_id) return;
+    if (!confirm('Delete this slot?')) return;
+    setLoading(true);
+    await fetch(`/api/teacher/one-time-slots/${slot.one_time_slot_id}`, { method: 'DELETE' });
+    setLoading(false);
+    onAction();
+    onClose();
   }
 
   async function toggleOverride(block: boolean) {
@@ -278,16 +308,66 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
           )}
 
           {/* Actions */}
-          {!isMultiParticipant && slot.state === 'available' && !showBookForm && (
+          {!isMultiParticipant && slot.state === 'available' && !showBookForm && !showEditSlot && (
             <div className="space-y-2">
               <button onClick={() => setShowBookForm(true)}
                 className="w-full py-2.5 px-4 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
                 Book for student
               </button>
-              <button onClick={() => toggleOverride(true)} disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors">
-                Block this slot
-              </button>
+              {slot.template_id && !slot.one_time_slot_id && (
+                <button onClick={() => toggleOverride(true)} disabled={loading}
+                  className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                  Block this slot
+                </button>
+              )}
+              {slot.one_time_slot_id && (
+                <>
+                  <button onClick={() => setShowEditSlot(true)}
+                    className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors">
+                    Edit slot
+                  </button>
+                  <button onClick={deleteSlot} disabled={loading}
+                    className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
+                    Delete slot
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {!isMultiParticipant && slot.state === 'available' && showEditSlot && (
+            <div className="space-y-3 bg-gray-50 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-gray-700">Edit slot</h3>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Start time</label>
+                <input type="time" value={editSlotTime} onChange={(e) => setEditSlotTime(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Duration (min)</label>
+                <input type="number" min={15} max={180} step={5} value={editSlotDuration} onChange={(e) => setEditSlotDuration(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Title (optional)</label>
+                <input type="text" value={editSlotTitle} onChange={(e) => setEditSlotTitle(e.target.value)} placeholder="e.g. Piano lesson..."
+                  className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Max students</label>
+                <input type="number" min={1} max={100} value={editSlotMax} onChange={(e) => setEditSlotMax(Math.max(1, Number(e.target.value)))}
+                  className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={saveSlotEdit} disabled={editSlotSaving}
+                  className="flex-1 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {editSlotSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={() => setShowEditSlot(false)}
+                  className="flex-1 py-2 border border-gray-300 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 

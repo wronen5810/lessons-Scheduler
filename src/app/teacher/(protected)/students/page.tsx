@@ -205,7 +205,7 @@ export default function StudentsPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">Students</h1>
-        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">← Schedule</Link>
+        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">← Dashboard</Link>
       </header>
 
       {/* Tab switcher */}
@@ -287,10 +287,12 @@ export default function StudentsPage() {
                       className="text-xs text-purple-600 hover:text-purple-800 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
                       Notes
                     </button>
-                    <button onClick={() => setNotebookStudent(student)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">
-                      Notebook
-                    </button>
+                    {settings.features.notebook && (
+                      <button onClick={() => setNotebookStudent(student)}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                        Notebook
+                      </button>
+                    )}
                     <button onClick={() => openLoginHistory(student)}
                       className="text-xs text-teal-600 hover:text-teal-800 px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 transition-colors">
                       Logins
@@ -373,10 +375,12 @@ export default function StudentsPage() {
                       >
                         Members
                       </button>
-                      <button onClick={() => setNotebookGroup({ ...group })}
-                        className="text-xs text-violet-600 hover:text-violet-800 px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors">
-                        Notebook
-                      </button>
+                      {settings.features.notebook && (
+                        <button onClick={() => setNotebookGroup({ ...group })}
+                          className="text-xs text-violet-600 hover:text-violet-800 px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors">
+                          Notebook
+                        </button>
+                      )}
                       <button onClick={() => setEditingGroup({ ...group })}
                         className="text-xs text-blue-600 hover:text-blue-800 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
                         Edit
@@ -624,7 +628,7 @@ export default function StudentsPage() {
       )}
 
       {/* Group Notebook modal */}
-      {notebookGroup && (
+      {notebookGroup && settings.features.notebook && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -648,7 +652,7 @@ export default function StudentsPage() {
       )}
 
       {/* Notebook modal */}
-      {notebookStudent && teacherId && (
+      {notebookStudent && teacherId && settings.features.notebook && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
