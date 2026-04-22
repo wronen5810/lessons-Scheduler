@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { TeacherSettings } from '@/app/api/teacher/settings/route';
+import type { TeacherSettings, TeacherFeatures } from '@/app/api/teacher/settings/route';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   type NotificationChannels,
@@ -31,6 +31,10 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
     ...DEFAULT_NOTIFICATION_PREFERENCES,
     ...settings.notification_preferences,
   });
+  const [features, setFeatures] = useState<TeacherFeatures>({
+    billing: true, messages: true, groups: true,
+    ...settings.features,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -48,6 +52,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
       default_duration_minutes: duration,
       time_format: timeFormat,
       notification_preferences: prefs,
+      features,
     });
     setSaving(false);
     if ('error' in result) {
@@ -95,6 +100,29 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
               <input type="radio" name="timeFormat" value="12h" checked={timeFormat === '12h'} onChange={() => setTimeFormat('12h')} className="accent-blue-600" />
               <span className="text-sm text-gray-700">12-hour <span className="text-gray-400">(2:30 PM)</span></span>
             </label>
+          </div>
+        </div>
+
+        {/* Features */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Features</label>
+          <p className="text-xs text-gray-400 mb-3">Hide features you don't need from the menu and student screen.</p>
+          <div className="space-y-2">
+            {([
+              { key: 'billing',  label: 'Billing',   desc: 'Billing page in menu' },
+              { key: 'messages', label: 'Messages',  desc: 'Messages page in menu' },
+              { key: 'groups',   label: 'Groups',    desc: 'Groups tab in student screen' },
+            ] as { key: keyof TeacherFeatures; label: string; desc: string }[]).map(({ key, label, desc }) => (
+              <label key={key} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={features[key]}
+                  onChange={(e) => setFeatures((f) => ({ ...f, [key]: e.target.checked }))}
+                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                />
+                <span className="text-sm text-gray-800">{label} <span className="text-xs text-gray-400">— {desc}</span></span>
+              </label>
+            ))}
           </div>
         </div>
 

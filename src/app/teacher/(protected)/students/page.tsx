@@ -7,6 +7,7 @@ import StudentNotebook from '@/components/StudentNotebook';
 import GroupNotebook from '@/components/GroupNotebook';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import type { StudentGroup, GroupMember } from '@/lib/types';
+import { useTeacherSettings } from '@/lib/useTeacherSettings';
 
 interface Student {
   id: string;
@@ -20,6 +21,7 @@ interface Student {
 }
 
 export default function StudentsPage() {
+  const { settings } = useTeacherSettings();
   const [tab, setTab] = useState<'students' | 'groups'>('students');
 
   // ── Students state ───────────────────────────────────────────────
@@ -209,10 +211,10 @@ export default function StudentsPage() {
       {/* Tab switcher */}
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6">
         <div className="flex gap-0 max-w-3xl mx-auto">
-          {(['students', 'groups'] as const).map((t) => (
+          {(['students', ...(settings.features.groups ? ['groups'] : [])] as const).map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => setTab(t as 'students' | 'groups')}
               className={`py-2.5 px-4 text-sm font-medium border-b-2 transition-colors capitalize ${
                 tab === t
                   ? 'border-blue-600 text-blue-600'

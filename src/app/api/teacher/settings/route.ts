@@ -3,16 +3,39 @@ import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { DEFAULT_NOTIFICATION_PREFERENCES, mergePrefs, type NotificationPreferences } from '@/lib/notifications';
 
+export interface TeacherFeatures {
+  billing: boolean;
+  messages: boolean;
+  groups: boolean;
+}
+
+const DEFAULT_FEATURES: TeacherFeatures = {
+  billing: true,
+  messages: true,
+  groups: true,
+};
+
+function mergeFeatures(raw: unknown): TeacherFeatures {
+  const f = (raw && typeof raw === 'object' ? raw : {}) as Partial<TeacherFeatures>;
+  return {
+    billing:  f.billing  ?? DEFAULT_FEATURES.billing,
+    messages: f.messages ?? DEFAULT_FEATURES.messages,
+    groups:   f.groups   ?? DEFAULT_FEATURES.groups,
+  };
+}
+
 export interface TeacherSettings {
   default_duration_minutes: number;
   time_format: '24h' | '12h';
   notification_preferences: NotificationPreferences;
+  features: TeacherFeatures;
 }
 
 const DEFAULTS: TeacherSettings = {
   default_duration_minutes: 45,
   time_format: '24h',
   notification_preferences: DEFAULT_NOTIFICATION_PREFERENCES,
+  features: DEFAULT_FEATURES,
 };
 
 export async function GET() {
@@ -22,7 +45,7 @@ export async function GET() {
   const supabase = createServiceSupabase();
   const { data } = await supabase
     .from('teacher_settings')
-    .select('default_duration_minutes, time_format, notification_preferences')
+    .select('default_duration_minutes, time_format, notification_preferences, features')
     .eq('teacher_id', auth.user.id)
     .single();
 
@@ -31,6 +54,7 @@ export async function GET() {
   return NextResponse.json({
     ...data,
     notification_preferences: mergePrefs(data.notification_preferences),
+    features: mergeFeatures(data.features),
   });
 }
 
@@ -60,16 +84,21 @@ export async function PATCH(request: NextRequest) {
     update.notification_preferences = mergePrefs(body.notification_preferences);
   }
 
+  if (body.features !== undefined) {
+    update.features = mergeFeatures(body.features);
+  }
+
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('teacher_settings')
     .upsert({ teacher_id: auth.user.id, ...update, updated_at: new Date().toISOString() })
-    .select('default_duration_minutes, time_format, notification_preferences')
+    .select('default_duration_minutes, time_format, notification_preferences, features')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({
     ...data,
     notification_preferences: mergePrefs(data.notification_preferences),
+    features: mergeFeatures(data.features),
   });
 }

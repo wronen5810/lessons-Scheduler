@@ -1,0 +1,2 @@
+ALTER TABLE teacher_settings
+  ADD COLUMN IF NOT EXISTS features JSONB NOT NULL DEFAULT '{}';

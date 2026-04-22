@@ -7,6 +7,7 @@ import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 import { toSlug } from '@/lib/slug';
+import { useTeacherSettings } from '@/lib/useTeacherSettings';
 
 function ShareLinkModal({ teacherId, teacherName, onClose }: { teacherId: string; teacherName: string; onClose: () => void }) {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://lessons-scheduler.com';
@@ -71,6 +72,8 @@ function ShareLinkModal({ teacherId, teacherName, onClose }: { teacherId: string
 export default function TeacherNav({ title }: { title?: string }) {
   const router = useRouter();
   const { t } = useLanguage();
+  const { settings } = useTeacherSettings();
+  const features = settings.features;
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('');
   const [showShareLink, setShowShareLink] = useState(false);
@@ -98,8 +101,8 @@ export default function TeacherNav({ title }: { title?: string }) {
           <Link href="/teacher" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.schedule')}</Link>
           <Link href="/teacher/students" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('common.students')}</Link>
           <Link href="/teacher/templates" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.slots')}</Link>
-          <Link href="/teacher/billing" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.billing')}</Link>
-          <Link href="/teacher/messages" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.messages')}</Link>
+          {features.billing && <Link href="/teacher/billing" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.billing')}</Link>}
+          {features.messages && <Link href="/teacher/messages" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.messages')}</Link>}
           <button onClick={() => setShowShareLink(true)} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.shareLink')}</button>
           <LanguageToggle />
           <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('common.signOut')}</button>
