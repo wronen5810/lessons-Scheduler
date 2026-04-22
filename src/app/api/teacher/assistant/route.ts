@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SYSTEM_PROMPT = `You are a help assistant for "Lessons Scheduler", a web app for teachers to manage their lesson schedule, students, and bookings.
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json({ error: 'Assistant not configured' }, { status: 503 });
   }
 
@@ -124,17 +124,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Question is required' }, { status: 400 });
   }
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: SYSTEM_PROMPT,
+  });
 
   let raw = '';
   try {
-    const response = await client.messages.create({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: question.trim() }],
-    });
-    raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+    const result = await model.generateContent(question.trim());
+    raw = result.response.text().trim();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `AI error: ${msg}` }, { status: 502 });
