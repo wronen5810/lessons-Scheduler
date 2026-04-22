@@ -100,7 +100,6 @@ export default function TeacherNav({ title }: { title?: string }) {
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
           <Link href="/teacher/schedule" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.schedule')}</Link>
           <Link href="/teacher/students" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('common.students')}</Link>
-          <Link href="/teacher/templates" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.slots')}</Link>
           {features.billing && <Link href="/teacher/billing" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.billing')}</Link>}
           {features.messages && <Link href="/teacher/messages" className="text-sm text-slate-600 hover:text-blue-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.messages')}</Link>}
           <button onClick={() => setShowShareLink(true)} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">{t('teacher.shareLink')}</button>
