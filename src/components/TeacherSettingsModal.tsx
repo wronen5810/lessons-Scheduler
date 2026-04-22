@@ -32,8 +32,9 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
     ...settings.notification_preferences,
   });
   const [features, setFeatures] = useState<TeacherFeatures>({
-    billing: true, messages: true, groups: true,
-    ...settings.features,
+    billing:  settings.features?.billing  ?? true,
+    messages: settings.features?.messages ?? true,
+    groups:   settings.features?.groups   ?? true,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
