@@ -146,13 +146,13 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
   }
 
   async function saveSlotEdit() {
-    if (!slot.one_time_slot_id) return;
     setEditSlotSaving(true);
-    await fetch(`/api/teacher/one-time-slots/${slot.one_time_slot_id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start_time: editSlotTime, duration_minutes: editSlotDuration, title: editSlotTitle.trim() || null, max_participants: editSlotMax }),
-    });
+    const body = JSON.stringify({ start_time: editSlotTime, duration_minutes: editSlotDuration, title: editSlotTitle.trim() || null, max_participants: editSlotMax });
+    if (slot.one_time_slot_id) {
+      await fetch(`/api/teacher/one-time-slots/${slot.one_time_slot_id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body });
+    } else if (slot.template_id) {
+      await fetch(`/api/templates/${slot.template_id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body });
+    }
     setEditSlotSaving(false);
     setShowEditSlot(false);
     onAction();
@@ -160,10 +160,17 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
   }
 
   async function deleteSlot() {
-    if (!slot.one_time_slot_id) return;
-    if (!confirm('Delete this slot?')) return;
+    const isRecurring = !slot.one_time_slot_id && !!slot.template_id;
+    const msg = isRecurring
+      ? 'Delete this recurring slot? All future occurrences will be removed from the schedule.'
+      : 'Delete this slot?';
+    if (!confirm(msg)) return;
     setLoading(true);
-    await fetch(`/api/teacher/one-time-slots/${slot.one_time_slot_id}`, { method: 'DELETE' });
+    if (slot.one_time_slot_id) {
+      await fetch(`/api/teacher/one-time-slots/${slot.one_time_slot_id}`, { method: 'DELETE' });
+    } else if (slot.template_id) {
+      await fetch(`/api/templates/${slot.template_id}`, { method: 'DELETE' });
+    }
     setLoading(false);
     onAction();
     onClose();
@@ -320,7 +327,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
                   Block this slot
                 </button>
               )}
-              {slot.one_time_slot_id && (
+              {(slot.one_time_slot_id || slot.template_id) && (
                 <>
                   <button onClick={() => setShowEditSlot(true)}
                     className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors">
@@ -328,7 +335,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
                   </button>
                   <button onClick={deleteSlot} disabled={loading}
                     className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
-                    Delete slot
+                    {slot.template_id && !slot.one_time_slot_id ? 'Delete recurring slot' : 'Delete slot'}
                   </button>
                 </>
               )}
