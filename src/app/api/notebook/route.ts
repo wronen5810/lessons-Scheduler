@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
   }).filter(Boolean) as { group_id: string; group_name: string }[];
 
   let groupItems: unknown[] = [];
-  if (groupRows.length > 0) {
+  if (groupRows.length > 0 && GROUP_TABLE_MAP[type]) {
     const groupIds = groupRows.map((g) => g.group_id);
     const groupNameById = new Map(groupRows.map((g) => [g.group_id, g.group_name]));
 
