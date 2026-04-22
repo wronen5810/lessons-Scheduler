@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 const SYSTEM_PROMPT = `You are a help assistant for "Lessons Scheduler", a web app for teachers to manage their lesson schedule, students, and bookings.
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
 
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json({ error: 'Assistant not configured' }, { status: 503 });
   }
 
@@ -124,16 +124,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Question is required' }, { status: 400 });
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-lite',
-    systemInstruction: SYSTEM_PROMPT,
-  });
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   let raw = '';
   try {
-    const result = await model.generateContent(question.trim());
-    raw = result.response.text().trim();
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: question.trim() },
+      ],
+      temperature: 0.2,
+    });
+    raw = completion.choices[0]?.message?.content?.trim() ?? '';
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `AI error: ${msg}` }, { status: 502 });
