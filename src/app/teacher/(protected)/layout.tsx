@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import SessionGuard from '@/components/SessionGuard';
 import NoSubscriptionMessage from '@/components/NoSubscriptionMessage';
 import TeacherNav from '@/components/TeacherNav';
+import AssistantBar from '@/components/AssistantBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,7 @@ export default async function TeacherProtectedLayout({ children }: { children: R
     <SessionGuard loginPath="/teacher/login">
       <div className="min-h-screen bg-slate-50">
         <TeacherNav />
+        <AssistantBar />
         {children}
       </div>
     </SessionGuard>
