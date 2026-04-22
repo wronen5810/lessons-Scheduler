@@ -6,6 +6,7 @@ const TABLE_MAP: Record<string, string> = {
   homework: 'notebook_homework',
   notes: 'notebook_notes',
   resources: 'notebook_resources',
+  grades: 'notebook_grades',
 };
 
 async function resolveIdentity(

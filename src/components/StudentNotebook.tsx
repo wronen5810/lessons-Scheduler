@@ -30,7 +30,15 @@ interface ResourceEntry {
   group_name?: string;
 }
 
-type Tab = 'homework' | 'notes' | 'resources';
+interface GradeEntry {
+  id: string;
+  test_date: string;
+  grade: string;
+  comments: string | null;
+  created_at: string;
+}
+
+type Tab = 'homework' | 'notes' | 'resources' | 'grades';
 
 interface Props {
   teacherId: string;
@@ -47,6 +55,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
   const [homework, setHomework] = useState<HomeworkEntry[]>([]);
   const [notes, setNotes] = useState<NoteEntry[]>([]);
   const [resources, setResources] = useState<ResourceEntry[]>([]);
+  const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Edit state
@@ -65,20 +74,27 @@ export default function StudentNotebook({ teacherId, email }: Props) {
   const [newResDesc, setNewResDesc] = useState('');
   const [newResUrl, setNewResUrl] = useState('');
 
+  const [addingGrade, setAddingGrade] = useState(false);
+  const [newGradeDate, setNewGradeDate] = useState('');
+  const [newGradeValue, setNewGradeValue] = useState('');
+  const [newGradeComments, setNewGradeComments] = useState('');
+
   const [saving, setSaving] = useState(false);
 
   const baseParams = `email=${encodeURIComponent(email)}&teacherId=${encodeURIComponent(teacherId)}`;
 
   async function loadAll() {
     setLoading(true);
-    const [hw, nt, rs] = await Promise.all([
+    const [hw, nt, rs, gr] = await Promise.all([
       fetch(`/api/notebook?type=homework&${baseParams}`).then((r) => r.ok ? r.json() : []),
       fetch(`/api/notebook?type=notes&${baseParams}`).then((r) => r.ok ? r.json() : []),
       fetch(`/api/notebook?type=resources&${baseParams}`).then((r) => r.ok ? r.json() : []),
+      fetch(`/api/notebook?type=grades&${baseParams}`).then((r) => r.ok ? r.json() : []),
     ]);
     setHomework(hw);
     setNotes(nt);
     setResources(rs);
+    setGrades(gr);
     setLoading(false);
   }
 
@@ -188,6 +204,42 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     setResources((prev) => prev.filter((r) => r.id !== id));
   }
 
+  // --- Grades CRUD ---
+  async function addGrade() {
+    if (!newGradeDate || !newGradeValue.trim()) return;
+    setSaving(true);
+    await fetch(`/api/notebook?${baseParams}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'grades', test_date: newGradeDate, grade: newGradeValue.trim(), comments: newGradeComments.trim() || null }),
+    });
+    setNewGradeDate('');
+    setNewGradeValue('');
+    setNewGradeComments('');
+    setAddingGrade(false);
+    setSaving(false);
+    const res = await fetch(`/api/notebook?type=grades&${baseParams}`);
+    if (res.ok) setGrades(await res.json());
+  }
+
+  async function saveGrade(id: string) {
+    setSaving(true);
+    await fetch(`/api/notebook/${id}?${baseParams}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'grades', test_date: editData.test_date, grade: editData.grade, comments: editData.comments || null }),
+    });
+    setEditId(null);
+    setSaving(false);
+    const res = await fetch(`/api/notebook?type=grades&${baseParams}`);
+    if (res.ok) setGrades(await res.json());
+  }
+
+  async function deleteGrade(id: string) {
+    await fetch(`/api/notebook/${id}?type=grades&${baseParams}`, { method: 'DELETE' });
+    setGrades((prev) => prev.filter((g) => g.id !== id));
+  }
+
   function startEdit(id: string, data: Record<string, string>) {
     setEditId(id);
     setEditData(data);
@@ -197,6 +249,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     { key: 'homework', label: 'Tasks' },
     { key: 'notes', label: 'Notes' },
     { key: 'resources', label: 'Resources' },
+    { key: 'grades', label: 'Grades' },
   ];
 
   return (
@@ -562,6 +615,130 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                   <button onClick={() => setAddingResource(true)}
                     className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
                     + Add resource
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* ── GRADES TAB ── */}
+            {tab === 'grades' && (
+              <div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 border-b border-gray-100">
+                      <th className="text-left py-2 pr-4 font-medium w-36">Test Date</th>
+                      <th className="text-left py-2 pr-4 font-medium w-24">Grade</th>
+                      <th className="text-left py-2 font-medium">Comments</th>
+                      <th className="w-20" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grades.length === 0 && !addingGrade ? (
+                      <tr>
+                        <td colSpan={4} className="py-6 text-center text-gray-400 text-sm">No grades yet.</td>
+                      </tr>
+                    ) : (
+                      grades.map((g) =>
+                        editId === g.id ? (
+                          <tr key={g.id} className="border-b border-gray-50">
+                            <td className="py-2 pr-4">
+                              <input
+                                type="date"
+                                value={editData.test_date ?? ''}
+                                onChange={(e) => setEditData({ ...editData, test_date: e.target.value })}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </td>
+                            <td className="py-2 pr-4">
+                              <input
+                                type="text"
+                                value={editData.grade ?? ''}
+                                onChange={(e) => setEditData({ ...editData, grade: e.target.value })}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="text"
+                                value={editData.comments ?? ''}
+                                onChange={(e) => setEditData({ ...editData, comments: e.target.value })}
+                                placeholder="Comments..."
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </td>
+                            <td className="py-2 pl-3">
+                              <div className="flex gap-2 justify-end">
+                                <button onClick={() => saveGrade(g.id)} disabled={saving}
+                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium">Save</button>
+                                <button onClick={() => setEditId(null)}
+                                  className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={g.id} className="border-b border-gray-50 group">
+                            <td className="py-2.5 pr-4 text-gray-600 whitespace-nowrap">{formatDate(g.test_date)}</td>
+                            <td className="py-2.5 pr-4 font-semibold text-gray-800">{g.grade}</td>
+                            <td className="py-2.5 text-gray-600">{g.comments ?? <span className="text-gray-300">—</span>}</td>
+                            <td className="py-2.5 pl-3">
+                              <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => startEdit(g.id, { test_date: g.test_date, grade: g.grade, comments: g.comments ?? '' })}
+                                  className="text-xs text-blue-500 hover:text-blue-700">Edit</button>
+                                <button onClick={() => deleteGrade(g.id)}
+                                  className="text-xs text-red-400 hover:text-red-600">Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      )
+                    )}
+
+                    {addingGrade && (
+                      <tr className="border-b border-blue-100 bg-blue-50/30">
+                        <td className="py-2 pr-4">
+                          <input
+                            type="date"
+                            value={newGradeDate}
+                            onChange={(e) => setNewGradeDate(e.target.value)}
+                            autoFocus
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="py-2 pr-4">
+                          <input
+                            type="text"
+                            value={newGradeValue}
+                            onChange={(e) => setNewGradeValue(e.target.value)}
+                            placeholder="e.g. 95"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="py-2">
+                          <input
+                            type="text"
+                            value={newGradeComments}
+                            onChange={(e) => setNewGradeComments(e.target.value)}
+                            placeholder="Comments (optional)..."
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="py-2 pl-3">
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={addGrade} disabled={saving || !newGradeDate || !newGradeValue.trim()}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50">Add</button>
+                            <button onClick={() => { setAddingGrade(false); setNewGradeDate(''); setNewGradeValue(''); setNewGradeComments(''); }}
+                              className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {!addingGrade && (
+                  <button onClick={() => setAddingGrade(true)}
+                    className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    + Add grade
                   </button>
                 )}
               </div>

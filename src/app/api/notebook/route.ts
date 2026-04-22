@@ -6,6 +6,7 @@ const TABLE_MAP: Record<string, string> = {
   homework: 'notebook_homework',
   notes: 'notebook_notes',
   resources: 'notebook_resources',
+  grades: 'notebook_grades',
 };
 
 const GROUP_TABLE_MAP: Record<string, string> = {
@@ -60,6 +61,8 @@ export async function GET(request: NextRequest) {
 
   if (type === 'homework') {
     indivQuery.order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true });
+  } else if (type === 'grades') {
+    indivQuery.order('test_date', { ascending: false });
   } else {
     indivQuery.order('created_at', { ascending: true });
   }
