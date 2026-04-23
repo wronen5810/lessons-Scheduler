@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { StudentNote } from '@/app/api/teacher/students/[id]/notes/route';
 import StudentNotebook from '@/components/StudentNotebook';
@@ -8,6 +9,8 @@ import GroupNotebook from '@/components/GroupNotebook';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import type { StudentGroup, GroupMember } from '@/lib/types';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { translate } from '@/lib/i18n';
 
 interface Student {
   id: string;
@@ -22,7 +25,11 @@ interface Student {
 
 export default function StudentsPage() {
   const { settings } = useTeacherSettings();
-  const [tab, setTab] = useState<'students' | 'groups'>('students');
+  const { t, lang, isRTL } = useLanguage();
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<'students' | 'groups'>(() =>
+    searchParams.get('tab') === 'groups' ? 'groups' : 'students'
+  );
 
   // ── Students state ───────────────────────────────────────────────
   const [students, setStudents] = useState<Student[]>([]);
@@ -41,6 +48,7 @@ export default function StudentsPage() {
   const [loginHistoryStudent, setLoginHistoryStudent] = useState<Student | null>(null);
   const [loginHistory, setLoginHistory] = useState<{ id: string; student_name: string; student_email: string; logged_in_at: string }[]>([]);
   const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // ── Groups state ─────────────────────────────────────────────────
   const [groups, setGroups] = useState<StudentGroup[]>([]);
@@ -53,6 +61,14 @@ export default function StudentsPage() {
   const [editGroupSaving, setEditGroupSaving] = useState(false);
   const [managingGroup, setManagingGroup] = useState<StudentGroup | null>(null);
   const [notebookGroup, setNotebookGroup] = useState<StudentGroup | null>(null);
+
+  // Close 3-dot menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => setOpenMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
 
   async function load() {
     setLoading(true);
@@ -101,7 +117,7 @@ export default function StudentsPage() {
   }
 
   async function handleDelete(student: Student) {
-    if (!confirm(`Remove ${student.name}?`)) return;
+    if (!confirm(translate(lang, 'students.removeConfirm', { name: student.name }))) return;
     await fetch(`/api/teacher/students/${student.id}`, { method: 'DELETE' });
     load();
   }
@@ -195,33 +211,37 @@ export default function StudentsPage() {
     loadGroups();
   }
 
-  // Members not yet in the group
   function availableStudents(group: StudentGroup) {
     const memberIds = new Set((group.members ?? []).map((m) => m.student_id));
     return students.filter((s) => s.is_active && !memberIds.has(s.id));
   }
 
+  const tabs: { key: 'students' | 'groups'; label: string }[] = [
+    { key: 'students', label: t('common.students') },
+    ...(settings.features.groups ? [{ key: 'groups' as const, label: t('common.groups') }] : []),
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900">Students</h1>
-        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">← Dashboard</Link>
+        <h1 className="text-lg font-bold text-gray-900">{t('common.students')}</h1>
+        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">{t('common.backHome')}</Link>
       </header>
 
       {/* Tab switcher */}
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6">
         <div className="flex gap-0 max-w-3xl mx-auto">
-          {(['students', ...(settings.features.groups ? ['groups'] : [])] as const).map((t) => (
+          {tabs.map((tb) => (
             <button
-              key={t}
-              onClick={() => setTab(t as 'students' | 'groups')}
-              className={`py-2.5 px-4 text-sm font-medium border-b-2 transition-colors capitalize ${
-                tab === t
+              key={tb.key}
+              onClick={() => setTab(tb.key)}
+              className={`py-2.5 px-4 text-sm font-medium border-b-2 transition-colors ${
+                tab === tb.key
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t}
+              {tb.label}
             </button>
           ))}
         </div>
@@ -234,15 +254,15 @@ export default function StudentsPage() {
           <>
             {/* Add student */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Add Student</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('students.addStudent')}</h2>
               <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
-                <input type="text" placeholder="Full name" required value={name} onChange={(e) => setName(e.target.value)}
+                <input type="text" placeholder={t('students.fullName')} required value={name} onChange={(e) => setName(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input type="email" placeholder="Email address" required value={email} onChange={(e) => setEmail(e.target.value)}
+                <input type="email" placeholder={t('students.emailAddress')} required value={email} onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <button type="submit" disabled={adding}
                   className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap">
-                  {adding ? 'Adding...' : 'Add'}
+                  {adding ? t('common.adding') : t('common.add')}
                 </button>
               </form>
               {formError && <p className="text-sm text-red-600 mt-2">{formError}</p>}
@@ -251,56 +271,67 @@ export default function StudentsPage() {
             {/* Student list */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
               {loading ? (
-                <div className="px-5 py-8 text-center text-sm text-gray-400">Loading...</div>
+                <div className="px-5 py-8 text-center text-sm text-gray-400">{t('common.loading')}</div>
               ) : students.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-gray-400">No students yet.</div>
+                <div className="px-5 py-8 text-center text-sm text-gray-400">{t('students.noStudents')}</div>
               ) : students.map((student) => (
-                <div key={student.id} className="px-4 py-3">
-                  {/* Name + status row */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{student.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{student.email}</p>
-                      {(student.phone || student.rate != null) && (
-                        <div className="flex flex-wrap gap-3 mt-0.5">
-                          {student.phone && <span className="text-xs text-gray-500">📞 {student.phone}</span>}
-                          {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}/lesson</span>}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => toggleActive(student)}
-                      className={`flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
-                        student.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
-                      {student.is_active ? 'Active' : 'Inactive'}
-                    </button>
+                <div key={student.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50">
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-gray-900 truncate">{student.name}</span>
+                    <span className="text-xs text-gray-400 truncate hidden sm:inline">{student.email}</span>
+                    {student.phone && <span className="text-xs text-gray-500">📞 {student.phone}</span>}
+                    {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}</span>}
                   </div>
-                  {/* Actions row — wraps on narrow screens */}
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    <button onClick={() => setEditing({ ...student })}
-                      className="text-xs text-blue-600 hover:text-blue-800 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
-                      Edit
+
+                  {/* Active badge */}
+                  <button
+                    onClick={() => toggleActive(student)}
+                    className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
+                      student.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    {student.is_active ? t('common.active') : t('common.inactive')}
+                  </button>
+
+                  {/* 3-dot menu */}
+                  <div className="relative flex-shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === student.id ? null : student.id); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
+                    >
+                      ⋮
                     </button>
-                    <button onClick={() => openNotes(student)}
-                      className="text-xs text-purple-600 hover:text-purple-800 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
-                      Notes
-                    </button>
-                    {settings.features.notebook && (
-                      <button onClick={() => setNotebookStudent(student)}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">
-                        Notebook
-                      </button>
+                    {openMenuId === student.id && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute end-0 top-8 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden"
+                      >
+                        <button onClick={() => { setOpenMenuId(null); setEditing({ ...student }); }}
+                          className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                          ✏️ {t('common.edit')}
+                        </button>
+                        <button onClick={() => { setOpenMenuId(null); openNotes(student); }}
+                          className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                          📝 {t('common.notes')}
+                        </button>
+                        {settings.features.notebook && (
+                          <button onClick={() => { setOpenMenuId(null); setNotebookStudent(student); }}
+                            className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                            📓 {t('common.notebook')}
+                          </button>
+                        )}
+                        <button onClick={() => { setOpenMenuId(null); openLoginHistory(student); }}
+                          className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                          🕐 {t('students.logins')}
+                        </button>
+                        <div className="border-t border-gray-100 my-0.5" />
+                        <button onClick={() => { setOpenMenuId(null); handleDelete(student); }}
+                          className="w-full text-start px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                          🗑 {t('common.remove')}
+                        </button>
+                      </div>
                     )}
-                    <button onClick={() => openLoginHistory(student)}
-                      className="text-xs text-teal-600 hover:text-teal-800 px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 transition-colors">
-                      Logins
-                    </button>
-                    <button onClick={() => handleDelete(student)}
-                      className="text-xs text-red-400 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">
-                      Remove
-                    </button>
                   </div>
                 </div>
               ))}
@@ -313,11 +344,11 @@ export default function StudentsPage() {
           <>
             {/* Create group form */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Create Group</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('students.createGroup')}</h2>
               <form onSubmit={handleAddGroup} className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
-                  placeholder="Group name"
+                  placeholder={t('students.groupName')}
                   required
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
@@ -327,14 +358,14 @@ export default function StudentsPage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  placeholder="Rate per lesson (₪)"
+                  placeholder={t('students.ratePerLesson')}
                   value={groupRate}
                   onChange={(e) => setGroupRate(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button type="submit" disabled={addingGroup}
                   className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap">
-                  {addingGroup ? 'Creating...' : 'Create'}
+                  {addingGroup ? t('common.creating') : t('common.create')}
                 </button>
               </form>
               {groupFormError && <p className="text-sm text-red-600 mt-2">{groupFormError}</p>}
@@ -343,9 +374,9 @@ export default function StudentsPage() {
             {/* Groups list */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
               {groupsLoading ? (
-                <div className="px-5 py-8 text-center text-sm text-gray-400">Loading...</div>
+                <div className="px-5 py-8 text-center text-sm text-gray-400">{t('common.loading')}</div>
               ) : groups.length === 0 ? (
-                <div className="px-5 py-8 text-center text-sm text-gray-400">No groups yet.</div>
+                <div className="px-5 py-8 text-center text-sm text-gray-400">{t('students.noGroups')}</div>
               ) : groups.map((group) => {
                 const memberCount = group.members?.length ?? 0;
                 const perStudent = group.rate != null && memberCount > 0
@@ -358,7 +389,7 @@ export default function StudentsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-900">{group.name}</p>
                         <div className="flex flex-wrap gap-3 mt-0.5">
-                          <span className="text-xs text-gray-500">{memberCount} student{memberCount !== 1 ? 's' : ''}</span>
+                          <span className="text-xs text-gray-500">{memberCount} {t('common.students').toLowerCase()}</span>
                           {group.rate != null && (
                             <span className="text-xs text-gray-500">₪{group.rate}/lesson total</span>
                           )}
@@ -373,51 +404,50 @@ export default function StudentsPage() {
                         onClick={() => setManagingGroup(managingGroup?.id === group.id ? null : { ...group })}
                         className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors"
                       >
-                        Members
+                        {t('common.members')}
                       </button>
                       {settings.features.notebook && (
                         <button onClick={() => setNotebookGroup({ ...group })}
                           className="text-xs text-violet-600 hover:text-violet-800 px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors">
-                          Notebook
+                          {t('common.notebook')}
                         </button>
                       )}
                       <button onClick={() => setEditingGroup({ ...group })}
                         className="text-xs text-blue-600 hover:text-blue-800 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button onClick={() => handleDeleteGroup(group)}
                         className="text-xs text-red-400 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </div>
 
                     {/* Members panel */}
                     {managingGroup?.id === group.id && (
                       <div className="mt-4 border border-gray-100 rounded-xl p-4 bg-slate-50 space-y-3">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Members</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('common.members')}</p>
 
                         {(group.members ?? []).length === 0 ? (
-                          <p className="text-xs text-gray-400">No members yet.</p>
+                          <p className="text-xs text-gray-400">{t('students.noMembers')}</p>
                         ) : (
                           <div className="space-y-1">
                             {(group.members ?? []).map((m) => (
                               <div key={m.id} className="flex items-center justify-between text-sm">
                                 <div>
                                   <span className="font-medium text-gray-800">{m.student_name}</span>
-                                  <span className="text-gray-400 ml-2 text-xs">{m.student_email}</span>
+                                  <span className="text-gray-400 ms-2 text-xs">{m.student_email}</span>
                                 </div>
                                 <button
                                   onClick={() => removeMemberFromGroup(group, m)}
-                                  className="text-xs text-red-400 hover:text-red-600 ml-3"
+                                  className="text-xs text-red-400 hover:text-red-600 ms-3"
                                 >
-                                  Remove
+                                  {t('common.remove')}
                                 </button>
                               </div>
                             ))}
                           </div>
                         )}
 
-                        {/* Add student dropdown */}
                         {availableStudents(group).length > 0 && (
                           <div className="flex gap-2 pt-1">
                             <select
@@ -430,7 +460,7 @@ export default function StudentsPage() {
                                 }
                               }}
                             >
-                              <option value="">Add student…</option>
+                              <option value="">{t('students.addMember')}</option>
                               {availableStudents(group).map((s) => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                               ))}
@@ -438,7 +468,7 @@ export default function StudentsPage() {
                           </div>
                         )}
                         {availableStudents(group).length === 0 && (group.members ?? []).length > 0 && (
-                          <p className="text-xs text-gray-400">All active students are already in this group.</p>
+                          <p className="text-xs text-gray-400">{t('students.allInGroup')}</p>
                         )}
                       </div>
                     )}
@@ -455,44 +485,44 @@ export default function StudentsPage() {
       {editing && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-base font-semibold text-gray-900">Edit Student</h3>
+            <h3 className="text-base font-semibold text-gray-900">{t('students.editStudent')}</h3>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('common.name')}</label>
               <input type="text" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('common.phone')}</label>
               <input type="tel" value={editing.phone ?? ''} onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
-                placeholder="e.g. 050-1234567"
+                placeholder="050-1234567"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Rate per lesson (₪)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('students.ratePerLesson')}</label>
               <input type="number" min="0" step="0.01"
                 value={editing.rate ?? ''} onChange={(e) => setEditing({ ...editing, rate: e.target.value ? Number(e.target.value) : null })}
-                placeholder="e.g. 150"
+                placeholder="150"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('common.notes')}</label>
               <textarea rows={3} value={editing.notes ?? ''} onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
-                placeholder="Private notes about this student..."
+                placeholder={t('students.privateNotes')}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             </div>
 
             <div className="flex gap-3 pt-1">
               <button onClick={saveEdit} disabled={editSaving}
                 className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {editSaving ? 'Saving...' : 'Save'}
+                {editSaving ? t('common.saving') : t('common.save')}
               </button>
               <button onClick={() => setEditing(null)}
                 className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -503,10 +533,10 @@ export default function StudentsPage() {
       {editingGroup && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-base font-semibold text-gray-900">Edit Group</h3>
+            <h3 className="text-base font-semibold text-gray-900">{t('students.editGroup')}</h3>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Group name</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('students.groupName')}</label>
               <input
                 type="text"
                 value={editingGroup.name}
@@ -516,14 +546,14 @@ export default function StudentsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Rate per lesson (₪) — total for group</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('students.rateTotalGroup')}</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={editingGroup.rate ?? ''}
                 onChange={(e) => setEditingGroup({ ...editingGroup, rate: e.target.value ? Number(e.target.value) : null })}
-                placeholder="e.g. 400"
+                placeholder="400"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {editingGroup.rate != null && (editingGroup.members?.length ?? 0) > 0 && (
@@ -536,11 +566,11 @@ export default function StudentsPage() {
             <div className="flex gap-3 pt-1">
               <button onClick={saveEditGroup} disabled={editGroupSaving}
                 className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {editGroupSaving ? 'Saving...' : 'Save'}
+                {editGroupSaving ? t('common.saving') : t('common.save')}
               </button>
               <button onClick={() => setEditingGroup(null)}
                 className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -552,26 +582,26 @@ export default function StudentsPage() {
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">Login History — {loginHistoryStudent.name}</h3>
+              <h3 className="text-base font-semibold text-gray-900">{translate(lang, 'students.loginHistory', { name: loginHistoryStudent.name })}</h3>
               <button onClick={() => setLoginHistoryStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
             </div>
             <div className="overflow-y-auto flex-1">
               {loginHistoryLoading ? (
-                <p className="text-sm text-gray-400 text-center py-6">Loading...</p>
+                <p className="text-sm text-gray-400 text-center py-6">{t('common.loading')}</p>
               ) : loginHistory.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">No login history yet.</p>
+                <p className="text-sm text-gray-400 text-center py-6">{t('students.noLoginHistory')}</p>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-gray-400 border-b border-gray-100">
-                      <th className="text-left pb-2 font-medium">Date & Time</th>
-                      <th className="text-left pb-2 font-medium">Email</th>
+                      <th className="text-start pb-2 font-medium">{t('students.dateTime')}</th>
+                      <th className="text-start pb-2 font-medium">{t('common.email')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {loginHistory.map((l) => (
                       <tr key={l.id}>
-                        <td className="py-2 text-gray-700 whitespace-nowrap pr-4">
+                        <td className="py-2 text-gray-700 whitespace-nowrap pe-4">
                           {new Date(l.logged_in_at).toLocaleString()}
                         </td>
                         <td className="py-2 text-gray-500">{l.student_email}</td>
@@ -583,7 +613,7 @@ export default function StudentsPage() {
             </div>
             <button onClick={() => setLoginHistoryStudent(null)}
               className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-              Close
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -594,23 +624,23 @@ export default function StudentsPage() {
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">Notes — {notesStudent.name}</h3>
+              <h3 className="text-base font-semibold text-gray-900">{t('common.notes')} — {notesStudent.name}</h3>
               <button onClick={() => setNotesStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
             </div>
 
             <div className="overflow-y-auto flex-1 space-y-3 pr-1">
               {notesLoading ? (
-                <p className="text-sm text-gray-400 text-center py-6">Loading...</p>
+                <p className="text-sm text-gray-400 text-center py-6">{t('common.loading')}</p>
               ) : studentNotes.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">No notes for this student.</p>
+                <p className="text-sm text-gray-400 text-center py-6">{t('students.noNotes')}</p>
               ) : (
                 studentNotes.map((n) => (
                   <div key={n.note_id} className="border border-gray-200 rounded-xl p-3 space-y-1">
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <span className="font-medium text-gray-600">{n.date}</span>
                       {n.start_time && <span>{n.start_time}{n.end_time ? `–${n.end_time}` : ''}</span>}
-                      <span className={`ml-auto px-1.5 py-0.5 rounded-full font-medium ${n.visible_to_student ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {n.visible_to_student ? 'Visible' : 'Hidden'}
+                      <span className={`ms-auto px-1.5 py-0.5 rounded-full font-medium ${n.visible_to_student ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {n.visible_to_student ? t('students.visible') : t('students.hidden')}
                       </span>
                     </div>
                     <p className="text-sm text-gray-800">{n.note}</p>
@@ -621,7 +651,7 @@ export default function StudentsPage() {
 
             <button onClick={() => setNotesStudent(null)}
               className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-              Close
+              {t('common.close')}
             </button>
           </div>
         </div>
@@ -633,8 +663,8 @@ export default function StudentsPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <div>
-                <h3 className="text-base font-semibold text-gray-900">Group Notebook — {notebookGroup.name}</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Content shared with all group members</p>
+                <h3 className="text-base font-semibold text-gray-900">{translate(lang, 'students.groupNotebook', { name: notebookGroup.name })}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{t('students.groupNotebookSub')}</p>
               </div>
               <button onClick={() => setNotebookGroup(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
             </div>
@@ -644,7 +674,7 @@ export default function StudentsPage() {
             <div className="px-6 py-4 border-t border-gray-100">
               <button onClick={() => setNotebookGroup(null)}
                 className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-                Close
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -656,7 +686,7 @@ export default function StudentsPage() {
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900">Notebook — {notebookStudent.name}</h3>
+              <h3 className="text-base font-semibold text-gray-900">{translate(lang, 'students.notebookTitle', { name: notebookStudent.name })}</h3>
               <button onClick={() => setNotebookStudent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
             </div>
             <div className="overflow-y-auto flex-1 p-4">
@@ -665,7 +695,7 @@ export default function StudentsPage() {
             <div className="px-6 py-4 border-t border-gray-100">
               <button onClick={() => setNotebookStudent(null)}
                 className="w-full border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-                Close
+                {t('common.close')}
               </button>
             </div>
           </div>

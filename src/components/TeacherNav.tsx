@@ -85,6 +85,12 @@ export default function TeacherNav({ title }: { title?: string }) {
                   className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
                   👥 {t('common.students')}
                 </Link>
+                {features.groups && (
+                  <Link href="/teacher/students?tab=groups" onClick={closeMenu}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                    🫂 {t('common.groups')}
+                  </Link>
+                )}
                 {features.billing && (
                   <Link href="/teacher/billing" onClick={closeMenu}
                     className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">

@@ -67,9 +67,19 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
   return (
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-gray-900">Settings</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose}
+              className="text-xs text-gray-500 hover:text-gray-700 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleSave} disabled={saving}
+              className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none ms-1">&times;</button>
+          </div>
         </div>
 
         {/* Default lesson duration */}
@@ -165,17 +175,6 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <div className="flex gap-3 pt-1">
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button onClick={onClose}
-            className="flex-1 border border-gray-300 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">
-            Cancel
-          </button>
-        </div>
       </div>
     </div>
   );
