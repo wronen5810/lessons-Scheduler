@@ -106,7 +106,7 @@ export default function MessagesPage() {
         {/* ── Recipients ── (shown second on mobile, first on desktop) */}
         <div className="space-y-4 order-2 lg:order-1">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-5 pt-4 pb-3 border-b border-gray-100">
+            <div className="px-3 pt-3 pb-2 border-b border-gray-100">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-700">{t('messages.recipients')}</h2>
                 {totalSelected > 0 && (
@@ -135,17 +135,15 @@ export default function MessagesPage() {
                 <>
                   {filteredGroups.length > 0 && (
                     <div>
-                      <p className="px-5 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-slate-50">{t('common.groups')}</p>
+                      <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-slate-50">{t('common.groups')}</p>
                       {filteredGroups.map((g) => {
                         const count = g.members?.length ?? 0;
                         return (
-                          <label key={g.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 cursor-pointer">
-                            <input type="checkbox" checked={selectedGroupIds.has(g.id)} onChange={() => toggleGroup(g.id)} className="rounded border-gray-300 text-blue-600" />
-                            <div className="min-w-0 flex-1">
-                              <span className="text-sm font-medium text-gray-800">{g.name}</span>
-                              <span className="ms-2 text-xs text-gray-400">{count} {t('common.members').toLowerCase()}</span>
-                            </div>
-                            <span className="text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-medium">{t('messages.group')}</span>
+                          <label key={g.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" checked={selectedGroupIds.has(g.id)} onChange={() => toggleGroup(g.id)} className="rounded border-gray-300 text-blue-600 flex-shrink-0" />
+                            <span className="text-xs font-medium text-gray-800 truncate">{g.name}</span>
+                            <span className="text-xs text-gray-400 flex-shrink-0">{count} {t('common.members').toLowerCase()}</span>
+                            <span className="ms-auto text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-medium flex-shrink-0">{t('messages.group')}</span>
                           </label>
                         );
                       })}
@@ -154,16 +152,14 @@ export default function MessagesPage() {
 
                   {filteredStudents.length > 0 && (
                     <div>
-                      <p className="px-5 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-slate-50">{t('common.students')}</p>
+                      <p className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-slate-50">{t('common.students')}</p>
                       {filteredStudents.map((s) => (
-                        <label key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 cursor-pointer">
-                          <input type="checkbox" checked={selectedStudentIds.has(s.id)} onChange={() => toggleStudent(s.id)} className="rounded border-gray-300 text-blue-600" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-800 truncate">{s.name}</p>
-                            <p className="text-xs text-gray-400 truncate">{s.email}</p>
-                          </div>
+                        <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={selectedStudentIds.has(s.id)} onChange={() => toggleStudent(s.id)} className="rounded border-gray-300 text-blue-600 flex-shrink-0" />
+                          <span className="text-xs font-medium text-gray-800 truncate">{s.name}</span>
+                          <span className="text-xs text-gray-400 truncate">{s.email}</span>
                           {!s.phone && channels.whatsapp && (
-                            <span className="text-xs text-amber-500">{t('messages.noPhone')}</span>
+                            <span className="ms-auto text-xs text-amber-500 flex-shrink-0">{t('messages.noPhone')}</span>
                           )}
                         </label>
                       ))}
