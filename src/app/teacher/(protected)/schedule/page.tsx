@@ -233,13 +233,13 @@ export default function SchedulePage() {
 
         <div className="mt-5 flex flex-wrap gap-3">
           {([
-            { color: 'bg-emerald-400', key: 'slot.open' },
+            { color: 'bg-sky-400',     key: 'slot.open' },
             { color: 'bg-gray-400',    key: 'slot.blocked' },
             { color: 'bg-amber-400',   key: 'slot.pending' },
             { color: 'bg-blue-500',    key: 'slot.approved' },
-            { color: 'bg-purple-500',  key: 'slot.completed' },
+            { color: 'bg-violet-500',  key: 'slot.completed' },
             { color: 'bg-emerald-500', key: 'slot.paid' },
-            { color: 'bg-orange-400',  key: 'slot.cancelReq' },
+            { color: 'bg-rose-400',    key: 'slot.cancelReq' },
           ] as const).map(({ color, key }) => (
             <span key={key} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
               <span className={`w-2 h-2 rounded-full ${color}`} />

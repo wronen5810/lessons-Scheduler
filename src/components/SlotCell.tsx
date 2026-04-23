@@ -11,14 +11,14 @@ interface Props {
 }
 
 const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; dot: string; label?: string }> = {
-  available:              { bg: 'bg-emerald-50',  border: 'border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-400' },
+  available:              { bg: 'bg-sky-50',      border: 'border-sky-200',     text: 'text-sky-700',     dot: 'bg-sky-400' },
   unavailable:            { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-400',    dot: 'bg-gray-300' },
   blocked:                { bg: 'bg-gray-100',    border: 'border-gray-200',    text: 'text-gray-500',    dot: 'bg-gray-400',    label: 'Blocked' },
-  pending:                { bg: 'bg-amber-50',    border: 'border-amber-200',   text: 'text-amber-800',   dot: 'bg-amber-400',   label: 'Pending' },
-  confirmed:              { bg: 'bg-blue-50',     border: 'border-blue-200',    text: 'text-blue-800',    dot: 'bg-blue-500',    label: 'Approved' },
-  completed:              { bg: 'bg-purple-50',   border: 'border-purple-300',  text: 'text-purple-800',  dot: 'bg-purple-500',  label: 'Done' },
-  paid:                   { bg: 'bg-emerald-50',  border: 'border-emerald-300', text: 'text-emerald-800', dot: 'bg-emerald-500', label: 'Paid' },
-  cancellation_requested: { bg: 'bg-orange-50',   border: 'border-orange-300',  text: 'text-orange-800',  dot: 'bg-orange-400',  label: 'Cancel req.' },
+  pending:                { bg: 'bg-amber-50',    border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Pending' },
+  confirmed:              { bg: 'bg-blue-50',     border: 'border-blue-200',    text: 'text-blue-700',    dot: 'bg-blue-500',    label: 'Approved' },
+  completed:              { bg: 'bg-violet-50',   border: 'border-violet-200',  text: 'text-violet-700',  dot: 'bg-violet-500',  label: 'Done' },
+  paid:                   { bg: 'bg-emerald-50',  border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Paid' },
+  cancellation_requested: { bg: 'bg-rose-50',     border: 'border-rose-200',    text: 'text-rose-600',    dot: 'bg-rose-400',    label: 'Cancel req.' },
 };
 
 export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat = '24h' }: Props) {
