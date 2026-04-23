@@ -382,42 +382,56 @@ export default function StudentsPage() {
                   : null;
 
                 return (
-                  <div key={group.id} className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-2">
+                  <div key={group.id} className="px-4 py-2.5">
+                    <div className="flex items-center gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-900">{group.name}</p>
                         <div className="flex flex-wrap gap-3 mt-0.5">
                           <span className="text-xs text-gray-500">{memberCount} {t('common.students').toLowerCase()}</span>
                           {group.rate != null && (
-                            <span className="text-xs text-gray-500">₪{group.rate}/lesson total</span>
+                            <span className="text-xs text-gray-500">₪{group.rate}/lesson</span>
                           )}
                           {perStudent != null && (
                             <span className="text-xs text-indigo-600 font-medium">₪{perStudent}/student</span>
                           )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      <button
-                        onClick={() => setManagingGroup(managingGroup?.id === group.id ? null : { ...group })}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                      >
-                        {t('common.members')}
-                      </button>
-                      {settings.features.notebook && (
-                        <button onClick={() => setNotebookGroup({ ...group })}
-                          className="text-xs text-violet-600 hover:text-violet-800 px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition-colors">
-                          {t('common.notebook')}
+
+                      {/* 3-dot menu */}
+                      <div className="relative flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === group.id ? null : group.id); }}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
+                        >
+                          ⋮
                         </button>
-                      )}
-                      <button onClick={() => setEditingGroup({ ...group })}
-                        className="text-xs text-blue-600 hover:text-blue-800 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
-                        {t('common.edit')}
-                      </button>
-                      <button onClick={() => handleDeleteGroup(group)}
-                        className="text-xs text-red-400 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">
-                        {t('common.delete')}
-                      </button>
+                        {openMenuId === group.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute end-0 top-8 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden"
+                          >
+                            <button onClick={() => { setOpenMenuId(null); setManagingGroup(managingGroup?.id === group.id ? null : { ...group }); }}
+                              className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                              👥 {t('common.members')}
+                            </button>
+                            {settings.features.notebook && (
+                              <button onClick={() => { setOpenMenuId(null); setNotebookGroup({ ...group }); }}
+                                className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                                📓 {t('common.notebook')}
+                              </button>
+                            )}
+                            <button onClick={() => { setOpenMenuId(null); setEditingGroup({ ...group }); }}
+                              className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                              ✏️ {t('common.edit')}
+                            </button>
+                            <div className="border-t border-gray-100 my-0.5" />
+                            <button onClick={() => { setOpenMenuId(null); handleDeleteGroup(group); }}
+                              className="w-full text-start px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                              🗑 {t('common.delete')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Members panel */}
