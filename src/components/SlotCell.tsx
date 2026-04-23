@@ -64,7 +64,7 @@ export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat 
       {/* Teacher: booking type (single-participant only) */}
       {isTeacher && slot.booking_type && (slot.max_participants ?? 1) <= 1 && (
         <div className="mt-0.5 ml-3 opacity-60 text-[10px]">
-          {slot.booking_type === 'one_time' ? 'One-time' : 'Recurring'}
+          {slot.booking_type === 'one_time' ? '1×' : '↺'}
         </div>
       )}
 
@@ -73,14 +73,14 @@ export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat 
         <div className="mt-0.5 ml-3 opacity-70 text-[10px]">
           {(slot.max_participants ?? 1) > 1
             ? `${(slot.max_participants ?? 1) - (slot.participant_count ?? 0)} spot${(slot.max_participants ?? 1) - (slot.participant_count ?? 0) !== 1 ? 's' : ''} left`
-            : (slot.one_time_slot_id ? 'One-time' : 'Recurring')}
+            : (slot.one_time_slot_id ? '1×' : '↺')}
         </div>
       )}
 
       {/* Student: booked state info */}
       {!isTeacher && slot.state !== 'available' && slot.state !== 'unavailable' && slot.booking_type && (
         <div className="mt-0.5 ml-3 opacity-70 text-[10px]">
-          {slot.booking_type === 'one_time' ? 'One-time' : 'Recurring'}
+          {slot.booking_type === 'one_time' ? '1×' : '↺'}
         </div>
       )}
     </div>

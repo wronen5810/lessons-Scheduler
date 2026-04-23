@@ -74,9 +74,9 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
 
 export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, onAddSlot, timeFormat = '24h' }: Props) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {weekStarts.map((weekStart, index) => (
-        <div key={weekStart} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4">
+        <div key={weekStart} className="bg-white rounded-xl border border-gray-100 shadow-sm p-2 sm:p-3">
           <WeekRow
             weekStart={weekStart}
             slots={slots}
