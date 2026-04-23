@@ -233,10 +233,10 @@ export default function SchedulePage() {
 
         <div className="mt-5 flex flex-wrap gap-3">
           {([
-            { color: 'bg-sky-400',     key: 'slot.open' },
+            { color: 'bg-teal-400',    key: 'slot.open' },
             { color: 'bg-gray-400',    key: 'slot.blocked' },
             { color: 'bg-amber-400',   key: 'slot.pending' },
-            { color: 'bg-blue-500',    key: 'slot.approved' },
+            { color: 'bg-indigo-500',  key: 'slot.approved' },
             { color: 'bg-violet-500',  key: 'slot.completed' },
             { color: 'bg-emerald-500', key: 'slot.paid' },
             { color: 'bg-rose-400',    key: 'slot.cancelReq' },

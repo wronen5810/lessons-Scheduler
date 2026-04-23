@@ -11,11 +11,11 @@ interface Props {
 }
 
 const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; dot: string; label?: string }> = {
-  available:              { bg: 'bg-sky-50',      border: 'border-sky-200',     text: 'text-sky-700',     dot: 'bg-sky-400' },
+  available:              { bg: 'bg-teal-50',     border: 'border-teal-200',    text: 'text-teal-700',    dot: 'bg-teal-400' },
   unavailable:            { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-400',    dot: 'bg-gray-300' },
   blocked:                { bg: 'bg-gray-100',    border: 'border-gray-200',    text: 'text-gray-500',    dot: 'bg-gray-400',    label: 'Blocked' },
   pending:                { bg: 'bg-amber-50',    border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Pending' },
-  confirmed:              { bg: 'bg-blue-50',     border: 'border-blue-200',    text: 'text-blue-700',    dot: 'bg-blue-500',    label: 'Approved' },
+  confirmed:              { bg: 'bg-indigo-50',   border: 'border-indigo-200',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  label: 'Approved' },
   completed:              { bg: 'bg-violet-50',   border: 'border-violet-200',  text: 'text-violet-700',  dot: 'bg-violet-500',  label: 'Done' },
   paid:                   { bg: 'bg-emerald-50',  border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Paid' },
   cancellation_requested: { bg: 'bg-rose-50',     border: 'border-rose-200',    text: 'text-rose-600',    dot: 'bg-rose-400',    label: 'Cancel req.' },
