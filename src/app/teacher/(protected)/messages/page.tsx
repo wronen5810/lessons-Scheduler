@@ -106,25 +106,23 @@ export default function MessagesPage() {
         {/* ── Recipients ── (shown second on mobile, first on desktop) */}
         <div className="space-y-4 order-2 lg:order-1">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-3 pt-3 pb-2 border-b border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-700">{t('messages.recipients')}</h2>
+            <div className="px-3 pt-2 pb-2 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-gray-700 flex-shrink-0">{t('messages.recipients')}</h2>
+                <input
+                  type="text"
+                  placeholder={t('messages.search')}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="flex-1 min-w-0 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
                 {totalSelected > 0 && (
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                    {totalSelected} {t('messages.recipients').toLowerCase()}
+                  <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
+                    {totalSelected}
                   </span>
                 )}
-              </div>
-              <input
-                type="text"
-                placeholder={t('messages.search')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="flex gap-3 mt-2">
-                <button onClick={selectAll} className="text-xs text-blue-600 hover:text-blue-800">{t('messages.selectAll')}</button>
-                <button onClick={() => { setSelectedStudentIds(new Set()); setSelectedGroupIds(new Set()); }} className="text-xs text-gray-400 hover:text-gray-600">{t('messages.clear')}</button>
+                <button onClick={selectAll} className="text-xs text-blue-600 hover:text-blue-800 flex-shrink-0">{t('messages.selectAll')}</button>
+                <button onClick={() => { setSelectedStudentIds(new Set()); setSelectedGroupIds(new Set()); }} className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0">{t('messages.clear')}</button>
               </div>
             </div>
 
