@@ -14,13 +14,14 @@ interface Props {
   timeFormat?: '24h' | '12h';
 }
 
-function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat = '24h' }: {
+function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat = '24h', showDayNames = true }: {
   weekStart: string;
   slots: ComputedSlot[];
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
   onAddSlot?: (date: string) => void;
   timeFormat?: '24h' | '12h';
+  showDayNames?: boolean;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => formatDate(addDays(parseISO(weekStart), i)));
   const slotsByDay = (date: string) => slots.filter((s) => s.date === date);
@@ -35,8 +36,10 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
         return (
           <div key={date}>
             <div className="flex flex-col items-center mb-2 pb-2 border-b border-gray-100 relative">
-              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{DAY_NAMES_SHORT[i]}</span>
-              <span className={`mt-0.5 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold
+              {showDayNames && (
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{DAY_NAMES_SHORT[i]}</span>
+              )}
+              <span className={`${showDayNames ? 'mt-0.5' : ''} w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold
                 ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700'}`}>
                 {dayNum}
               </span>
@@ -72,7 +75,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
 export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, onAddSlot, timeFormat = '24h' }: Props) {
   return (
     <div className="space-y-6">
-      {weekStarts.map((weekStart) => (
+      {weekStarts.map((weekStart, index) => (
         <div key={weekStart} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4">
           <WeekRow
             weekStart={weekStart}
@@ -81,6 +84,7 @@ export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot
             onSelectSlot={onSelectSlot}
             onAddSlot={onAddSlot}
             timeFormat={timeFormat}
+            showDayNames={index === 0}
           />
         </div>
       ))}
