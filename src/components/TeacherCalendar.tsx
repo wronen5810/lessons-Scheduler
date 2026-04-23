@@ -33,14 +33,16 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
         const dayNum = date.slice(8);
         const daySlots = slotsByDay(date);
 
+        const isPast = date < today;
+
         return (
-          <div key={date}>
-            <div className="flex flex-col items-center mb-2 pb-2 border-b border-gray-100 relative">
+          <div key={date} className={`rounded-lg ${isPast && !isToday ? 'bg-slate-50' : ''}`}>
+            <div className="flex flex-col items-center mb-1 pb-1 border-b border-gray-100 relative">
               {showDayNames && (
                 <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{DAY_NAMES_SHORT[i]}</span>
               )}
-              <span className={`${showDayNames ? 'mt-0.5' : ''} w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold
-                ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700'}`}>
+              <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-semibold
+                ${isToday ? 'bg-blue-600 text-white' : isPast ? 'text-gray-400' : 'text-gray-700'}`}>
                 {dayNum}
               </span>
               {onAddSlot && (
@@ -53,7 +55,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
             </div>
 
             {daySlots.length === 0 ? (
-              <div className="text-center text-gray-200 text-xs py-1">·</div>
+              <div className="text-center text-gray-200 text-xs py-0.5">·</div>
             ) : (
               daySlots.map((slot) => (
                 <SlotCell
