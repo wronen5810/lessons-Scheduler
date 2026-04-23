@@ -37,21 +37,23 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
 
         return (
           <div key={date} className={`rounded-lg ${isPast && !isToday ? 'bg-slate-50' : ''}`}>
-            <div className="flex flex-col items-center mb-1 pb-1 border-b border-gray-100 relative">
+            <div className="mb-1 pb-1 border-b border-gray-100">
               {showDayNames && (
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{DAY_NAMES_SHORT[i]}</span>
+                <span className="block text-center text-xs font-medium text-gray-400 uppercase tracking-wide leading-none mb-0.5">{DAY_NAMES_SHORT[i]}</span>
               )}
-              <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-semibold
-                ${isToday ? 'bg-blue-600 text-white' : isPast ? 'text-gray-400' : 'text-gray-700'}`}>
-                {dayNum}
-              </span>
-              {onAddSlot && (
-                <button
-                  onClick={() => onAddSlot(date)}
-                  className="absolute -bottom-0.5 right-0 w-4 h-4 flex items-center justify-center text-gray-300 hover:text-blue-500 text-sm leading-none transition-colors"
-                  title="Add slot"
-                >+</button>
-              )}
+              <div className="flex items-center justify-center gap-0.5">
+                <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-semibold
+                  ${isToday ? 'bg-blue-600 text-white' : isPast ? 'text-gray-400' : 'text-gray-700'}`}>
+                  {dayNum}
+                </span>
+                {onAddSlot && (
+                  <button
+                    onClick={() => onAddSlot(date)}
+                    className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-blue-500 text-sm leading-none transition-colors"
+                    title="Add slot"
+                  >+</button>
+                )}
+              </div>
             </div>
 
             {daySlots.length === 0 ? (
