@@ -32,10 +32,11 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
     ...settings.notification_preferences,
   });
   const [features, setFeatures] = useState<TeacherFeatures>({
-    billing:  settings.features?.billing  ?? true,
-    messages: settings.features?.messages ?? true,
-    groups:   settings.features?.groups   ?? true,
-    notebook: settings.features?.notebook ?? true,
+    billing:            settings.features?.billing            ?? true,
+    messages:           settings.features?.messages           ?? true,
+    groups:             settings.features?.groups             ?? true,
+    notebook:           settings.features?.notebook           ?? true,
+    allow_cancellation: settings.features?.allow_cancellation ?? true,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -121,10 +122,11 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
           <p className="text-xs text-gray-400 mb-3">Hide features you don't need from the menu and student screen.</p>
           <div className="space-y-2">
             {([
-              { key: 'billing',  label: 'Billing',   desc: 'Billing page in menu' },
-              { key: 'messages', label: 'Messages',  desc: 'Messages page in menu' },
-              { key: 'groups',   label: 'Groups',    desc: 'Groups tab in student screen' },
-              { key: 'notebook', label: 'Notebook',  desc: 'Student notebook (tasks, notes, resources, grades)' },
+              { key: 'billing',            label: 'Billing',                      desc: 'Billing page in menu' },
+              { key: 'messages',           label: 'Messages',                     desc: 'Messages page in menu' },
+              { key: 'groups',             label: 'Groups',                       desc: 'Groups tab in student screen' },
+              { key: 'notebook',           label: 'Notebook',                     desc: 'Student notebook (tasks, notes, resources, grades)' },
+              { key: 'allow_cancellation', label: 'Student cancellation requests', desc: 'Students can request lesson cancellation' },
             ] as { key: keyof TeacherFeatures; label: string; desc: string }[]).map(({ key, label, desc }) => (
               <label key={key} className="flex items-center gap-3 cursor-pointer">
                 <input

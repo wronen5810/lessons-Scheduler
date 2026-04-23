@@ -8,6 +8,7 @@ export interface TeacherFeatures {
   messages: boolean;
   groups: boolean;
   notebook: boolean;
+  allow_cancellation: boolean;
 }
 
 const DEFAULT_FEATURES: TeacherFeatures = {
@@ -15,15 +16,17 @@ const DEFAULT_FEATURES: TeacherFeatures = {
   messages: true,
   groups: true,
   notebook: true,
+  allow_cancellation: true,
 };
 
 function mergeFeatures(raw: unknown): TeacherFeatures {
   const f = (raw && typeof raw === 'object' ? raw : {}) as Partial<TeacherFeatures>;
   return {
-    billing:  f.billing  ?? DEFAULT_FEATURES.billing,
-    messages: f.messages ?? DEFAULT_FEATURES.messages,
-    groups:   f.groups   ?? DEFAULT_FEATURES.groups,
-    notebook: f.notebook ?? DEFAULT_FEATURES.notebook,
+    billing:            f.billing            ?? DEFAULT_FEATURES.billing,
+    messages:           f.messages           ?? DEFAULT_FEATURES.messages,
+    groups:             f.groups             ?? DEFAULT_FEATURES.groups,
+    notebook:           f.notebook           ?? DEFAULT_FEATURES.notebook,
+    allow_cancellation: f.allow_cancellation ?? DEFAULT_FEATURES.allow_cancellation,
   };
 }
 

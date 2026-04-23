@@ -13,7 +13,7 @@ interface Props {
 const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; dot: string; label?: string }> = {
   available:              { bg: 'bg-slate-50',    border: 'border-slate-200',   text: 'text-slate-600',   dot: 'bg-slate-400' },
   unavailable:            { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-400',    dot: 'bg-gray-300' },
-  blocked:                { bg: 'bg-gray-100',    border: 'border-gray-200',    text: 'text-gray-500',    dot: 'bg-gray-400',    label: 'Blocked' },
+  blocked:                { bg: 'bg-gray-200',    border: 'border-gray-300',    text: 'text-gray-600',    dot: 'bg-gray-500',    label: 'Blocked' },
   pending:                { bg: 'bg-amber-50',    border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Pending' },
   confirmed:              { bg: 'bg-indigo-50',   border: 'border-indigo-200',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  label: 'Approved' },
   completed:              { bg: 'bg-violet-50',   border: 'border-violet-200',  text: 'text-violet-700',  dot: 'bg-violet-500',  label: 'Done' },

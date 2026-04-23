@@ -51,6 +51,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
+  const [allowCancellation, setAllowCancellation] = useState(true);
 
   const minWeek = formatDate(getWeekStart(parseISO(today)));
   const maxWeek = formatDate(getWeekStart(addWeeks(parseISO(today), 4)));
@@ -86,6 +87,13 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   }, [view, weekStart, month]);
 
   useEffect(() => { loadBookings(); }, [email, teacherId]);
+
+  useEffect(() => {
+    fetch(`/api/teacher-features/${teacherId}`)
+      .then(r => r.json())
+      .then(d => { if (d.allow_cancellation === false) setAllowCancellation(false); })
+      .catch(() => {});
+  }, [teacherId]);
 
   async function submitCancelRequest() {
     if (!cancelTarget || !cancelReason.trim()) return;
@@ -202,7 +210,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                       today={today}
                       teacherId={teacherId}
                       email={email}
-                      onOwnSlotClick={(slot) => { setCancelTarget(slot); setCancelReason(''); setCancelError(''); }}
+                      onOwnSlotClick={allowCancellation ? (slot) => { setCancelTarget(slot); setCancelReason(''); setCancelError(''); } : undefined}
                     />
                   </div>
                 ))}
@@ -262,7 +270,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                             <p className="text-xs text-amber-600 mt-0.5">{t('schedule.cancelPendingShort')}</p>
                           )}
                         </div>
-                        {!isPending && !b.is_group && (
+                        {!isPending && !b.is_group && allowCancellation && (
                           <button
                             onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
                             className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap"
