@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { translate } from '@/lib/i18n';
 import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import ShareLinkModal from '@/components/ShareLinkModal';
 
@@ -19,12 +20,13 @@ interface FeatureCard {
 
 export default function TeacherDashboard() {
   const { settings, loading, save: saveSettings } = useTeacherSettings();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const f = settings.features;
   const [showSettings, setShowSettings] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('');
+  const [nextLesson, setNextLesson] = useState<{ formatted: string } | null>(null);
 
   useEffect(() => {
     createBrowserSupabase().auth.getUser().then(({ data }) => {
@@ -32,6 +34,9 @@ export default function TeacherDashboard() {
     });
     fetch('/api/teacher/me/subscription').then(r => r.json()).then(data => {
       if (data.teacher?.name) setTeacherName(data.teacher.name);
+    }).catch(() => {});
+    fetch('/api/teacher/next-lesson').then(r => r.json()).then(data => {
+      if (data.date) setNextLesson(data);
     }).catch(() => {});
   }, []);
 
@@ -92,6 +97,11 @@ export default function TeacherDashboard() {
     <>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('teacher.welcomeBack')}</h1>
+        {nextLesson ? (
+          <p className="text-sm text-blue-600 font-medium mb-1">
+            🕐 {translate(lang, 'teacher.nextLesson', { time: nextLesson.formatted })}
+          </p>
+        ) : null}
         <p className="text-sm text-gray-500 mb-8">{t('teacher.whatToDoToday')}</p>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

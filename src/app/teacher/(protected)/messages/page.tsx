@@ -103,8 +103,8 @@ export default function MessagesPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-        {/* ── Recipients ── */}
-        <div className="space-y-4">
+        {/* ── Recipients ── (shown second on mobile, first on desktop) */}
+        <div className="space-y-4 order-2 lg:order-1">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="px-5 pt-4 pb-3 border-b border-gray-100">
               <div className="flex items-center justify-between mb-3">
@@ -128,7 +128,7 @@ export default function MessagesPage() {
               </div>
             </div>
 
-            <div className="overflow-y-auto max-h-[420px] divide-y divide-gray-50">
+            <div className="overflow-y-auto max-h-[200px] lg:max-h-[420px] divide-y divide-gray-50">
               {loading ? (
                 <div className="px-5 py-8 text-center text-sm text-gray-400">{t('common.loading')}</div>
               ) : (
@@ -179,8 +179,8 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* ── Compose + send ── */}
-        <div className="space-y-4">
+        {/* ── Compose + send ── (shown first on mobile) */}
+        <div className="space-y-4 order-1 lg:order-2">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
             <h2 className="text-sm font-semibold text-gray-700">{t('messages.compose')}</h2>
 
