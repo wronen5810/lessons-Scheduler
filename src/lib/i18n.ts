@@ -89,6 +89,7 @@ const en = {
   'messages.failedSend': 'Failed to send.',
   'messages.sendTo': 'Send to',
   'messages.sentTo': 'Sent to',
+  'messages.notification': 'Notification',
   'messages.whatsappTab': 'WhatsApp links will open in a new tab',
   'messages.noPhoneNumbers': 'No recipients with a phone number.',
   // ── Days ────────────────────────────────────────────────
@@ -351,6 +352,7 @@ const he: typeof en = {
   'messages.failedSend': 'שליחה נכשלה.',
   'messages.sendTo': 'שלח ל-',
   'messages.sentTo': 'נשלח ל-',
+  'messages.notification': 'התראה',
   'messages.whatsappTab': 'קישורי WhatsApp ייפתחו בלשונית חדשה',
   'messages.noPhoneNumbers': 'אין נמענים עם מספר טלפון.',
   // ── Days ────────────────────────────────────────────────
