@@ -101,23 +101,10 @@ export default function SchedulePage() {
 
   return (
     <>
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { loadRequests(); reload(); }}
-            className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-            title={t('common.refresh')}
-          >
-            ↺
-          </button>
-          <button onClick={() => setShowSettings(true)} className="text-sm text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors" title={t('common.settings')}>⚙</button>
-        </div>
-      </div>
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 pb-5">
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-5">
-
-        {/* View toggle + navigation */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+        {/* Navigation row: month/week nav + view toggle + refresh + settings */}
+        <div className="flex items-center justify-between gap-2 mb-4">
           {view === 'week' ? (
             <WeekNav
               weekStart={weekStart}
@@ -127,20 +114,32 @@ export default function SchedulePage() {
               canNext
             />
           ) : (
-            <div className="flex items-center gap-2">
-              <button onClick={() => setMonth(prevMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
-              <span className="text-sm font-semibold text-gray-800 w-32 text-center">{formatMonthDisplay(month)}</span>
-              <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setMonth(prevMonth(month))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
+              <span className="text-sm font-semibold text-gray-800 w-28 text-center">{formatMonthDisplay(month)}</span>
+              <button onClick={() => setMonth(nextMonth(month))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
             </div>
           )}
 
-          <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm self-start sm:self-auto">
-            <button onClick={() => setView('week')} className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
-              {t('common.week')}
-            </button>
-            <button onClick={() => setView('month')} className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
-              {t('common.month')}
-            </button>
+          <div className="flex items-center gap-1.5">
+            <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
+              <button onClick={() => setView('week')} className={`px-3 py-1.5 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                {t('common.week')}
+              </button>
+              <button onClick={() => setView('month')} className={`px-3 py-1.5 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                {t('common.month')}
+              </button>
+            </div>
+            <button
+              onClick={() => { loadRequests(); reload(); }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title={t('common.refresh')}
+            >↺</button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title={t('common.settings')}
+            >⚙</button>
           </div>
         </div>
 
