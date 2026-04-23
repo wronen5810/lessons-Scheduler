@@ -48,7 +48,8 @@ export async function GET() {
       return NextResponse.json({
         date: c.date,
         start_time: c.start_time,
-        formatted: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+        hours,
+        minutes,
       });
     }
   }
