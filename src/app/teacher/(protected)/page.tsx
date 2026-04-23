@@ -26,7 +26,7 @@ export default function TeacherDashboard() {
   const [showShare, setShowShare] = useState(false);
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('');
-  const [nextLesson, setNextLesson] = useState<{ formatted: string } | null>(null);
+  const [nextLesson, setNextLesson] = useState<{ hours: number; minutes: number } | null>(null);
 
   useEffect(() => {
     createBrowserSupabase().auth.getUser().then(({ data }) => {
@@ -99,7 +99,7 @@ export default function TeacherDashboard() {
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('teacher.welcomeBack')}</h1>
         {nextLesson ? (
           <p className="text-sm text-blue-600 font-medium mb-1">
-            🕐 {translate(lang, 'teacher.nextLesson', { time: nextLesson.formatted })}
+            🕐 {translate(lang, 'teacher.nextLesson', { hours: String(nextLesson.hours), minutes: String(nextLesson.minutes) })}
           </p>
         ) : null}
         <p className="text-sm text-gray-500 mb-8">{t('teacher.whatToDoToday')}</p>
