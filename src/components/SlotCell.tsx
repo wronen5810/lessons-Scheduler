@@ -28,49 +28,49 @@ export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat 
   return (
     <div
       className={`
-        rounded-lg border px-2 py-1.5 mb-1.5 text-xs leading-tight select-none transition-all
+        rounded-lg border px-1 py-1 sm:px-2 sm:py-1.5 mb-1 sm:mb-1.5 leading-tight select-none transition-all
         ${cfg.bg} ${cfg.border} ${cfg.text}
         ${isClickable ? 'cursor-pointer hover:brightness-95 active:scale-95' : 'cursor-default'}
       `}
       onClick={isClickable ? () => onClick!(slot) : undefined}
     >
-      <div className="flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
-        <span className="font-semibold tabular-nums">{formatTimeDisplay(slot.start_time, timeFormat)}</span>
+      <div className="flex items-center gap-1">
+        <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+        <span className="font-semibold tabular-nums text-[10px] sm:text-xs">{formatTimeDisplay(slot.start_time, timeFormat)}</span>
       </div>
 
       {/* Title */}
       {slot.title && (
-        <div className="mt-0.5 ml-3 truncate font-medium text-[11px]">{slot.title}</div>
+        <div className="mt-0.5 ml-2 sm:ml-3 truncate font-medium text-[9px] sm:text-[11px]">{slot.title}</div>
       )}
 
       {/* Teacher: multi-participant count */}
       {isTeacher && (slot.max_participants ?? 1) > 1 && (
-        <div className="mt-0.5 ml-3 text-[10px] opacity-75">
-          {slot.participant_count ?? 0}/{slot.max_participants} students
+        <div className="mt-0.5 ml-2 sm:ml-3 text-[9px] sm:text-[10px] opacity-75">
+          {slot.participant_count ?? 0}/{slot.max_participants}
         </div>
       )}
 
       {/* Teacher: student name (single-participant only) */}
       {isTeacher && slot.student_name && (slot.max_participants ?? 1) <= 1 && (
-        <div className="mt-0.5 ml-3 truncate font-medium">{slot.student_name}</div>
+        <div className="mt-0.5 ml-2 sm:ml-3 truncate font-medium text-[9px] sm:text-xs">{slot.student_name}</div>
       )}
 
       {/* Teacher: state label (no student, single-participant) */}
       {isTeacher && cfg.label && !slot.student_name && (slot.max_participants ?? 1) <= 1 && (
-        <div className="mt-0.5 ml-3 opacity-70">{cfg.label}</div>
+        <div className="mt-0.5 ml-2 sm:ml-3 opacity-70 text-[9px] sm:text-xs">{cfg.label}</div>
       )}
 
       {/* Teacher: booking type (single-participant only) */}
       {isTeacher && slot.booking_type && (slot.max_participants ?? 1) <= 1 && (
-        <div className="mt-0.5 ml-3 opacity-60 text-[10px]">
+        <div className="mt-0.5 ml-2 sm:ml-3 opacity-60 text-[9px] sm:text-[10px]">
           {slot.booking_type === 'one_time' ? '1×' : '↺'}
         </div>
       )}
 
       {/* Student: available slot info */}
       {!isTeacher && slot.state === 'available' && (
-        <div className="mt-0.5 ml-3 opacity-70 text-[10px]">
+        <div className="mt-0.5 ml-2 sm:ml-3 opacity-70 text-[9px] sm:text-[10px]">
           {(slot.max_participants ?? 1) > 1
             ? `${(slot.max_participants ?? 1) - (slot.participant_count ?? 0)} spot${(slot.max_participants ?? 1) - (slot.participant_count ?? 0) !== 1 ? 's' : ''} left`
             : (slot.one_time_slot_id ? '1×' : '↺')}
@@ -79,7 +79,7 @@ export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat 
 
       {/* Student: booked state info */}
       {!isTeacher && slot.state !== 'available' && slot.state !== 'unavailable' && slot.booking_type && (
-        <div className="mt-0.5 ml-3 opacity-70 text-[10px]">
+        <div className="mt-0.5 ml-2 sm:ml-3 opacity-70 text-[9px] sm:text-[10px]">
           {slot.booking_type === 'one_time' ? '1×' : '↺'}
         </div>
       )}
