@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import type { StudentNote } from '@/app/api/teacher/students/[id]/notes/route';
 import StudentNotebook from '@/components/StudentNotebook';
 import GroupNotebook from '@/components/GroupNotebook';
@@ -223,9 +222,8 @@ export default function StudentsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
         <h1 className="text-lg font-bold text-gray-900">{t('common.students')}</h1>
-        <Link href="/teacher" className="text-sm text-blue-600 hover:underline">{t('common.backHome')}</Link>
       </header>
 
       {/* Tab switcher */}
