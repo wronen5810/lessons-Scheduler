@@ -31,7 +31,7 @@ export default function TeacherLogin() {
     }
 
     markSessionActive();
-    router.push('/teacher');
+    router.push('/teacher/schedule');
     router.refresh();
   }
 

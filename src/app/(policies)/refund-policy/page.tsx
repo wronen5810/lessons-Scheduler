@@ -239,7 +239,7 @@ function HebrewContent() {
       <h2 className="text-xl font-bold text-gray-900 mt-10 mb-3">8. צור קשר</h2>
       <address className="not-italic text-gray-700 space-y-1 leading-relaxed">
         <p><strong>רונן וולפסברגר</strong></p>
-        <p>רחוב הזבר 20, קדימה, ישראל</p>
+        <p>רחוב הצבר 20, קדימה, ישראל</p>
         <p>תמיכה: <Email /></p>
         <p><a href="https://lessons-scheduler.com" className="text-blue-600 hover:underline">lessons-scheduler.com</a></p>
       </address>
