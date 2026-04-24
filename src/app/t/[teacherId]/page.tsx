@@ -1,6 +1,7 @@
 'use client';
 
-import { use, useEffect, useState, Suspense } from 'react';
+import { use, useEffect, useRef, useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import {
   DAY_NAMES, DAY_NAMES_SHORT,
@@ -47,6 +48,7 @@ function getCalendarDays(monthStr: string): (string | null)[] {
 
 function StudentCalendar({ teacherId }: { teacherId: string }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const email = searchParams.get('email') ?? '';
   const { t, lang, isRTL } = useLanguage();
   const dayNamesShort = lang === 'he' ? DAY_NAMES_SHORT_HE : DAY_NAMES_SHORT;
@@ -54,6 +56,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
   const today = todayInIsrael();
   const [section, setSection] = useState<Section>('schedule');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [month, setMonth] = useState(() => getMonthStr(today));
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +97,19 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
   useEffect(() => { loadMonth(month); }, [month]);
   useEffect(() => { loadBookings(); }, [email, teacherId]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    if (menuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
+  function handleSignOut() {
+    router.push(`/t/${teacherId}`);
+  }
+
   useEffect(() => {
     fetch(`/api/teacher-features/${teacherId}`)
       .then(r => r.json())
@@ -191,26 +208,51 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   return (
     <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">{t('schedule.myLessons')}</h1>
+            <h1 className="text-base font-bold text-gray-900 tracking-tight">{t('schedule.myLessons')}</h1>
             {email && <p className="text-xs text-gray-400 mt-0.5">{email}</p>}
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle />
-            {email && (
-              <div className="flex rounded-xl border border-gray-200 bg-gray-50 overflow-hidden text-sm">
-                <button onClick={() => setSection('schedule')}
-                  className={`px-3 py-1.5 font-medium transition-colors ${section === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                  {t('schedule.schedule')}
-                </button>
-                <button onClick={() => setSection('notebook')}
-                  className={`px-3 py-1.5 font-medium transition-colors ${section === 'notebook' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                  {t('common.notebook')}
-                </button>
-              </div>
-            )}
+            {/* Menu */}
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(o => !o)}
+                className="flex items-center gap-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {t('common.menu')}
+                <svg className={`w-3.5 h-3.5 transition-transform ${menuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {menuOpen && (
+                <div className="absolute end-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                  <button
+                    onClick={() => { setSection('schedule'); setMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
+                  >
+                    📅 {t('schedule.schedule')}
+                  </button>
+                  {email && (
+                    <button
+                      onClick={() => { setSection('notebook'); setMenuOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'notebook' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
+                    >
+                      📓 {t('common.notebook')}
+                    </button>
+                  )}
+                  <div className="border-t border-gray-100 my-1" />
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    🚪 {t('common.signOut')}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
