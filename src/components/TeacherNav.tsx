@@ -124,7 +124,7 @@ export default function TeacherNav({ title }: { title?: string }) {
 
           {/* Home icon */}
           <Link
-            href="/teacher/schedule"
+            href="/teacher"
             title={t('common.home')}
             className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-slate-50 border border-gray-200 transition-colors"
           >
