@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,6 +11,7 @@ import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import ShareLinkModal from '@/components/ShareLinkModal';
 
 export default function TeacherDashboard() {
+  const router = useRouter();
   const { settings, loading, save: saveSettings } = useTeacherSettings();
   const { t, lang, isRTL } = useLanguage();
   const f = settings.features;
@@ -59,13 +61,21 @@ export default function TeacherDashboard() {
     return d.toISOString().slice(0, 10);
   }
 
+  async function handleSignOut() {
+    const supabase = createBrowserSupabase();
+    await supabase.auth.signOut();
+    router.push('/teacher/login');
+  }
+
   const quickActions = [
-    { label: t('teacher.schedule'), desc: t('teacher.scheduleDesc'), href: '/teacher/schedule', icon: '📅', show: true },
-    { label: t('common.students'), desc: t('teacher.studentsDesc'), href: '/teacher/students', icon: '👥', show: true },
-    { label: t('teacher.billing'), desc: t('teacher.billingDesc'), href: '/teacher/billing', icon: '💰', show: f.billing },
-    { label: t('teacher.messages'), desc: t('teacher.messagesDesc'), href: '/teacher/messages', icon: '💬', show: f.messages },
-    { label: t('common.share'), desc: t('teacher.shareDesc'), href: null, icon: '🔗', show: true, onClick: () => setShowShare(true) },
-    { label: t('common.settings'), desc: t('teacher.settingsDesc'), href: null, icon: '⚙️', show: true, onClick: () => setShowSettings(true) },
+    { label: t('teacher.schedule'),  desc: t('teacher.scheduleDesc'),  href: '/teacher/schedule',          icon: '📅', show: true },
+    { label: t('common.students'),   desc: t('teacher.studentsDesc'),  href: '/teacher/students',           icon: '👥', show: true },
+    { label: t('common.groups'),     desc: t('teacher.studentsDesc'),  href: '/teacher/students?tab=groups',icon: '🫂', show: f.groups },
+    { label: t('teacher.billing'),   desc: t('teacher.billingDesc'),   href: '/teacher/billing',            icon: '💰', show: f.billing },
+    { label: t('teacher.messages'),  desc: t('teacher.messagesDesc'),  href: '/teacher/messages',           icon: '💬', show: f.messages },
+    { label: t('common.share'),      desc: t('teacher.shareDesc'),     href: null, icon: '🔗', show: true,  onClick: () => setShowShare(true) },
+    { label: t('common.settings'),   desc: t('teacher.settingsDesc'),  href: null, icon: '⚙️', show: true,  onClick: () => setShowSettings(true) },
+    { label: t('common.signOut'),    desc: '',                         href: null, icon: '🚪', show: true,  onClick: handleSignOut, danger: true },
   ].filter(a => a.show);
 
   if (loading) {
@@ -127,25 +137,28 @@ export default function TeacherDashboard() {
         {/* Quick actions */}
         <div className="space-y-2">
           {quickActions.map((action) => {
+            const isDanger = (action as { danger?: boolean }).danger;
             const inner = (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gray-50 rounded-xl flex items-center justify-center text-lg flex-shrink-0 border border-gray-100">
+              <div className="flex items-center gap-3 w-full">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 border ${isDanger ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
                   {action.icon}
                 </div>
                 <div className="flex-1 min-w-0 text-start">
-                  <p className="text-sm font-semibold text-gray-900">{action.label}</p>
-                  <p className="text-xs text-gray-400 truncate">{action.desc}</p>
+                  <p className={`text-sm font-semibold ${isDanger ? 'text-red-600' : 'text-gray-900'}`}>{action.label}</p>
+                  {action.desc && <p className="text-xs text-gray-400 truncate">{action.desc}</p>}
                 </div>
-                <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d={isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
-                </svg>
+                {!isDanger && (
+                  <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
+                  </svg>
+                )}
               </div>
             );
-            const cls = 'w-full bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm hover:shadow-md hover:border-blue-200 transition-all';
+            const baseCls = `flex items-center w-full bg-white border rounded-xl px-4 py-3 shadow-sm transition-all ${isDanger ? 'border-red-100 hover:border-red-200 hover:bg-red-50' : 'border-gray-100 hover:shadow-md hover:border-blue-200'}`;
             return action.href ? (
-              <Link key={action.label} href={action.href} className={cls}>{inner}</Link>
+              <Link key={action.label} href={action.href} className={baseCls}>{inner}</Link>
             ) : (
-              <button key={action.label} onClick={action.onClick} className={cls}>{inner}</button>
+              <button key={action.label} onClick={action.onClick} className={baseCls}>{inner}</button>
             );
           })}
         </div>
