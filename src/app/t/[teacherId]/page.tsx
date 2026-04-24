@@ -117,6 +117,36 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
       .catch(() => {});
   }, [teacherId]);
 
+  // Compute next lesson countdown from bookings
+  const nextLesson = (() => {
+    const now = new Date();
+    let earliest: Date | null = null;
+    for (const b of bookings) {
+      if (b.status === 'cancellation_requested') continue;
+      let lessonDate: Date | null = null;
+      if (b.booking_type === 'one_time' && b.specific_date) {
+        lessonDate = new Date(`${b.specific_date}T${b.start_time}`);
+      } else if (b.booking_type === 'recurring' && b.day_of_week !== undefined) {
+        const currentDow = now.getDay();
+        let daysUntil = b.day_of_week - currentDow;
+        if (daysUntil < 0) daysUntil += 7;
+        const next = new Date(now);
+        next.setDate(now.getDate() + daysUntil);
+        const [h, m] = b.start_time.split(':').map(Number);
+        next.setHours(h, m, 0, 0);
+        if (next <= now) next.setDate(next.getDate() + 7);
+        lessonDate = next;
+      }
+      if (lessonDate && lessonDate > now && (!earliest || lessonDate < earliest)) {
+        earliest = lessonDate;
+      }
+    }
+    if (!earliest) return null;
+    const diffMs = earliest.getTime() - now.getTime();
+    const totalMinutes = Math.floor(diffMs / 60000);
+    return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+  })();
+
   // Build date markers
   const dateMarkers = new Map<string, { available: boolean; booked: boolean }>();
   for (const slot of slots) {
@@ -265,6 +295,20 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
         {/* Schedule */}
         {section === 'schedule' && (
           <div className="space-y-5">
+
+            {/* Next lesson countdown */}
+            {step === 'calendar' && email && nextLesson && (
+              <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="9"/><path strokeLinecap="round" d="M12 7v5l3 3"/>
+                </svg>
+                <p className="text-sm font-medium text-blue-800">
+                  {nextLesson.hours > 0
+                    ? `${t('teacher.nextLesson').split('{')[0].trim()} ${nextLesson.hours}h ${nextLesson.minutes}m`
+                    : `${t('teacher.nextLesson').split('{')[0].trim()} ${nextLesson.minutes}m`}
+                </p>
+              </div>
+            )}
 
             {/* ── STEP: CALENDAR ── */}
             {step === 'calendar' && (
@@ -506,43 +550,6 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
               </div>
             )}
 
-            {/* My Bookings list */}
-            {step === 'calendar' && email && bookings.length > 0 && (
-              <section>
-                <h2 className="text-base font-semibold text-gray-900 mb-3">{t('schedule.myBookings')}</h2>
-                <div className="space-y-2">
-                  {bookings.map((b) => {
-                    const label = b.booking_type === 'recurring'
-                      ? `${t('schedule.everyDay', { day: dayNamesFull[b.day_of_week ?? 0] })} · ${b.start_time}–${b.end_time}`
-                      : `${b.specific_date} · ${b.start_time}–${b.end_time}`;
-                    const isPending = b.status === 'cancellation_requested';
-                    return (
-                      <div key={`${b.id}-${b.is_group}`} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-gray-900">{b.is_group ? b.group_name : label}</p>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                              b.is_group ? 'bg-indigo-100 text-indigo-700' :
-                              b.booking_type === 'recurring' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'
-                            }`}>
-                              {b.is_group ? t('schedule.group') : b.booking_type === 'recurring' ? t('teacher.recurring') : t('schedule.oneTime')}
-                            </span>
-                          </div>
-                          {b.is_group && <p className="text-xs text-gray-400 mt-0.5">{label}</p>}
-                          {isPending && <p className="text-xs text-amber-600 mt-0.5">{t('schedule.cancelPendingShort')}</p>}
-                        </div>
-                        {!isPending && !b.is_group && allowCancellation && (
-                          <button onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
-                            className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap">
-                            {t('schedule.requestCancel')}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
           </div>
         )}
       </main>
