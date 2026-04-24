@@ -307,9 +307,10 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                               className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-medium transition-all
                                 ${!isClickable && !isToday ? 'text-gray-300 cursor-default' : ''}
                                 ${isToday && !hasAvailable && !hasBooked ? 'ring-2 ring-blue-400 text-blue-600 font-bold' : ''}
-                                ${hasAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold' : ''}
+                                ${hasAvailable && !hasBooked ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold' : ''}
                                 ${hasBooked && !hasAvailable ? 'bg-blue-100 text-blue-900 hover:bg-blue-200 cursor-pointer font-semibold' : ''}
-                                ${isToday && (hasAvailable || hasBooked) ? 'ring-2 ring-offset-1 ring-amber-400' : ''}
+                                ${hasAvailable && hasBooked ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold ring-2 ring-blue-400 ring-offset-1' : ''}
+                                ${isToday && (hasAvailable || hasBooked) ? 'ring-offset-1' : ''}
                               `}
                             >
                               {dayNum}
@@ -331,6 +332,12 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     <span className="flex items-center gap-2 text-xs text-gray-500">
                       <span className="w-5 h-5 rounded-full bg-blue-100 border border-blue-200 inline-block" />
                       {t('slot.confirmed')}
+                    </span>
+                  )}
+                  {email && (
+                    <span className="flex items-center gap-2 text-xs text-gray-500">
+                      <span className="w-5 h-5 rounded-full bg-amber-100 ring-2 ring-blue-400 ring-offset-1 inline-block" />
+                      Both
                     </span>
                   )}
                 </div>
