@@ -132,7 +132,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose }: Prop
               <label key={key} className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={features[key]}
+                  checked={!!features[key]}
                   onChange={(e) => setFeatures((f) => ({ ...f, [key]: e.target.checked }))}
                   className="w-4 h-4 accent-blue-600 cursor-pointer"
                 />
