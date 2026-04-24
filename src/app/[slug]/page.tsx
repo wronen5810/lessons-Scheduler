@@ -11,8 +11,7 @@ export default async function TeacherSlugPage({ params }: { params: Promise<{ sl
   const { data: teachers } = await supabase
     .from('profiles')
     .select('id, display_name')
-    .eq('role', 'teacher')
-    .eq('is_active', true);
+    .eq('role', 'teacher');
 
   if (!teachers || teachers.length === 0) notFound();
 
