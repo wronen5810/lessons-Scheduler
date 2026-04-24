@@ -1,23 +1,22 @@
 'use client';
 
 import { use, useEffect, useState, Suspense } from 'react';
-import { addWeeks, parseISO, subWeeks } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import {
-  formatDate, formatMonthDisplay, getMonthStr, getMonthWeekStarts,
-  getWeekStart, nextMonth, prevMonth, todayInIsrael,
+  DAY_NAMES, DAY_NAMES_SHORT,
+  formatDate, formatMonthDisplay, formatTimeDisplay,
+  getEndTime, getMonthStr, getMonthWeekStarts,
+  nextMonth, prevMonth, todayInIsrael,
 } from '@/lib/dates';
+import { DAY_NAMES_HE, DAY_NAMES_SHORT_HE } from '@/lib/i18n';
 import type { ComputedSlot } from '@/lib/types';
-import WeekCalendar from '@/components/WeekCalendar';
-import WeekNav from '@/components/WeekNav';
 import { useSearchParams } from 'next/navigation';
-import { DAY_NAMES } from '@/lib/dates';
 import StudentNotebook from '@/components/StudentNotebook';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
-import { DAY_NAMES_HE } from '@/lib/i18n';
 
-type View = 'week' | 'month';
 type Section = 'schedule' | 'notebook';
+type Step = 'calendar' | 'times' | 'book' | 'done';
 
 interface StudentBooking {
   id: string;
@@ -33,36 +32,47 @@ interface StudentBooking {
   group_name?: string;
 }
 
+function getCalendarDays(monthStr: string): (string | null)[] {
+  const [year, month] = monthStr.split('-').map(Number);
+  const firstDow = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days: (string | null)[] = [];
+  for (let i = 0; i < firstDow; i++) days.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    days.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  }
+  while (days.length % 7 !== 0) days.push(null);
+  return days;
+}
+
 function StudentCalendar({ teacherId }: { teacherId: string }) {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') ?? '';
-  const { t, lang } = useLanguage();
-  const dayNames = lang === 'he' ? DAY_NAMES_HE : DAY_NAMES;
+  const { t, lang, isRTL } = useLanguage();
+  const dayNamesShort = lang === 'he' ? DAY_NAMES_SHORT_HE : DAY_NAMES_SHORT;
+  const dayNamesFull = lang === 'he' ? DAY_NAMES_HE : DAY_NAMES;
 
   const today = todayInIsrael();
   const [section, setSection] = useState<Section>('schedule');
-  const [view, setView] = useState<View>('month');
-  const [weekStart, setWeekStart] = useState(() => formatDate(getWeekStart(parseISO(today))));
   const [month, setMonth] = useState(() => getMonthStr(today));
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<StudentBooking[]>([]);
+  const [allowCancellation, setAllowCancellation] = useState(true);
+
+  // Multi-step flow
+  const [step, setStep] = useState<Step>('calendar');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<ComputedSlot | null>(null);
+  const [bookingType, setBookingType] = useState<'one_time' | 'recurring'>('one_time');
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+
+  // Cancel flow
   const [cancelTarget, setCancelTarget] = useState<StudentBooking | ComputedSlot | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
-  const [allowCancellation, setAllowCancellation] = useState(true);
-
-  const minWeek = formatDate(getWeekStart(parseISO(today)));
-  const maxWeek = formatDate(getWeekStart(addWeeks(parseISO(today), 4)));
-
-  async function loadWeek(week: string) {
-    setLoading(true);
-    const emailParam = email ? `&studentEmail=${encodeURIComponent(email)}` : '';
-    const res = await fetch(`/api/slots?week=${week}&teacherId=${teacherId}${emailParam}`);
-    setSlots(res.ok ? await res.json() : []);
-    setLoading(false);
-  }
 
   async function loadMonth(monthStr: string) {
     setLoading(true);
@@ -81,19 +91,74 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     if (res.ok) setBookings(await res.json());
   }
 
-  useEffect(() => {
-    if (view === 'week') loadWeek(weekStart);
-    else loadMonth(month);
-  }, [view, weekStart, month]);
-
+  useEffect(() => { loadMonth(month); }, [month]);
   useEffect(() => { loadBookings(); }, [email, teacherId]);
-
   useEffect(() => {
     fetch(`/api/teacher-features/${teacherId}`)
       .then(r => r.json())
       .then(d => { if (d.allow_cancellation === false) setAllowCancellation(false); })
       .catch(() => {});
   }, [teacherId]);
+
+  // Build date markers
+  const dateMarkers = new Map<string, { available: boolean; booked: boolean }>();
+  for (const slot of slots) {
+    if (slot.state === 'unavailable' || slot.state === 'blocked') continue;
+    if (!dateMarkers.has(slot.date)) dateMarkers.set(slot.date, { available: false, booked: false });
+    const m = dateMarkers.get(slot.date)!;
+    if (slot.state === 'available') m.available = true;
+    else m.booked = true;
+  }
+
+  const calendarDays = getCalendarDays(month);
+
+  // Slots for selected date
+  const dateSlots = selectedDate ? slots.filter(s => s.date === selectedDate && s.state !== 'unavailable' && s.state !== 'blocked') : [];
+  const availableSlots = dateSlots.filter(s => s.state === 'available');
+  const bookedSlots = dateSlots.filter(s => s.state !== 'available');
+
+  function handleDateClick(date: string) {
+    setSelectedDate(date);
+    setStep('times');
+    setSelectedSlot(null);
+    setBookingError('');
+  }
+
+  function handleSlotClick(slot: ComputedSlot) {
+    setSelectedSlot(slot);
+    setBookingType(slot.one_time_slot_id ? 'one_time' : 'one_time');
+    setBookingError('');
+    setStep('book');
+  }
+
+  async function handleBook() {
+    if (!selectedSlot || !email) return;
+    setBookingLoading(true);
+    setBookingError('');
+    const res = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        booking_type: bookingType,
+        ...(selectedSlot.one_time_slot_id
+          ? { one_time_slot_id: selectedSlot.one_time_slot_id }
+          : { template_id: selectedSlot.template_id }),
+        date: selectedSlot.date,
+        start_time: selectedSlot.start_time,
+        student_email: email,
+        teacher_id: teacherId,
+      }),
+    });
+    setBookingLoading(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setBookingError(d.error || 'Something went wrong. Please try again.');
+      return;
+    }
+    setStep('done');
+    loadBookings();
+    loadMonth(month);
+  }
 
   async function submitCancelRequest() {
     if (!cancelTarget || !cancelReason.trim()) return;
@@ -118,163 +183,308 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     loadBookings();
   }
 
-  const weekStarts = view === 'week' ? [weekStart] : getMonthWeekStarts(month);
+  const selectedDateObj = selectedDate ? parseISO(selectedDate) : null;
+  const selectedDateLabel = selectedDateObj
+    ? `${format(selectedDateObj, 'dd/MM/yyyy')} (${dayNamesFull[selectedDateObj.getDay()]})`
+    : '';
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">{t('schedule.myLessons')}</h1>
             {email && <p className="text-xs text-gray-400 mt-0.5">{email}</p>}
           </div>
-          <LanguageToggle />
-          {email && (
-            <div className="flex rounded-xl border border-gray-200 bg-gray-50 overflow-hidden text-sm">
-              <button
-                onClick={() => setSection('schedule')}
-                className={`px-4 py-2 font-medium transition-colors ${section === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                {t('schedule.schedule')}
-              </button>
-              <button
-                onClick={() => setSection('notebook')}
-                className={`px-4 py-2 font-medium transition-colors ${section === 'notebook' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                {t('common.notebook')}
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            {email && (
+              <div className="flex rounded-xl border border-gray-200 bg-gray-50 overflow-hidden text-sm">
+                <button onClick={() => setSection('schedule')}
+                  className={`px-3 py-1.5 font-medium transition-colors ${section === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                  {t('schedule.schedule')}
+                </button>
+                <button onClick={() => setSection('notebook')}
+                  className={`px-3 py-1.5 font-medium transition-colors ${section === 'notebook' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                  {t('common.notebook')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-3 sm:px-6 py-5">
+      <main className="max-w-lg mx-auto px-4 py-6">
 
-        {/* ── NOTEBOOK SECTION ── */}
-        {section === 'notebook' && email && (
-          <StudentNotebook teacherId={teacherId} email={email} />
-        )}
+        {/* Notebook */}
+        {section === 'notebook' && email && <StudentNotebook teacherId={teacherId} email={email} />}
 
-        {/* ── SCHEDULE SECTION ── */}
+        {/* Schedule */}
         {section === 'schedule' && (
-          <>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-              {/* Navigation */}
-              {view === 'week' ? (
-                <WeekNav
-                  weekStart={weekStart}
-                  onPrev={() => { const p = formatDate(subWeeks(parseISO(weekStart), 1)); if (p >= minWeek) setWeekStart(p); }}
-                  onNext={() => { const n = formatDate(addWeeks(parseISO(weekStart), 1)); if (n <= maxWeek) setWeekStart(n); }}
-                  canPrev={weekStart > minWeek}
-                  canNext={weekStart < maxWeek}
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setMonth(prevMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
-                  <span className="text-sm font-semibold text-gray-800 w-32 text-center">{formatMonthDisplay(month)}</span>
-                  <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
+          <div className="space-y-5">
+
+            {/* ── STEP: CALENDAR ── */}
+            {step === 'calendar' && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                {/* Month nav */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <button onClick={() => setMonth(prevMonth(month))} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-lg">‹</button>
+                  <span className="text-sm font-bold text-gray-900 uppercase tracking-wide">{formatMonthDisplay(month)}</span>
+                  <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-lg">›</button>
                 </div>
-              )}
 
-              {/* View toggle */}
-              <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm self-start sm:self-auto">
-                <button
-                  onClick={() => setView('week')}
-                  className={`px-4 py-2 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                >
-                  {t('common.week')}
-                </button>
-                <button
-                  onClick={() => setView('month')}
-                  className={`px-4 py-2 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                >
-                  {t('common.month')}
-                </button>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="mt-8 text-center text-gray-400">{t('common.loading')}</div>
-            ) : (
-              <div className="space-y-4">
-                {weekStarts.map((ws) => (
-                  <div key={ws} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4">
-                    <WeekCalendar
-                      slots={slots.filter((s) => {
-                        const d = parseISO(s.date);
-                        const start = parseISO(ws);
-                        const end = addWeeks(start, 1);
-                        return d >= start && d < end;
-                      })}
-                      weekStart={ws}
-                      today={today}
-                      teacherId={teacherId}
-                      email={email}
-                      onOwnSlotClick={allowCancellation ? (slot) => { setCancelTarget(slot); setCancelReason(''); setCancelError(''); } : undefined}
-                    />
+                <div className="px-4 pb-4">
+                  {/* Day headers */}
+                  <div className="grid grid-cols-7 mb-2">
+                    {dayNamesShort.map((d) => (
+                      <div key={d} className="py-2 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">{d}</div>
+                    ))}
                   </div>
-                ))}
+
+                  {/* Calendar grid */}
+                  {loading ? (
+                    <div className="py-10 text-center text-sm text-gray-400">{t('common.loading')}</div>
+                  ) : (
+                    <div className="grid grid-cols-7">
+                      {calendarDays.map((date, i) => {
+                        if (!date) return <div key={`e${i}`} className="h-10" />;
+                        const marker = dateMarkers.get(date);
+                        const isPast = date < today;
+                        const isToday = date === today;
+                        const hasAvailable = !isPast && marker?.available;
+                        const hasBooked = marker?.booked;
+                        const isClickable = !isPast && (hasAvailable || hasBooked);
+                        const dayNum = parseInt(date.slice(8));
+
+                        return (
+                          <div key={date} className="h-10 flex items-center justify-center">
+                            <button
+                              onClick={() => isClickable && handleDateClick(date)}
+                              disabled={!isClickable}
+                              className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-medium transition-all
+                                ${!isClickable && !isToday ? 'text-gray-300 cursor-default' : ''}
+                                ${isToday && !hasAvailable && !hasBooked ? 'ring-2 ring-blue-400 text-blue-600 font-bold' : ''}
+                                ${hasAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold' : ''}
+                                ${hasBooked && !hasAvailable ? 'bg-blue-100 text-blue-900 hover:bg-blue-200 cursor-pointer font-semibold' : ''}
+                                ${isToday && (hasAvailable || hasBooked) ? 'ring-2 ring-offset-1 ring-amber-400' : ''}
+                              `}
+                            >
+                              {dayNum}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Legend */}
+                <div className="px-6 py-3 border-t border-gray-50 flex flex-wrap gap-4">
+                  <span className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="w-5 h-5 rounded-full bg-amber-100 border border-amber-200 inline-block" />
+                    {t('slot.available')}
+                  </span>
+                  {email && (
+                    <span className="flex items-center gap-2 text-xs text-gray-500">
+                      <span className="w-5 h-5 rounded-full bg-blue-100 border border-blue-200 inline-block" />
+                      {t('slot.confirmed')}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              {[
-                { color: 'bg-emerald-400', label: t('slot.available') },
-                ...(email ? [
-                  { color: 'bg-amber-400', label: t('slot.pending') },
-                  { color: 'bg-blue-500',  label: t('slot.confirmed') },
-                ] : []),
-              ].map(({ color, label }) => (
-                <span key={label} className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
-                  <span className={`w-2 h-2 rounded-full ${color}`} />
-                  {label}
-                </span>
-              ))}
-            </div>
+            {/* ── STEP: TIMES ── */}
+            {step === 'times' && selectedDate && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <button onClick={() => setStep('calendar')} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-3">
+                    ‹ {t('common.back')}
+                  </button>
+                  <h2 className="text-base font-bold text-gray-900">{selectedDateLabel}</h2>
+                </div>
 
-            {/* My bookings */}
-            {email && bookings.length > 0 && (
-              <section className="mt-10">
+                <div className="px-5 py-4 space-y-5">
+                  {/* Available times */}
+                  {availableSlots.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-gray-600 mb-3">{t('schedule.schedule')}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableSlots.map((slot) => (
+                          <button
+                            key={`${slot.date}-${slot.start_time}`}
+                            onClick={() => handleSlotClick(slot)}
+                            className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-800 transition-all"
+                          >
+                            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 3" />
+                            </svg>
+                            {formatTimeDisplay(slot.start_time, '24h')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Student's booked lessons this day */}
+                  {bookedSlots.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-gray-600 mb-3">{t('schedule.myBookings')}</p>
+                      <div className="space-y-2">
+                        {bookedSlots.map((slot) => {
+                          const statusColors: Record<string, string> = {
+                            pending: 'bg-amber-50 border-amber-200 text-amber-800',
+                            confirmed: 'bg-blue-50 border-blue-200 text-blue-800',
+                            completed: 'bg-violet-50 border-violet-200 text-violet-800',
+                            paid: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+                            cancellation_requested: 'bg-rose-50 border-rose-200 text-rose-800',
+                          };
+                          const cls = statusColors[slot.state] ?? 'bg-gray-50 border-gray-200 text-gray-700';
+                          const statusLabel: Record<string, string> = {
+                            pending: t('slot.pending'), confirmed: t('slot.approved'),
+                            completed: t('slot.completed'), paid: t('slot.paid'),
+                            cancellation_requested: t('slot.cancelReq'),
+                          };
+                          return (
+                            <div key={`${slot.date}-${slot.start_time}`} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${cls}`}>
+                              <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 3" />
+                                </svg>
+                                <span className="text-sm font-semibold">{formatTimeDisplay(slot.start_time, '24h')}</span>
+                                {slot.booking_type && (
+                                  <span className="text-xs opacity-70">{slot.booking_type === 'one_time' ? '1×' : '↺'}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium opacity-80">{statusLabel[slot.state]}</span>
+                                {allowCancellation && slot.state === 'confirmed' && slot.booking_id && (
+                                  <button
+                                    onClick={() => { setCancelTarget(slot); setCancelReason(''); setCancelError(''); }}
+                                    className="text-xs underline opacity-60 hover:opacity-100"
+                                  >
+                                    {t('schedule.requestCancel')}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {availableSlots.length === 0 && bookedSlots.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4">{t('teacher.noLessonsDay')}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP: BOOK ── */}
+            {step === 'book' && selectedSlot && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <button onClick={() => setStep('times')} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-3">
+                    ‹ {t('common.back')}
+                  </button>
+                  <h2 className="text-base font-bold text-gray-900">{selectedDateLabel}</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {formatTimeDisplay(selectedSlot.start_time, '24h')} – {formatTimeDisplay(selectedSlot.end_time, '24h')}
+                  </p>
+                </div>
+
+                <div className="px-5 py-5 space-y-4">
+                  {!email ? (
+                    <p className="text-sm text-gray-500 text-center py-4">Please sign in to book a lesson.</p>
+                  ) : (
+                    <>
+                      {/* Booking type (only for template slots) */}
+                      {!selectedSlot.one_time_slot_id && selectedSlot.template_id && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-gray-700 mb-3">How would you like to book?</p>
+                          <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${bookingType === 'one_time' ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                            <input type="radio" name="bookingType" value="one_time" checked={bookingType === 'one_time'} onChange={() => setBookingType('one_time')} className="mt-0.5 accent-amber-500" />
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{t('schedule.oneTime')}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">Book just this single session</p>
+                            </div>
+                          </label>
+                          <label className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${bookingType === 'recurring' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                            <input type="radio" name="bookingType" value="recurring" checked={bookingType === 'recurring'} onChange={() => setBookingType('recurring')} className="mt-0.5 accent-blue-500" />
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{t('teacher.recurring')}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Book every {dayNamesFull[selectedDateObj?.getDay() ?? 0]} at {formatTimeDisplay(selectedSlot.start_time, '24h')}
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      )}
+
+                      {selectedSlot.one_time_slot_id && (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                          <p className="text-sm font-semibold text-amber-900">{t('schedule.oneTime')}</p>
+                          <p className="text-xs text-amber-700 mt-0.5">This is a single available session</p>
+                        </div>
+                      )}
+
+                      {bookingError && <p className="text-sm text-red-600">{bookingError}</p>}
+
+                      <button
+                        onClick={handleBook}
+                        disabled={bookingLoading}
+                        className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        {bookingLoading ? t('common.sending') : t('schedule.submitRequest')}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP: DONE ── */}
+            {step === 'done' && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto text-3xl">✓</div>
+                <h2 className="text-lg font-bold text-gray-900">Request sent!</h2>
+                <p className="text-sm text-gray-500">Your teacher will review and confirm your booking.</p>
+                <button onClick={() => setStep('calendar')} className="text-sm text-blue-600 hover:underline">
+                  ← Back to calendar
+                </button>
+              </div>
+            )}
+
+            {/* My Bookings list */}
+            {step === 'calendar' && email && bookings.length > 0 && (
+              <section>
                 <h2 className="text-base font-semibold text-gray-900 mb-3">{t('schedule.myBookings')}</h2>
                 <div className="space-y-2">
                   {bookings.map((b) => {
                     const label = b.booking_type === 'recurring'
-                      ? `${t('schedule.everyDay', { day: dayNames[b.day_of_week ?? 0] })} · ${b.start_time}–${b.end_time}`
+                      ? `${t('schedule.everyDay', { day: dayNamesFull[b.day_of_week ?? 0] })} · ${b.start_time}–${b.end_time}`
                       : `${b.specific_date} · ${b.start_time}–${b.end_time}`;
                     const isPending = b.status === 'cancellation_requested';
                     return (
                       <div key={`${b.id}-${b.is_group}`} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-gray-900">
-                              {b.is_group ? b.group_name : label}
-                            </p>
-                            {b.is_group ? (
-                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                                {t('schedule.group')} · {b.booking_type === 'recurring' ? t('teacher.recurring') : t('schedule.oneTime')}
-                              </span>
-                            ) : (
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                b.booking_type === 'recurring'
-                                  ? 'bg-violet-100 text-violet-700'
-                                  : 'bg-sky-100 text-sky-700'
-                              }`}>
-                                {b.booking_type === 'recurring' ? t('teacher.recurring') : t('schedule.oneTime')}
-                              </span>
-                            )}
+                            <p className="text-sm font-medium text-gray-900">{b.is_group ? b.group_name : label}</p>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                              b.is_group ? 'bg-indigo-100 text-indigo-700' :
+                              b.booking_type === 'recurring' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'
+                            }`}>
+                              {b.is_group ? t('schedule.group') : b.booking_type === 'recurring' ? t('teacher.recurring') : t('schedule.oneTime')}
+                            </span>
                           </div>
-                          {b.is_group && (
-                            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-                          )}
-                          {isPending && (
-                            <p className="text-xs text-amber-600 mt-0.5">{t('schedule.cancelPendingShort')}</p>
-                          )}
+                          {b.is_group && <p className="text-xs text-gray-400 mt-0.5">{label}</p>}
+                          {isPending && <p className="text-xs text-amber-600 mt-0.5">{t('schedule.cancelPendingShort')}</p>}
                         </div>
                         {!isPending && !b.is_group && allowCancellation && (
-                          <button
-                            onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
-                            className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap"
-                          >
+                          <button onClick={() => { setCancelTarget(b); setCancelReason(''); setCancelError(''); }}
+                            className="text-xs text-red-500 hover:text-red-700 whitespace-nowrap">
                             {t('schedule.requestCancel')}
                           </button>
                         )}
@@ -284,7 +494,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                 </div>
               </section>
             )}
-          </>
+          </div>
         )}
       </main>
 
@@ -294,11 +504,10 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
         const isPending = state === 'cancellation_requested';
         const isReadOnly = state === 'completed' || state === 'paid';
         const title = 'state' in cancelTarget
-          ? `${(cancelTarget as ComputedSlot).date} · ${(cancelTarget as ComputedSlot).start_time}`
-          : '';
+          ? `${(cancelTarget as ComputedSlot).date} · ${(cancelTarget as ComputedSlot).start_time}` : '';
         return (
           <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
               {title && <h3 className="font-semibold text-gray-900">{title}</h3>}
               {isReadOnly ? (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700">
@@ -311,27 +520,18 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
               ) : (
                 <>
                   <p className="text-sm text-gray-500">{t('schedule.cancelReason')}</p>
-                  <textarea
-                    rows={3}
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
+                  <textarea rows={3} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
                     placeholder={t('schedule.cancelPlaceholder')}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   {cancelError && <p className="text-sm text-red-600">{cancelError}</p>}
-                  <button
-                    onClick={submitCancelRequest}
-                    disabled={cancelLoading || !cancelReason.trim()}
-                    className="w-full bg-red-600 text-white text-sm font-medium rounded-lg py-2 hover:bg-red-700 disabled:opacity-50 transition-colors"
-                  >
+                  <button onClick={submitCancelRequest} disabled={cancelLoading || !cancelReason.trim()}
+                    className="w-full bg-red-600 text-white text-sm font-medium rounded-lg py-2 hover:bg-red-700 disabled:opacity-50 transition-colors">
                     {cancelLoading ? t('schedule.submitting') : t('schedule.submitRequest')}
                   </button>
                 </>
               )}
-              <button
-                onClick={() => setCancelTarget(null)}
-                className="w-full border border-gray-300 text-gray-600 text-sm rounded-lg py-2 hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={() => setCancelTarget(null)}
+                className="w-full border border-gray-300 text-gray-600 text-sm rounded-lg py-2 hover:bg-gray-50 transition-colors">
                 {t('common.close')}
               </button>
             </div>
