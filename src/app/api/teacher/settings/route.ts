@@ -9,24 +9,29 @@ export interface TeacherFeatures {
   groups: boolean;
   notebook: boolean;
   allow_cancellation: boolean;
+  policies_accepted_at?: string | null;
 }
 
 const DEFAULT_FEATURES: TeacherFeatures = {
-  billing: true,
-  messages: true,
-  groups: true,
-  notebook: true,
-  allow_cancellation: true,
+  billing: false,
+  messages: false,
+  groups: false,
+  notebook: false,
+  allow_cancellation: false,
+  policies_accepted_at: null,
 };
 
-function mergeFeatures(raw: unknown): TeacherFeatures {
+function mergeFeatures(raw: unknown, preserveAccepted?: string | null): TeacherFeatures {
   const f = (raw && typeof raw === 'object' ? raw : {}) as Partial<TeacherFeatures>;
   return {
-    billing:            f.billing            ?? DEFAULT_FEATURES.billing,
-    messages:           f.messages           ?? DEFAULT_FEATURES.messages,
-    groups:             f.groups             ?? DEFAULT_FEATURES.groups,
-    notebook:           f.notebook           ?? DEFAULT_FEATURES.notebook,
-    allow_cancellation: f.allow_cancellation ?? DEFAULT_FEATURES.allow_cancellation,
+    billing:             f.billing             ?? DEFAULT_FEATURES.billing,
+    messages:            f.messages            ?? DEFAULT_FEATURES.messages,
+    groups:              f.groups              ?? DEFAULT_FEATURES.groups,
+    notebook:            f.notebook            ?? DEFAULT_FEATURES.notebook,
+    allow_cancellation:  f.allow_cancellation  ?? DEFAULT_FEATURES.allow_cancellation,
+    policies_accepted_at: preserveAccepted !== undefined
+      ? preserveAccepted
+      : (f.policies_accepted_at ?? null),
   };
 }
 
@@ -70,6 +75,7 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json();
   const update: Record<string, unknown> = {};
+  const supabase = createServiceSupabase();
 
   if (body.default_duration_minutes !== undefined) {
     const d = Number(body.default_duration_minutes);
@@ -91,10 +97,16 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (body.features !== undefined) {
-    update.features = mergeFeatures(body.features);
+    // Preserve policies_accepted_at when updating other feature flags
+    const { data: current } = await supabase
+      .from('teacher_settings')
+      .select('features')
+      .eq('teacher_id', auth.user.id)
+      .single();
+    const currentPoliciesAt = ((current?.features ?? {}) as Partial<TeacherFeatures>).policies_accepted_at ?? null;
+    update.features = mergeFeatures(body.features, currentPoliciesAt);
   }
 
-  const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('teacher_settings')
     .upsert({ teacher_id: auth.user.id, ...update, updated_at: new Date().toISOString() })

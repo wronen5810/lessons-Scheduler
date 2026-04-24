@@ -4,6 +4,7 @@ import SessionGuard from '@/components/SessionGuard';
 import NoSubscriptionMessage from '@/components/NoSubscriptionMessage';
 import TeacherNav from '@/components/TeacherNav';
 import AssistantBar from '@/components/AssistantBar';
+import PolicyGate from '@/components/PolicyGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,24 @@ export default async function TeacherProtectedLayout({ children }: { children: R
         email={authUser?.email ?? ''}
         phone={(profile as { phone?: string } | null)?.phone ?? undefined}
       />
+    );
+  }
+
+  // Check if teacher has accepted policies
+  const { data: tSettings } = await supabase
+    .from('teacher_settings')
+    .select('features')
+    .eq('teacher_id', user.id)
+    .single();
+
+  const featuresData = (tSettings?.features ?? {}) as Record<string, unknown>;
+  const policiesAccepted = !!featuresData.policies_accepted_at;
+
+  if (!policiesAccepted) {
+    return (
+      <SessionGuard loginPath="/teacher/login">
+        <PolicyGate />
+      </SessionGuard>
     );
   }
 
