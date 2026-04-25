@@ -36,7 +36,9 @@ export default function SchedulePage() {
   const { t, lang } = useLanguage();
   const today = todayInIsrael();
 
-  const [view, setView] = useState<View>('day');
+  const [view, setView] = useState<View>(() =>
+    typeof window !== 'undefined' && window.innerWidth >= 1024 ? 'month' : 'day'
+  );
   const [selectedDate, setSelectedDate] = useState(today);
   const [month, setMonth] = useState(() => getMonthStr(today));
   const [showSettings, setShowSettings] = useState(false);
