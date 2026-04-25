@@ -1,11 +1,11 @@
 ﻿import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.lessonscheduler.app',
-  appName: 'Lessons Scheduler',
+  appId: 'com.saderot.app',
+  appName: 'saderOT',
   webDir: 'public',
   server: {
-    url: 'https://lessons-scheduler.com',
+    url: 'https://saderot.com',
     cleartext: false,
     androidScheme: 'https'
   }
