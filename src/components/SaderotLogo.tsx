@@ -5,43 +5,60 @@ interface Props {
   darkBg?: boolean;
 }
 
-export default function SaderotLogo({ size = 'sm', showText = true, showTagline = false, darkBg = false }: Props) {
-  const dim = size === 'sm' ? 28 : size === 'md' ? 36 : 48;
-  const textSize = size === 'sm' ? 'text-base' : size === 'md' ? 'text-xl' : 'text-2xl';
-  const taglineSize = 'text-xs';
+// Brand mark: 5×3 weekly schedule grid
+// Row 1: □ ■ □ ■ □
+// Row 2: ■ □ 🔴 □ ■
+// Row 3: □ ■ □ □ ■
+const CELLS = [
+  // [col, row, color-key]
+  [0,0,'l'],[1,0,'d'],[2,0,'l'],[3,0,'d'],[4,0,'l'],
+  [0,1,'d'],[1,1,'l'],[2,1,'r'],[3,1,'l'],[4,1,'d'],
+  [0,2,'l'],[1,2,'d'],[2,2,'l'],[3,2,'l'],[4,2,'d'],
+] as const;
 
-  // Option 4: favicon 3×3 grid mark
-  // □ ■ □
-  // ■ 🔴 ■
-  // □ ■ □
-  const light = darkBg ? '#3a3a3a' : '#e8e8e8';
-  const dark  = darkBg ? '#ffffff' : '#1a1a1a';
-  const red   = darkBg ? '#ff8b6e' : '#c73e1d';
+const CELL = 11; // cell size
+const GAP  = 2;  // gap between cells
+const PITCH = CELL + GAP; // 13
+const W = 5 * PITCH - GAP; // 63
+const H = 3 * PITCH - GAP; // 37
+
+export default function SaderotLogo({ size = 'sm', showText = true, showTagline = false, darkBg = false }: Props) {
+  const heights = { sm: 28, md: 36, lg: 48 };
+  const h = heights[size];
+  const w = Math.round(h * W / H);
+
+  const textSizes  = { sm: 'text-base', md: 'text-xl', lg: 'text-2xl' };
+  const taglineSizes = { sm: 'text-[10px]', md: 'text-xs', lg: 'text-sm' };
+
+  const palette = {
+    l: darkBg ? '#3a3a3a' : '#e8e8e8',
+    d: darkBg ? '#ffffff' : '#1a1a1a',
+    r: darkBg ? '#ff8b6e' : '#c73e1d',
+  };
 
   return (
     <div className="flex items-center gap-2.5">
-      <svg width={dim} height={dim} viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Row 1 */}
-        <rect x="0"  y="0"  width="12" height="12" rx="2" fill={light} />
-        <rect x="15" y="0"  width="12" height="12" rx="2" fill={dark}  />
-        <rect x="30" y="0"  width="12" height="12" rx="2" fill={light} />
-        {/* Row 2 */}
-        <rect x="0"  y="15" width="12" height="12" rx="2" fill={dark}  />
-        <rect x="15" y="15" width="12" height="12" rx="2" fill={red}   />
-        <rect x="30" y="15" width="12" height="12" rx="2" fill={dark}  />
-        {/* Row 3 */}
-        <rect x="0"  y="30" width="12" height="12" rx="2" fill={light} />
-        <rect x="15" y="30" width="12" height="12" rx="2" fill={dark}  />
-        <rect x="30" y="30" width="12" height="12" rx="2" fill={light} />
+      <svg width={w} height={h} viewBox={`0 0 ${W} ${H}`} fill="none" xmlns="http://www.w3.org/2000/svg">
+        {CELLS.map(([col, row, key]) => (
+          <rect
+            key={`${col}-${row}`}
+            x={col * PITCH}
+            y={row * PITCH}
+            width={CELL}
+            height={CELL}
+            rx="1.5"
+            fill={palette[key]}
+          />
+        ))}
       </svg>
 
       {showText && (
         <div>
-          <span className={`${textSize} font-semibold tracking-tight ${darkBg ? 'text-white' : 'text-gray-900'} leading-none`}>
+          <span className={`${textSizes[size]} font-semibold tracking-tight leading-none ${darkBg ? 'text-white' : 'text-gray-900'}`}>
             sader<span style={{ color: '#c73e1d' }}>OT</span>
           </span>
           {showTagline && (
-            <p className={`${taglineSize} ${darkBg ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>סדר אותי</p>
+            <p className={`${taglineSizes[size]} ${darkBg ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>סדר אותי</p>
           )}
         </div>
       )}
