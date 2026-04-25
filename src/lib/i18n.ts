@@ -109,7 +109,7 @@ const en = {
   'days.friday': 'Friday',
   'days.saturday': 'Saturday',
   // ── Landing ─────────────────────────────────────────────
-  'landing.title': 'Lessons Scheduler',
+  'landing.title': 'saderOT',
   'landing.howJoining': 'How are you joining today?',
   'landing.student': "I'm a Student",
   'landing.teacher': "I'm a Teacher",

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import SaderotLogo from '@/components/SaderotLogo';
 
 type Step = 'policies' | 'features';
 
@@ -57,14 +58,9 @@ export default function PolicyGate() {
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-md overflow-hidden">
 
         {/* Header */}
-        <div className="bg-blue-600 px-6 py-5 text-white">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold">Lessons Scheduler</span>
+        <div className="bg-gray-950 px-6 py-5 text-white">
+          <div className="mb-2">
+            <SaderotLogo size="md" showTagline darkBg />
           </div>
           <p className="text-sm text-blue-100 mt-1">
             {step === 'policies' ? 'Welcome! Before you start, please review our policies.' : 'Step 2 of 2 — Set up your features'}
@@ -153,7 +149,7 @@ export default function PolicyGate() {
                 disabled={loading}
                 className="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-40 transition-colors"
               >
-                {loading ? 'Saving…' : 'Start using Lessons Scheduler →'}
+                {loading ? 'Saving…' : 'Start using saderOT →'}
               </button>
             </>
           )}

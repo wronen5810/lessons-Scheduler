@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const EFFECTIVE_DATE_EN = 'April 17, 2026';
 const EFFECTIVE_DATE_HE = '17 באפריל 2026';
-const SUPPORT_EMAIL = 'Support@lessons-scheduler.com';
+const SUPPORT_EMAIL = 'Support@saderot.com';
 
 function Email() {
   return <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-600 hover:underline">{SUPPORT_EMAIL}</a>;
@@ -30,7 +30,7 @@ function EnglishContent() {
 
       <p className="text-gray-700 leading-relaxed mb-3">
         This Privacy Policy describes how Ronen Wolfsberger ("we," "us," or "our") collects, uses, and shares
-        information when you use the Lessons Scheduler application and related services (collectively, the "Service").
+        information when you use the saderOT application and related services (collectively, the "Service").
       </p>
       <p className="text-gray-700 leading-relaxed mb-3">
         By using the Service, you agree to this Privacy Policy. If you do not agree, do not use the Service.
@@ -125,7 +125,7 @@ function EnglishContent() {
       <h2 className="text-xl font-bold text-gray-900 mt-10 mb-3">8. Account Deletion</h2>
       <ul className="list-disc list-inside space-y-1 text-gray-700 mb-3">
         <li><strong>In-app:</strong> Settings → Account → Delete Account.</li>
-        <li><strong>On the web:</strong> lessons-scheduler.com/delete-account</li>
+        <li><strong>On the web:</strong> saderot.com/delete-account</li>
         <li><strong>By email:</strong> <Email /></li>
       </ul>
 
@@ -159,7 +159,7 @@ function EnglishContent() {
         <p><strong>Ronen Wolfsberger</strong></p>
         <p>20 Hazabar St., Kadima, Israel</p>
         <p>Email: <Email /></p>
-        <p><a href="https://lessons-scheduler.com" className="text-blue-600 hover:underline">lessons-scheduler.com</a></p>
+        <p><a href="https://saderot.com" className="text-blue-600 hover:underline">saderot.com</a></p>
       </address>
     </article>
   );
@@ -173,7 +173,7 @@ function HebrewContent() {
       <p className="text-sm text-gray-500 mb-8"><strong>עדכון אחרון:</strong> {EFFECTIVE_DATE_HE}</p>
 
       <p className="text-gray-700 leading-relaxed mb-3">
-        מדיניות פרטיות זו מתארת כיצד רונן וולפסברגר ("אנחנו" או "שלנו") אוסף, משתמש ומשתף מידע כאשר אתה משתמש ביישום Lessons Scheduler ובשירותים הקשורים אליו (להלן: "השירות").
+        מדיניות פרטיות זו מתארת כיצד רונן וולפסברגר ("אנחנו" או "שלנו") אוסף, משתמש ומשתף מידע כאשר אתה משתמש ביישום saderOT ובשירותים הקשורים אליו (להלן: "השירות").
       </p>
       <p className="text-gray-700 leading-relaxed mb-3">
         שימושך בשירות מהווה הסכמה למדיניות פרטיות זו. אם אינך מסכים, אנא הימנע משימוש בשירות.
@@ -267,7 +267,7 @@ function HebrewContent() {
       <h2 className="text-xl font-bold text-gray-900 mt-10 mb-3">8. מחיקת חשבון</h2>
       <ul className="list-disc list-inside space-y-1 text-gray-700 mb-3">
         <li><strong>באפליקציה:</strong> הגדרות ← חשבון ← מחק חשבון.</li>
-        <li><strong>באתר:</strong> lessons-scheduler.com/delete-account</li>
+        <li><strong>באתר:</strong> saderot.com/delete-account</li>
         <li><strong>בדואר אלקטרוני:</strong> <Email /></li>
       </ul>
 
@@ -301,7 +301,7 @@ function HebrewContent() {
         <p><strong>רונן וולפסברגר</strong></p>
         <p>רחוב הצבר 20, קדימה, ישראל</p>
         <p>דואר אלקטרוני: <Email /></p>
-        <p><a href="https://lessons-scheduler.com" className="text-blue-600 hover:underline">lessons-scheduler.com</a></p>
+        <p><a href="https://saderot.com" className="text-blue-600 hover:underline">saderot.com</a></p>
       </address>
     </article>
   );

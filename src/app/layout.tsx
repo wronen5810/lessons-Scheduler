@@ -4,8 +4,8 @@ import PushRegistrar from '@/components/PushRegistrar';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 
 export const metadata: Metadata = {
-  title: 'Lessons Scheduler',
-  description: 'Book and manage private lessons',
+  title: 'saderOT',
+  description: 'סדר אותי — Book and manage private lessons',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

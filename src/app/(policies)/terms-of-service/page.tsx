@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const EFFECTIVE_DATE_EN = 'April 17, 2026';
 const EFFECTIVE_DATE_HE = '17 באפריל 2026';
-const SUPPORT_EMAIL = 'support@lessons-scheduler.com';
+const SUPPORT_EMAIL = 'support@saderot.com';
 
 function Email() {
   return <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-600 hover:underline">{SUPPORT_EMAIL}</a>;
@@ -29,7 +29,7 @@ function EnglishContent() {
       <p className="text-sm text-gray-500 mb-8"><strong>Last Updated:</strong> {EFFECTIVE_DATE_EN}</p>
 
       <p className="text-gray-700 leading-relaxed mb-3">
-        These Terms of Service ("Terms") govern your access to and use of the Lessons Scheduler application and related services (the "Service") provided by Ronen Wolfsberger ("we," "us," or "our").
+        These Terms of Service ("Terms") govern your access to and use of the saderOT application and related services (the "Service") provided by Ronen Wolfsberger ("we," "us," or "our").
       </p>
       <p className="text-gray-700 leading-relaxed mb-3">
         By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
@@ -50,7 +50,7 @@ function EnglishContent() {
       <hr className="my-8 border-gray-200" />
       <h2 className="text-xl font-bold text-gray-900 mt-10 mb-3">3. The Service</h2>
       <p className="text-gray-700 leading-relaxed mb-3">
-        Lessons Scheduler is an application that helps users schedule, manage, and track lessons, sessions, or appointments. We may add, modify, or remove features at our discretion.
+        saderOT is an application that helps users schedule, manage, and track lessons, sessions, or appointments. We may add, modify, or remove features at our discretion.
       </p>
 
       <hr className="my-8 border-gray-200" />
@@ -87,7 +87,7 @@ function EnglishContent() {
 
       <h3 className="text-base font-semibold text-gray-800 mt-5 mb-2">4.6 Cancellation</h3>
       <ul className="list-disc list-inside space-y-1 text-gray-700 mb-3">
-        <li><strong>Google Play:</strong> Google Play app → Subscriptions → Lessons Scheduler → Cancel.</li>
+        <li><strong>Google Play:</strong> Google Play app → Subscriptions → saderOT → Cancel.</li>
         <li><strong>Direct subscriptions:</strong> Settings → Subscription → Cancel, or email <Email />.</li>
       </ul>
       <p className="text-gray-700 leading-relaxed mb-3">Cancellation stops future renewals. You retain access through the end of the current paid period.</p>
@@ -184,7 +184,7 @@ function EnglishContent() {
         <p><strong>Ronen Wolfsberger</strong></p>
         <p>20 Hazabar St., Kadima, Israel</p>
         <p>Support: <Email /></p>
-        <p><a href="https://lessons-scheduler.com" className="text-blue-600 hover:underline">lessons-scheduler.com</a></p>
+        <p><a href="https://saderot.com" className="text-blue-600 hover:underline">saderot.com</a></p>
       </address>
     </article>
   );
@@ -198,7 +198,7 @@ function HebrewContent() {
       <p className="text-sm text-gray-500 mb-8"><strong>עדכון אחרון:</strong> {EFFECTIVE_DATE_HE}</p>
 
       <p className="text-gray-700 leading-relaxed mb-3">
-        תנאי שימוש אלה ("התנאים") מסדירים את גישתך ושימושך ביישום Lessons Scheduler ובשירותים הקשורים אליו ("השירות") המסופקים על ידי רונן וולפסברגר ("אנחנו" או "שלנו").
+        תנאי שימוש אלה ("התנאים") מסדירים את גישתך ושימושך ביישום saderOT ובשירותים הקשורים אליו ("השירות") המסופקים על ידי רונן וולפסברגר ("אנחנו" או "שלנו").
       </p>
       <p className="text-gray-700 leading-relaxed mb-3">
         יצירת חשבון או שימוש בשירות מהווים הסכמה לתנאים אלה. אם אינך מסכים, אנא הימנע משימוש בשירות.
@@ -219,7 +219,7 @@ function HebrewContent() {
       <hr className="my-8 border-gray-200" />
       <h2 className="text-xl font-bold text-gray-900 mt-10 mb-3">3. השירות</h2>
       <p className="text-gray-700 leading-relaxed mb-3">
-        Lessons Scheduler הוא יישום המסייע למשתמשים לתזמן, לנהל ולעקוב אחר שיעורים ומפגשים. אנו רשאים להוסיף, לשנות או להסיר תכונות לפי שיקול דעתנו.
+        saderOT הוא יישום המסייע למשתמשים לתזמן, לנהל ולעקוב אחר שיעורים ומפגשים. אנו רשאים להוסיף, לשנות או להסיר תכונות לפי שיקול דעתנו.
       </p>
 
       <hr className="my-8 border-gray-200" />
@@ -256,7 +256,7 @@ function HebrewContent() {
 
       <h3 className="text-base font-semibold text-gray-800 mt-5 mb-2">4.6 ביטול</h3>
       <ul className="list-disc list-inside space-y-1 text-gray-700 mb-3">
-        <li><strong>Google Play:</strong> אפליקציית Google Play ← מנויים ← Lessons Scheduler ← בטל מנוי.</li>
+        <li><strong>Google Play:</strong> אפליקציית Google Play ← מנויים ← saderOT ← בטל מנוי.</li>
         <li><strong>מנויים ישירים:</strong> הגדרות ← מנוי ← בטל, או שלח דואר אלקטרוני לכתובת <Email />.</li>
       </ul>
       <p className="text-gray-700 leading-relaxed mb-3">הביטול מפסיק חידושים עתידיים. הגישה לשירות נשמרת עד סוף תקופת החיוב השוטפת.</p>
@@ -353,7 +353,7 @@ function HebrewContent() {
         <p><strong>רונן וולפסברגר</strong></p>
         <p>רחוב הצבר 20, קדימה, ישראל</p>
         <p>תמיכה: <Email /></p>
-        <p><a href="https://lessons-scheduler.com" className="text-blue-600 hover:underline">lessons-scheduler.com</a></p>
+        <p><a href="https://saderot.com" className="text-blue-600 hover:underline">saderot.com</a></p>
       </address>
     </article>
   );

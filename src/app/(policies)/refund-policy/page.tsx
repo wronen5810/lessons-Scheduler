@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const EFFECTIVE_DATE_EN = 'April 17, 2026';
 const EFFECTIVE_DATE_HE = '17 באפריל 2026';
-const SUPPORT_EMAIL = 'Support@lessons-scheduler.com';
+const SUPPORT_EMAIL = 'Support@saderot.com';
 
 function Email() {
   return <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-600 hover:underline">{SUPPORT_EMAIL}</a>;
@@ -29,7 +29,7 @@ function EnglishContent() {
       <p className="text-sm text-gray-500 mb-8"><strong>Last Updated:</strong> {EFFECTIVE_DATE_EN}</p>
 
       <p className="text-gray-700 leading-relaxed mb-3">
-        This Refund and Cancellation Policy explains how cancellations and refunds work for Lessons Scheduler subscriptions offered by Ronen Wolfsberger.
+        This Refund and Cancellation Policy explains how cancellations and refunds work for saderOT subscriptions offered by Ronen Wolfsberger.
       </p>
 
       <hr className="my-8 border-gray-200" />
@@ -42,12 +42,12 @@ function EnglishContent() {
       <ol className="list-decimal list-inside space-y-1 text-gray-700 mb-3">
         <li>Open the <strong>Google Play Store</strong> app.</li>
         <li>Tap your profile icon → <strong>Payments &amp; subscriptions</strong> → <strong>Subscriptions</strong>.</li>
-        <li>Select <strong>Lessons Scheduler</strong> → <strong>Cancel subscription</strong>.</li>
+        <li>Select <strong>saderOT</strong> → <strong>Cancel subscription</strong>.</li>
       </ol>
 
       <h3 className="text-base font-semibold text-gray-800 mt-5 mb-2">Stripe subscriptions</h3>
       <ol className="list-decimal list-inside space-y-1 text-gray-700 mb-3">
-        <li>Open <strong>Lessons Scheduler</strong> → <strong>Settings</strong> → <strong>Subscription</strong>.</li>
+        <li>Open <strong>saderOT</strong> → <strong>Settings</strong> → <strong>Subscription</strong>.</li>
         <li>Tap <strong>Cancel subscription</strong>, or email <Email />.</li>
       </ol>
 
@@ -62,7 +62,7 @@ function EnglishContent() {
       </p>
       <ol className="list-decimal list-inside space-y-1 text-gray-700 mb-3">
         <li>Visit <a href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">play.google.com/store/account/subscriptions</a>.</li>
-        <li>Find your Lessons Scheduler subscription.</li>
+        <li>Find your saderOT subscription.</li>
         <li>Tap <strong>Report a problem</strong> and follow the prompts.</li>
       </ol>
       <p className="text-gray-700 leading-relaxed mb-3">
@@ -128,7 +128,7 @@ function EnglishContent() {
         <p><strong>Ronen Wolfsberger</strong></p>
         <p>20 Hazabar St., Kadima, Israel</p>
         <p>Support: <Email /></p>
-        <p><a href="https://lessons-scheduler.com" className="text-blue-600 hover:underline">lessons-scheduler.com</a></p>
+        <p><a href="https://saderot.com" className="text-blue-600 hover:underline">saderot.com</a></p>
       </address>
     </article>
   );
@@ -142,7 +142,7 @@ function HebrewContent() {
       <p className="text-sm text-gray-500 mb-8"><strong>עדכון אחרון:</strong> {EFFECTIVE_DATE_HE}</p>
 
       <p className="text-gray-700 leading-relaxed mb-3">
-        מדיניות זו מסבירה כיצד פועלים ביטולים והחזרים עבור מנויים ל-Lessons Scheduler המוצעים על ידי רונן וולפסברגר.
+        מדיניות זו מסבירה כיצד פועלים ביטולים והחזרים עבור מנויים ל-saderOT המוצעים על ידי רונן וולפסברגר.
       </p>
 
       <hr className="my-8 border-gray-200" />
@@ -155,12 +155,12 @@ function HebrewContent() {
       <ol className="list-decimal list-inside space-y-1 text-gray-700 mb-3">
         <li>פתח את אפליקציית <strong>Google Play Store</strong>.</li>
         <li>הקש על אייקון הפרופיל ← <strong>תשלומים ומנויים</strong> ← <strong>מנויים</strong>.</li>
-        <li>בחר <strong>Lessons Scheduler</strong> ← <strong>בטל מנוי</strong>.</li>
+        <li>בחר <strong>saderOT</strong> ← <strong>בטל מנוי</strong>.</li>
       </ol>
 
       <h3 className="text-base font-semibold text-gray-800 mt-5 mb-2">מנויי Stripe</h3>
       <ol className="list-decimal list-inside space-y-1 text-gray-700 mb-3">
-        <li>פתח <strong>Lessons Scheduler</strong> ← <strong>הגדרות</strong> ← <strong>מנוי</strong>.</li>
+        <li>פתח <strong>saderOT</strong> ← <strong>הגדרות</strong> ← <strong>מנוי</strong>.</li>
         <li>הקש <strong>בטל מנוי</strong>, או שלח דואר אלקטרוני לכתובת <Email />.</li>
       </ol>
 
@@ -175,7 +175,7 @@ function HebrewContent() {
       </p>
       <ol className="list-decimal list-inside space-y-1 text-gray-700 mb-3">
         <li>בקר בכתובת <a href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">play.google.com/store/account/subscriptions</a>.</li>
-        <li>אתר את מנוי Lessons Scheduler שלך.</li>
+        <li>אתר את מנוי saderOT שלך.</li>
         <li>הקש <strong>דווח על בעיה</strong> ועקוב אחר ההוראות.</li>
       </ol>
       <p className="text-gray-700 leading-relaxed mb-3">
@@ -241,7 +241,7 @@ function HebrewContent() {
         <p><strong>רונן וולפסברגר</strong></p>
         <p>רחוב הצבר 20, קדימה, ישראל</p>
         <p>תמיכה: <Email /></p>
-        <p><a href="https://lessons-scheduler.com" className="text-blue-600 hover:underline">lessons-scheduler.com</a></p>
+        <p><a href="https://saderot.com" className="text-blue-600 hover:underline">saderot.com</a></p>
       </address>
     </article>
   );

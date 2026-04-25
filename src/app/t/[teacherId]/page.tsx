@@ -13,6 +13,7 @@ import { DAY_NAMES_HE, DAY_NAMES_SHORT_HE } from '@/lib/i18n';
 import type { ComputedSlot } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 import StudentNotebook from '@/components/StudentNotebook';
+import SaderotLogo from '@/components/SaderotLogo';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 
@@ -240,9 +241,9 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-bold text-gray-900 tracking-tight">{t('schedule.myLessons')}</h1>
-            {email && <p className="text-xs text-gray-400 mt-0.5">{email}</p>}
+          <div className="flex items-center gap-3">
+            <SaderotLogo size="sm" />
+            {email && <p className="text-xs text-gray-400">{email}</p>}
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle />

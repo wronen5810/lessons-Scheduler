@@ -7,6 +7,7 @@ import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { markSessionActive } from '@/components/SessionGuard';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import SaderotLogo from '@/components/SaderotLogo';
 
 export default function TeacherLogin() {
   const router = useRouter();
@@ -38,14 +39,8 @@ export default function TeacherLogin() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
-        {/* Teacher illustration */}
-        <div className="flex justify-center mb-6">
-          <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-5xl">
-            📓
-          </div>
-        </div>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-semibold text-gray-900">{t('auth.teacherLogin')}</h1>
+        <div className="flex items-center justify-between mb-8">
+          <SaderotLogo size="md" showTagline />
           <LanguageToggle />
         </div>
 

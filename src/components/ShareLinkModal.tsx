@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function ShareLinkModal({ teacherId, teacherName, onClose }: Props) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://lessons-scheduler.com';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://saderot.com';
   const slug = toSlug(teacherName);
   const link = slug ? `${origin}/${slug}` : `${origin}/join/${teacherId}`;
   const [copied, setCopied] = useState(false);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import Groq from 'groq-sdk';
 
-const SYSTEM_PROMPT = `You are a help assistant for "Lessons Scheduler", a web app for teachers to manage their lesson schedule, students, and bookings.
+const SYSTEM_PROMPT = `You are a help assistant for "saderOT", a web app for teachers to manage their lesson schedule, students, and bookings.
 
 You MUST respond with valid JSON only — no markdown, no code fences, no extra text. Match one of:
 
