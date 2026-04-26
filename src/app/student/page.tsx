@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { GraduationCap } from 'lucide-react';
+import SaderotLogo from '@/components/SaderotLogo';
 
 interface Teacher {
   id: string;
@@ -74,13 +76,17 @@ export default function StudentEntryPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
-        <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 mb-6 block">← Back</Link>
+        {/* Brand header */}
+        <div className="flex items-center justify-between mb-6">
+          <SaderotLogo size="sm" />
+          <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">← Back</Link>
+        </div>
 
-        {/* Student illustration — only on the entry step */}
+        {/* Student icon — only on the entry step */}
         {step === 'email' && (
           <div className="flex justify-center mb-5">
-            <div className="w-24 h-24 rounded-full bg-purple-100 flex items-center justify-center text-5xl">
-              🎧
+            <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center">
+              <GraduationCap className="w-10 h-10 text-purple-600" strokeWidth={1.5} />
             </div>
           </div>
         )}
@@ -89,7 +95,7 @@ export default function StudentEntryPage() {
 
         {step === 'email' && (
           <>
-            <p className="text-sm text-gray-500 mb-6">Enter your email to see available times.</p>
+            <p className="text-sm text-gray-500 mb-6">Enter your email to see your available lesson times.</p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
@@ -99,6 +105,7 @@ export default function StudentEntryPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
+                  autoFocus
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -118,16 +125,12 @@ export default function StudentEntryPage() {
 
         {step === 'privacy' && (
           <>
-            <p className="text-sm text-gray-500 mb-4">Before you continue, please read and agree to our privacy policy.</p>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-sm text-gray-600 max-h-48 overflow-y-auto space-y-2">
-              <p>We collect your name, email, phone number, and lesson information to enable scheduling between you and your teacher.</p>
-              <p>Your data is stored securely and is never sold or shared with third parties for marketing purposes.</p>
-              <p>You may request deletion of your data at any time by contacting your teacher.</p>
-              <p className="mt-2">
-                <Link href="/privacy" target="_blank" className="text-blue-600 underline hover:text-blue-700">
-                  Read the full Privacy Policy →
-                </Link>
-              </p>
+            <p className="text-sm text-gray-500 mb-4">Before you continue, please agree to our privacy policy.</p>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-sm text-gray-600">
+              <p>We use your email, name, and lesson info solely to enable scheduling with your teacher. Your data is stored securely and never sold or shared.</p>
+              <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline mt-2 inline-block">
+                Read the full Privacy Policy →
+              </Link>
             </div>
             <label className="flex items-start gap-3 cursor-pointer mb-5">
               <input
@@ -137,7 +140,7 @@ export default function StudentEntryPage() {
                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-700">
-                I have read and agree to the{' '}
+                I agree to the{' '}
                 <Link href="/privacy" target="_blank" className="text-blue-600 underline hover:text-blue-700">
                   Privacy Policy
                 </Link>

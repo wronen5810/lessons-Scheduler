@@ -1,4 +1,4 @@
-package com.lessonscheduler.app;
+package com.saderot.app;
 
 import com.getcapacitor.BridgeActivity;
 

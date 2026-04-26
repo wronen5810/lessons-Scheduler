@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import SaderotLogo from '@/components/SaderotLogo';
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage();
@@ -33,9 +34,10 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-semibold text-gray-900">{t('auth.forgotPasswordTitle')}</h1>
+          <SaderotLogo size="sm" />
           <LanguageToggle />
         </div>
+        <h1 className="text-xl font-semibold text-gray-900 mb-5">{t('auth.forgotPasswordTitle')}</h1>
 
         {sent ? (
           <div className="space-y-4 text-center">

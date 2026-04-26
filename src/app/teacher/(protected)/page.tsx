@@ -9,6 +9,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { translate } from '@/lib/i18n';
 import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import ShareLinkModal from '@/components/ShareLinkModal';
+import {
+  Calendar, Users, Users2, CreditCard, MessageSquare, Share2,
+} from 'lucide-react';
+import type { ReactNode } from 'react';
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -41,7 +45,6 @@ export default function TeacherDashboard() {
       if (Array.isArray(data)) setStudentCount(data.filter((s: { is_active: boolean }) => s.is_active).length);
     }).catch(() => {});
 
-    // Today's slot count
     const today = new Date().toISOString().slice(0, 10);
     const weekStart = getWeekStart(today);
     fetch(`/api/teacher/slots?week=${weekStart}`).then(r => r.json()).then(slots => {
@@ -67,15 +70,22 @@ export default function TeacherDashboard() {
     router.push('/teacher/login');
   }
 
-  const quickActions = [
-    { label: t('teacher.schedule'),  desc: t('teacher.scheduleDesc'),  href: '/teacher/schedule',          icon: '📅', show: true },
-    { label: t('common.students'),   desc: t('teacher.studentsDesc'),  href: '/teacher/students',           icon: '👥', show: true },
-    { label: t('common.groups'),     desc: t('teacher.studentsDesc'),  href: '/teacher/students?tab=groups',icon: '🫂', show: f.groups },
-    { label: t('teacher.billing'),   desc: t('teacher.billingDesc'),   href: '/teacher/billing',            icon: '💰', show: f.billing },
-    { label: t('teacher.messages'),  desc: t('teacher.messagesDesc'),  href: '/teacher/messages',           icon: '💬', show: f.messages },
-    { label: t('common.share'),      desc: t('teacher.shareDesc'),     href: null, icon: '🔗', show: true,  onClick: () => setShowShare(true) },
-    { label: t('common.settings'),   desc: t('teacher.settingsDesc'),  href: null, icon: '⚙️', show: true,  onClick: () => setShowSettings(true) },
-    { label: t('common.signOut'),    desc: '',                         href: null, icon: '🚪', show: true,  onClick: handleSignOut, danger: true },
+  const quickActions: {
+    label: string;
+    desc: string;
+    href: string | null;
+    icon: ReactNode;
+    show: boolean;
+    badge?: number | null;
+    onClick?: () => void;
+    danger?: boolean;
+  }[] = [
+    { label: t('teacher.schedule'),  desc: t('teacher.scheduleDesc'),  href: '/teacher/schedule',           icon: <Calendar className="w-5 h-5" />,     show: true, badge: pendingCount || null },
+    { label: t('common.students'),   desc: t('teacher.studentsDesc'),  href: '/teacher/students',            icon: <Users className="w-5 h-5" />,        show: true },
+    { label: t('common.groups'),     desc: t('teacher.studentsDesc'),  href: '/teacher/students?tab=groups', icon: <Users2 className="w-5 h-5" />,       show: f.groups },
+    { label: t('teacher.billing'),   desc: t('teacher.billingDesc'),   href: '/teacher/billing',             icon: <CreditCard className="w-5 h-5" />,   show: f.billing },
+    { label: t('teacher.messages'),  desc: t('teacher.messagesDesc'),  href: '/teacher/messages',            icon: <MessageSquare className="w-5 h-5" />,show: f.messages },
+    { label: t('common.share'),      desc: t('teacher.shareDesc'),     href: null, icon: <Share2 className="w-5 h-5" />, show: true, onClick: () => setShowShare(true) },
   ].filter(a => a.show);
 
   if (loading) {
@@ -109,7 +119,9 @@ export default function TeacherDashboard() {
           </div>
         ) : (
           <div className="bg-blue-600 rounded-2xl p-5 text-white shadow-md">
-            <p className="text-sm font-semibold opacity-80">{t('teacher.welcomeBack')}</p>
+            <p className="text-sm font-semibold opacity-80">
+              {teacherName ? `Welcome back, ${teacherName}!` : t('teacher.welcomeBack')}
+            </p>
             <p className="text-lg font-bold mt-0.5 opacity-90">{t('teacher.whatToDoToday')}</p>
             <Link href="/teacher/schedule"
               className="inline-flex items-center gap-1 mt-3 bg-white text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
@@ -121,15 +133,24 @@ export default function TeacherDashboard() {
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-2xl font-bold text-blue-600">{todayCount ?? '—'}</p>
-            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.schedule')}</p>
+            {todayCount === null
+              ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
+              : <p className="text-2xl font-bold text-blue-600">{todayCount}</p>
+            }
+            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.todayLessons')}</p>
           </div>
-          <div className={`bg-white rounded-xl border shadow-sm p-3 text-center ${pendingCount ? 'border-amber-200' : 'border-gray-100'}`}>
-            <p className={`text-2xl font-bold ${pendingCount ? 'text-amber-500' : 'text-gray-400'}`}>{pendingCount ?? '—'}</p>
+          <Link href="/teacher/schedule" className={`bg-white rounded-xl border shadow-sm p-3 text-center transition-colors hover:border-amber-300 ${pendingCount ? 'border-amber-200' : 'border-gray-100'}`}>
+            {pendingCount === null
+              ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
+              : <p className={`text-2xl font-bold ${pendingCount ? 'text-amber-500' : 'text-gray-400'}`}>{pendingCount}</p>
+            }
             <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.pendingRequests')}</p>
-          </div>
+          </Link>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-2xl font-bold text-gray-800">{studentCount ?? '—'}</p>
+            {studentCount === null
+              ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
+              : <p className="text-2xl font-bold text-gray-800">{studentCount}</p>
+            }
             <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('common.students')}</p>
           </div>
         </div>
@@ -137,17 +158,21 @@ export default function TeacherDashboard() {
         {/* Quick actions */}
         <div className="space-y-2">
           {quickActions.map((action) => {
-            const isDanger = (action as { danger?: boolean }).danger;
+            const isDanger = action.danger;
             const inner = (
               <div className="flex items-center gap-3 w-full">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0 border ${isDanger ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${isDanger ? 'bg-red-50 border-red-100 text-red-500' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
                   {action.icon}
                 </div>
                 <div className="flex-1 min-w-0 text-start">
                   <p className={`text-sm font-semibold ${isDanger ? 'text-red-600' : 'text-gray-900'}`}>{action.label}</p>
                   {action.desc && <p className="text-xs text-gray-400 truncate">{action.desc}</p>}
                 </div>
-                {!isDanger && (
+                {action.badge ? (
+                  <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0">
+                    {action.badge}
+                  </span>
+                ) : !isDanger && (
                   <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
                   </svg>

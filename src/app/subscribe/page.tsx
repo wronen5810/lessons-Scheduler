@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import SaderotLogo from '@/components/SaderotLogo';
 
 interface Plan {
   id: string;
@@ -52,18 +53,14 @@ function SubscribeForm() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [plansLoading, setPlansLoading] = useState(false);
 
-  // For normal (unauthenticated) flow
   const [isExistingTeacher, setIsExistingTeacher] = useState<boolean | null>(null);
   const checkedEmail = useRef('');
 
-  // For logged-in teacher flows
   const [subStatus, setSubStatus] = useState<TeacherSubStatus | null>(null);
   const [statusLoaded, setStatusLoaded] = useState(false);
-  // 'extend' flow: null = not asked, true = yes extend, false = declined
   const [confirmExtend, setConfirmExtend] = useState<boolean | null>(null);
   const [startsAfter, setStartsAfter] = useState<string | null>(null);
 
-  // Whether form was pre-filled from URL params (expired redirect)
   const prefilled = useRef(false);
 
   async function loadPlans(type: 'new' | 'renewal') {
@@ -76,7 +73,6 @@ function SubscribeForm() {
     setPlansLoading(false);
   }
 
-  // On mount: apply URL params + check logged-in subscription status
   useEffect(() => {
     const pName = searchParams.get('name') ?? '';
     const pEmail = searchParams.get('email') ?? '';
@@ -94,16 +90,14 @@ function SubscribeForm() {
       }
     }
 
-    // Check if a teacher is logged in
     fetch('/api/teacher/me/subscription')
       .then((r) => (r.ok ? r.json() : null))
       .then((data: TeacherSubStatus | null) => {
         setSubStatus(data);
         setStatusLoaded(true);
 
-        if (!data) return; // not logged in
+        if (!data) return;
 
-        // If expired + not already pre-filled from URL params
         if (data.status === 'expired' && !prefilled.current) {
           setName(data.teacher.name);
           setEmail(data.teacher.email);
@@ -112,14 +106,13 @@ function SubscribeForm() {
           setIsExistingTeacher(true);
           loadPlans('renewal');
         }
-        // Active sub: will show extend prompt (no form yet)
       })
       .catch(() => setStatusLoaded(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleEmailBlur() {
-    if (prefilled.current) return; // skip check when pre-filled
+    if (prefilled.current) return;
     const normalized = email.toLowerCase().trim();
     if (!normalized || normalized === checkedEmail.current) return;
     checkedEmail.current = normalized;
@@ -184,12 +177,22 @@ function SubscribeForm() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-3">
-          <div className="text-4xl">✓</div>
-          <h1 className="text-lg font-semibold text-gray-900">{t('subscribe.received')}</h1>
-          <p className="text-sm text-gray-500">{t('subscribe.receivedDesc')}</p>
-          <Link href="/" className="block text-sm text-blue-600 hover:underline mt-2">{t('common.backHome')}</Link>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-5">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">{t('subscribe.received')}</h1>
+            <p className="text-sm text-gray-500 mt-2">{t('subscribe.receivedDesc')}</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-left">
+            <p className="font-medium text-blue-800 mb-1">What happens next?</p>
+            <p className="text-blue-600">We&apos;ll review your request and get back to you within 24 hours.</p>
+          </div>
+          <Link href="/" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">{t('common.backHome')}</Link>
         </div>
       </div>
     );
@@ -198,7 +201,7 @@ function SubscribeForm() {
   // Active subscription — show extend prompt
   if (statusLoaded && subStatus?.status === 'active' && confirmExtend === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
           <div className="flex items-center justify-between mb-2">
             <Link href="/teacher" className="text-xs text-gray-400 hover:text-gray-600">← Dashboard</Link>
@@ -252,7 +255,7 @@ function SubscribeForm() {
   // Declined extend
   if (statusLoaded && subStatus?.status === 'active' && confirmExtend === false) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-4">
           <p className="text-sm text-gray-500">No problem! Come back when you&apos;re ready to renew.</p>
           <Link href="/teacher" className="block text-sm text-blue-600 hover:underline">Back to Dashboard</Link>
@@ -262,13 +265,15 @@ function SubscribeForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-10">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
+        {/* Header */}
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">{t('common.backHome')}</Link>
+          <div className="flex items-center justify-between mb-5">
+            <SaderotLogo size="md" />
             <LanguageToggle />
           </div>
+          <p className="text-xs text-blue-600 font-medium mb-3">The scheduling tool built for private teachers</p>
           <h1 className="text-xl font-semibold text-gray-900">{t('subscribe.title')}</h1>
           <p className="text-sm text-gray-500 mt-1">{t('subscribe.subtitle')}</p>
           {startsAfter && (
@@ -315,6 +320,9 @@ function SubscribeForm() {
               placeholder="jane@example.com"
               className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${prefilled.current ? 'bg-gray-50 text-gray-500' : ''}`}
             />
+            {!prefilled.current && isExistingTeacher === null && email.includes('@') && (
+              <p className="text-xs text-gray-400 mt-1">Tab out of this field to load the right plan for your account.</p>
+            )}
             {!prefilled.current && isExistingTeacher === true && (
               <p className="text-xs text-blue-600 mt-1">Welcome back! Showing renewal plans.</p>
             )}
@@ -352,13 +360,28 @@ function SubscribeForm() {
                 {t('subscribe.choosePlan')} <span className="text-red-500">*</span>
               </label>
               {plansLoading ? (
-                <p className="text-xs text-gray-400">Loading plans...</p>
+                <div className="space-y-2">
+                  {[1, 2].map(i => (
+                    <div key={i} className="border border-gray-100 rounded-xl p-4 animate-pulse">
+                      <div className="flex justify-between">
+                        <div className="space-y-1.5">
+                          <div className="h-4 w-28 bg-gray-200 rounded" />
+                          <div className="h-3 w-20 bg-gray-100 rounded" />
+                        </div>
+                        <div className="space-y-1.5 text-right">
+                          <div className="h-5 w-16 bg-gray-200 rounded" />
+                          <div className="h-3 w-12 bg-gray-100 rounded ml-auto" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : plans.length === 0 ? (
                 <p className="text-xs text-gray-400">No plans available.</p>
               ) : plans.map((plan) => (
                 <label
                   key={plan.id}
-                  className={`flex items-start gap-3 border rounded-xl p-4 cursor-pointer transition-colors ${
+                  className={`block border rounded-xl p-4 cursor-pointer transition-colors ${
                     selectedPlanId === plan.id
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -370,26 +393,39 @@ function SubscribeForm() {
                     value={plan.id}
                     checked={selectedPlanId === plan.id}
                     onChange={() => setSelectedPlanId(plan.id)}
-                    className="mt-0.5 text-blue-600 focus:ring-blue-500"
+                    className="sr-only"
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">{plan.name}</p>
-                    {plan.description && (
-                      <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>
-                    )}
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {plan.free_months > 0 && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                          {plan.free_months} {t('subscribe.monthsFree')}
-                        </span>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">{plan.name}</p>
+                      {plan.description && (
+                        <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>
                       )}
-                      <span className="text-xs text-gray-500">
-                        ₪{plan.monthly_cost}/{t('subscribe.monthShort')} × {plan.paid_months} {t('subscribe.monthsLabel')}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        ({t('subscribe.total')}: ₪{(plan.monthly_cost * plan.paid_months).toFixed(0)})
-                      </span>
                     </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-base font-bold text-gray-900">
+                        ₪{plan.monthly_cost}
+                        <span className="text-xs font-normal text-gray-400">/{t('subscribe.monthShort')}</span>
+                      </p>
+                      <p className="text-xs text-gray-400">× {plan.paid_months} {t('subscribe.monthsLabel')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    {plan.free_months > 0 && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        +{plan.free_months} {t('subscribe.monthsFree')}
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {t('subscribe.total')}: ₪{(plan.monthly_cost * plan.paid_months).toFixed(0)}
+                    </span>
+                    {selectedPlanId === plan.id && (
+                      <span className="ml-auto">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
                   </div>
                 </label>
               ))}
@@ -429,6 +465,11 @@ function SubscribeForm() {
           >
             {submitting ? t('common.sending') : t('subscribe.submitRequest')}
           </button>
+
+          <p className="text-center text-xs text-gray-400">
+            Already a teacher?{' '}
+            <Link href="/teacher/login" className="text-blue-600 hover:underline">Sign in</Link>
+          </p>
         </form>
       </div>
     </div>

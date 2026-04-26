@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import './globals.css';
 import PushRegistrar from '@/components/PushRegistrar';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: 'saderOT',
-  description: 'סדר אותי — Book and manage private lessons',
+  title: 'SaderOT — Lessons Scheduler',
+  description: 'The scheduling tool built for private teachers',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider>
           <PushRegistrar />
           {children}
+          <Toaster position="top-center" richColors closeButton />
         </LanguageProvider>
       </body>
     </html>

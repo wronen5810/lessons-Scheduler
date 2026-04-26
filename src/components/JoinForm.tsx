@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import SaderotLogo from '@/components/SaderotLogo';
 
 type Step = 'email' | 'privacy' | 'not_found' | 'teachers';
 
@@ -119,17 +120,14 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
   if (step === 'privacy') {
     return (
       <>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('join.privacyTitle')}</h2>
+        <SaderotLogo size="sm" />
+        <h2 className="text-lg font-semibold text-gray-900 mb-1 mt-5">{t('join.privacyTitle')}</h2>
         <p className="text-sm text-gray-500 mb-4">{t('join.privacyIntro')}</p>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-sm text-gray-600 max-h-48 overflow-y-auto space-y-2">
-          <p>We collect your name, email, phone number, and lesson information to enable scheduling between you and your teacher.</p>
-          <p>Your data is stored securely and is never sold or shared with third parties for marketing purposes.</p>
-          <p>You may request deletion of your data at any time by contacting your teacher.</p>
-          <p className="mt-2">
-            <Link href="/privacy" target="_blank" className="text-blue-600 underline hover:text-blue-700">
-              {t('join.readFullPolicy')}
-            </Link>
-          </p>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-sm text-gray-600">
+          <p>We use your email, name, and lesson info solely to enable scheduling with your teacher. Your data is stored securely and never sold or shared.</p>
+          <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline mt-2 inline-block">
+            {t('join.readFullPolicy')} →
+          </Link>
         </div>
         <label className="flex items-start gap-3 cursor-pointer mb-5">
           <input
@@ -256,9 +254,12 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold text-gray-900">{t('join.title')}</h2>
+      <div className="flex items-center justify-between mb-5">
+        <SaderotLogo size="sm" />
         <LanguageToggle />
+      </div>
+      <div className="mb-1">
+        <h2 className="text-lg font-semibold text-gray-900">{t('join.title')}</h2>
       </div>
       {teacherName && (
         <p className="text-sm text-gray-500 mb-5">{t('join.enterEmailWith', { teacherName })}</p>
