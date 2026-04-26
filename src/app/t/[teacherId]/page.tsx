@@ -16,6 +16,7 @@ import StudentNotebook from '@/components/StudentNotebook';
 import SaderotLogo from '@/components/SaderotLogo';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import { Calendar, BookOpen, LogOut } from 'lucide-react';
 
 type Section = 'schedule' | 'notebook';
 type Step = 'calendar' | 'times' | 'book' | 'done';
@@ -108,7 +109,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   }, [menuOpen]);
 
   function handleSignOut() {
-    router.push(`/t/${teacherId}`);
+    setMenuOpen(false);
+    router.push('/student');
   }
 
   useEffect(() => {
@@ -264,14 +266,16 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     onClick={() => { setSection('schedule'); setMenuOpen(false); }}
                     className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
                   >
-                    📅 {t('schedule.schedule')}
+                    <Calendar className="w-4 h-4 flex-shrink-0" />
+                    {t('schedule.schedule')}
                   </button>
                   {email && (
                     <button
                       onClick={() => { setSection('notebook'); setMenuOpen(false); }}
                       className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'notebook' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
                     >
-                      📓 {t('common.notebook')}
+                      <BookOpen className="w-4 h-4 flex-shrink-0" />
+                      {t('common.notebook')}
                     </button>
                   )}
                   <div className="border-t border-gray-100 my-1" />
@@ -279,7 +283,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     onClick={handleSignOut}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
-                    🚪 {t('common.signOut')}
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
+                    {t('common.signOut')}
                   </button>
                 </div>
               )}
