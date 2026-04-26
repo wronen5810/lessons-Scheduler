@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { StudentNote } from '@/app/api/teacher/students/[id]/notes/route';
 import StudentNotebook from '@/components/StudentNotebook';
@@ -22,13 +22,17 @@ interface Student {
   created_at: string;
 }
 
-export default function StudentsPage() {
+function StudentsPage() {
   const { settings } = useTeacherSettings();
   const { t, lang, isRTL } = useLanguage();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<'students' | 'groups'>(() =>
     searchParams.get('tab') === 'groups' ? 'groups' : 'students'
   );
+
+  useEffect(() => {
+    setTab(searchParams.get('tab') === 'groups' ? 'groups' : 'students');
+  }, [searchParams]);
 
   // ── Students state ───────────────────────────────────────────────
   const [students, setStudents] = useState<Student[]>([]);
@@ -714,5 +718,13 @@ export default function StudentsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <StudentsPage />
+    </Suspense>
   );
 }

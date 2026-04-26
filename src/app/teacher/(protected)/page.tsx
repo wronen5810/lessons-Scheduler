@@ -82,7 +82,7 @@ export default function TeacherDashboard() {
   }[] = [
     { label: t('teacher.schedule'),  desc: t('teacher.scheduleDesc'),  href: '/teacher/schedule',           icon: <Calendar className="w-5 h-5" />,     show: true, badge: pendingCount || null },
     { label: t('common.students'),   desc: t('teacher.studentsDesc'),  href: '/teacher/students',            icon: <Users className="w-5 h-5" />,        show: true },
-    { label: t('common.groups'),     desc: t('teacher.studentsDesc'),  href: '/teacher/students?tab=groups', icon: <Users2 className="w-5 h-5" />,       show: f.groups },
+    { label: t('common.groups'),     desc: t('teacher.groupsDesc'),    href: '/teacher/students?tab=groups', icon: <Users2 className="w-5 h-5" />,       show: f.groups },
     { label: t('teacher.billing'),   desc: t('teacher.billingDesc'),   href: '/teacher/billing',             icon: <CreditCard className="w-5 h-5" />,   show: f.billing },
     { label: t('teacher.messages'),  desc: t('teacher.messagesDesc'),  href: '/teacher/messages',            icon: <MessageSquare className="w-5 h-5" />,show: f.messages },
     { label: t('common.share'),      desc: t('teacher.shareDesc'),     href: null, icon: <Share2 className="w-5 h-5" />, show: true, onClick: () => setShowShare(true) },
