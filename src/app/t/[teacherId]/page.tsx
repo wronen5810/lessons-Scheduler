@@ -93,7 +93,11 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
   async function loadBookings() {
     if (!email) return;
-    const res = await fetch(`/api/student/bookings?email=${encodeURIComponent(email)}&teacherId=${teacherId}`);
+    const tok = localStorage.getItem(`st_${teacherId}`);
+    const headers: Record<string, string> = {};
+    if (tok) headers['Authorization'] = `Bearer ${tok}`;
+    const res = await fetch(`/api/student/bookings?email=${encodeURIComponent(email)}&teacherId=${teacherId}`, { headers });
+    if (res.status === 401) { router.push('/student'); return; }
     if (res.ok) setBookings(await res.json());
   }
 
@@ -217,9 +221,12 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     if (!bookingId || !bookingType) return;
     setCancelLoading(true);
     setCancelError('');
+    const tok = localStorage.getItem(`st_${teacherId}`);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (tok) headers['Authorization'] = `Bearer ${tok}`;
     const res = await fetch(`/api/student/bookings/${bookingId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ booking_type: bookingType, email, reason: cancelReason }),
     });
     setCancelLoading(false);

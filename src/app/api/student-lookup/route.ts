@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
+import { issueStudentToken } from '@/lib/student-token';
 
 // POST /api/student-lookup — find which teacher(s) a student belongs to
 // Optional body.teacherId: scope lookup to a specific teacher (used by /join/[teacherId])
@@ -24,7 +25,6 @@ export async function POST(request: NextRequest) {
   // Not found at all
   if (error || !data || data.length === 0) {
     if (teacherId) {
-      // Return teacher name so the join page can display it
       const { data: profile } = await supabase
         .from('profiles')
         .select('display_name')
@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
 
   const privacyAccepted = active.some((s: { privacy_accepted_at: string | null }) => s.privacy_accepted_at !== null);
 
-  // Enrich with teacher display names
   const teacherIds = active.map((s: { teacher_id: string }) => s.teacher_id);
   const { data: profiles } = await supabase
     .from('profiles')
@@ -57,8 +56,6 @@ export async function POST(request: NextRequest) {
     display_name: p.display_name,
   }));
 
-  // Record login for each teacher this student belongs to
-  // Fetch student name from students table
   const { data: studentRow } = await supabase
     .from('students')
     .select('name')
@@ -75,5 +72,13 @@ export async function POST(request: NextRequest) {
     }))
   );
 
-  return NextResponse.json({ teachers, privacy_accepted: privacyAccepted });
+  // Issue tokens only for teachers where privacy has already been accepted
+  const tokens: Record<string, string> = {};
+  for (const s of active) {
+    if (s.privacy_accepted_at !== null) {
+      tokens[s.teacher_id] = issueStudentToken(normalizedEmail, s.teacher_id);
+    }
+  }
+
+  return NextResponse.json({ teachers, privacy_accepted: privacyAccepted, tokens });
 }

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { formatTime, getEndTime, todayInIsrael } from '@/lib/dates';
+import { claimsFromRequest } from '@/lib/student-token';
 
 // GET /api/student/bookings?email=...&teacherId=...
-// Returns the student's upcoming approved/pending/cancellation_requested bookings
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const email = searchParams.get('email')?.toLowerCase().trim();
@@ -13,10 +13,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'email and teacherId required' }, { status: 400 });
   }
 
+  // Verify signed student token
+  const claims = claimsFromRequest(request);
+  if (!claims || claims.email !== email || claims.teacherId !== teacherId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = createServiceSupabase();
   const today = todayInIsrael();
 
-  // Find this student's record to look up group memberships
   const { data: student } = await supabase
     .from('students')
     .select('id')
@@ -26,7 +31,6 @@ export async function GET(request: NextRequest) {
 
   const studentId = student?.id ?? null;
 
-  // Fetch group IDs this student belongs to (for this teacher)
   const groupIds: string[] = [];
   if (studentId) {
     const { data: memberships } = await supabase
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
   const [{ data: recurring }, { data: oneTime }, { data: groupRecurring }, { data: groupOneTime }, { data: groupRows }] = await Promise.all([
     supabase
       .from('recurring_bookings')
-      .select('id, template_id, status, lesson_date, series_id, cancellation_reason')
+      .select('id, template_id, status, lesson_date, cancellation_reason')
       .ilike('student_email', email)
       .eq('teacher_id', teacherId)
       .in('status', ['pending', 'approved', 'cancellation_requested'])
@@ -103,7 +107,6 @@ export async function GET(request: NextRequest) {
       start_time: startTime,
       end_time: getEndTime(startTime, t?.duration_minutes ?? 45),
       specific_date: b.lesson_date,
-      series_id: b.series_id,
       cancellation_reason: b.cancellation_reason,
       is_group: false,
     };

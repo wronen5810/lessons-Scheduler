@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 const EFFECTIVE_DATE_EN = 'April 17, 2026';
 const EFFECTIVE_DATE_HE = '17 באפריל 2026';
-const SUPPORT_EMAIL = 'Support@saderot.com';
+const SUPPORT_EMAIL = 'support@saderot.com';
 
 function Email() {
   return <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-600 hover:underline">{SUPPORT_EMAIL}</a>;

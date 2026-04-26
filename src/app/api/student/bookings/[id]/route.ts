@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
+import { claimsFromRequest } from '@/lib/student-token';
 
-// POST /api/student/bookings/[id]/cancel-request
-// Student requests cancellation (requires reason). Teacher must approve.
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { booking_type, email, reason } = await request.json();
@@ -11,10 +10,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'booking_type, email and reason are required' }, { status: 400 });
   }
 
+  // Verify signed student token
+  const claims = claimsFromRequest(request);
+  if (!claims || claims.email !== email.toLowerCase().trim()) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = createServiceSupabase();
   const table = booking_type === 'recurring' ? 'recurring_bookings' : 'one_time_bookings';
 
-  // Verify this booking belongs to the requesting student
   const { data: booking } = await supabase
     .from(table)
     .select('id, status, student_email')
@@ -29,7 +33,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'This booking cannot be cancelled' }, { status: 400 });
   }
 
-  // Pending bookings can be withdrawn immediately; approved ones require teacher approval
   const newStatus = booking.status === 'pending' ? 'cancelled' : 'cancellation_requested';
 
   const { error } = await supabase

@@ -30,6 +30,12 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
   const [privacyChecked, setPrivacyChecked] = useState(false);
   const [pendingTeachers, setPendingTeachers] = useState<Teacher[]>([]);
 
+  function storeTokens(tokens: Record<string, string>) {
+    for (const [tid, tok] of Object.entries(tokens)) {
+      localStorage.setItem(`st_${tid}`, tok);
+    }
+  }
+
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -55,6 +61,8 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
       return;
     }
 
+    if (data.tokens) storeTokens(data.tokens);
+
     if (!data.privacy_accepted) {
       setPendingTeachers(data.teachers);
       setTeacherName(data.teachers[0]?.display_name ?? '');
@@ -72,11 +80,13 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
 
   async function handlePrivacyAccept() {
     setLoading(true);
-    await fetch('/api/student/accept-privacy', {
+    const res = await fetch('/api/student/accept-privacy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, teacherIds: pendingTeachers.map(t => t.id) }),
     });
+    const data = res.ok ? await res.json() : {};
+    if (data.tokens) storeTokens(data.tokens);
     setLoading(false);
 
     if (pendingTeachers.length === 1) {
