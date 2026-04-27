@@ -39,6 +39,7 @@ function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState('');
   const [editing, setEditing] = useState<Student | null>(null);
@@ -103,10 +104,10 @@ function StudentsPage() {
     const res = await fetch('/api/teacher/students', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email }),
+      body: JSON.stringify({ name, email, phone: phone || null }),
     });
     const data = await res.json();
-    if (!res.ok) { setFormError(data.error); } else { setName(''); setEmail(''); load(); }
+    if (!res.ok) { setFormError(data.error); } else { setName(''); setEmail(''); setPhone(''); load(); }
     setAdding(false);
   }
 
@@ -261,6 +262,8 @@ function StudentsPage() {
                 <input type="text" placeholder={t('students.fullName')} required value={name} onChange={(e) => setName(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="email" placeholder={t('students.emailAddress')} required value={email} onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="tel" placeholder={t('common.phone')} value={phone} onChange={(e) => setPhone(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <button type="submit" disabled={adding}
                   className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap">
