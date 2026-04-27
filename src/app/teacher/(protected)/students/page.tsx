@@ -101,6 +101,9 @@ function StudentsPage() {
     e.preventDefault();
     setFormError('');
     if (!email && !phone) { setFormError(t('students.emailOrPhoneRequired')); return; }
+    if (phone && !/^(\+972|0)([23489]|5\d|7[2-9])\d{7}$/.test(phone.replace(/[-\s]/g, ''))) {
+      setFormError(t('students.invalidPhone')); return;
+    }
     setAdding(true);
     const res = await fetch('/api/teacher/students', {
       method: 'POST',

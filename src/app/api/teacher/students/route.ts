@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
   if (!name || (!email && !phone)) {
     return NextResponse.json({ error: 'Name and email or phone are required' }, { status: 400 });
   }
+  if (phone && !/^(\+972|0)([23489]|5\d|7[2-9])\d{7}$/.test(phone.replace(/[-\s]/g, ''))) {
+    return NextResponse.json({ error: 'Invalid Israeli phone number' }, { status: 400 });
+  }
 
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
