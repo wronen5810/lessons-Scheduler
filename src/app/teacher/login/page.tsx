@@ -41,7 +41,10 @@ export default function TeacherLogin() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
         <div className="flex items-center justify-between mb-8">
           <SaderotLogo size="md" showTagline />
-          <LanguageToggle />
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">{t('common.back')}</Link>
+            <LanguageToggle />
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,6 +85,7 @@ export default function TeacherLogin() {
             {loading ? t('auth.signingIn') : t('auth.signIn')}
           </button>
         </form>
+
       </div>
     </div>
   );

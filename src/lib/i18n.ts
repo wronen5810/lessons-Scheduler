@@ -217,6 +217,8 @@ const en = {
   'students.notebookTitle': 'Notebook — {name}',
   'students.visible': 'Visible',
   'students.hidden': 'Hidden',
+  'student.privacyBody': 'We use your email, name, and lesson info solely to enable scheduling with your teacher. Your data is stored securely and never sold or shared.',
+  'student.multipleTeachers': 'You are registered with multiple teachers. Choose one:',
   // ── Student join page ────────────────────────────────────
   'join.title': 'Student login',
   'join.emailOrPhone': 'Email or Phone',
@@ -494,6 +496,8 @@ const he: typeof en = {
   'students.notebookTitle': 'מחברת — {name}',
   'students.visible': 'גלוי',
   'students.hidden': 'מוסתר',
+  'student.privacyBody': 'אנו משתמשים באימייל, בשם ובפרטי השיעורים שלך אך ורק כדי לאפשר תיאום עם המורה. המידע שלך מאוחסן בצורה מאובטחת ולא נמכר או משותף.',
+  'student.multipleTeachers': 'אתה/את רשום/ה אצל מספר מורים. בחר/י אחד/ת:',
   // ── Student join page ────────────────────────────────────
   'join.title': 'כניסת תלמידים',
   'join.emailOrPhone': 'אימייל או טלפון',
