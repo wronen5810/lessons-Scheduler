@@ -2,19 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { issueStudentToken } from '@/lib/student-token';
 
+function stripPhoneFormatting(phone: string): string {
+  return phone.replace(/[\s\-().]/g, '');
+}
+
 // POST /api/student-lookup — find which teacher(s) a student belongs to
+// body.identifier: email or phone number (body.email also accepted for backward compat)
 // Optional body.teacherId: scope lookup to a specific teacher (used by /join/[teacherId])
 export async function POST(request: NextRequest) {
-  const { email, teacherId } = await request.json();
-  if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 });
+  const body = await request.json();
+  const rawIdentifier: string = body.identifier ?? body.email ?? '';
+  const teacherId: string | undefined = body.teacherId;
 
-  const normalizedEmail = email.toLowerCase().trim();
+  if (!rawIdentifier) return NextResponse.json({ error: 'Email or phone required' }, { status: 400 });
+
+  const trimmed = rawIdentifier.trim();
+  const isEmail = trimmed.includes('@');
   const supabase = createServiceSupabase();
 
   let query = supabase
     .from('students')
-    .select('teacher_id, is_active, privacy_accepted_at')
-    .ilike('email', normalizedEmail);
+    .select('teacher_id, is_active, privacy_accepted_at, email, phone, name');
+
+  if (isEmail) {
+    query = query.ilike('email', trimmed.toLowerCase());
+  } else {
+    const stripped = stripPhoneFormatting(trimmed);
+    const phoneFilter = stripped !== trimmed
+      ? `phone.eq.${trimmed},phone.eq.${stripped}`
+      : `phone.eq.${trimmed}`;
+    query = query.or(phoneFilter);
+  }
 
   if (teacherId) {
     query = query.eq('teacher_id', teacherId);
@@ -35,17 +53,19 @@ export async function POST(request: NextRequest) {
         { status: 404 },
       );
     }
-    return NextResponse.json({ error: 'Email not found. Please contact your teacher.' }, { status: 404 });
+    return NextResponse.json({ error: 'Not found. Please contact your teacher.' }, { status: 404 });
   }
 
-  const active = data.filter((s: { teacher_id: string; is_active: boolean; privacy_accepted_at: string | null }) => s.is_active);
+  type StudentRow = { teacher_id: string; is_active: boolean; privacy_accepted_at: string | null; email: string | null; phone: string | null; name: string };
+  const active = (data as StudentRow[]).filter((s) => s.is_active);
   if (active.length === 0) {
     return NextResponse.json({ error: 'Your account is inactive. Please contact your teacher.' }, { status: 403 });
   }
 
-  const privacyAccepted = active.some((s: { privacy_accepted_at: string | null }) => s.privacy_accepted_at !== null);
+  const studentIdentifier = (active[0].email ?? active[0].phone ?? '').toLowerCase().trim();
+  const privacyAccepted = active.some((s) => s.privacy_accepted_at !== null);
+  const teacherIds = active.map((s) => s.teacher_id);
 
-  const teacherIds = active.map((s: { teacher_id: string }) => s.teacher_id);
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, display_name')
@@ -56,18 +76,11 @@ export async function POST(request: NextRequest) {
     display_name: p.display_name,
   }));
 
-  const { data: studentRow } = await supabase
-    .from('students')
-    .select('name')
-    .ilike('email', normalizedEmail)
-    .limit(1)
-    .single();
-
-  const logName = studentRow?.name ?? normalizedEmail;
+  const logName = active[0].name ?? studentIdentifier;
   await supabase.from('student_logins').insert(
     teacherIds.map((tid) => ({
       teacher_id: tid,
-      student_email: normalizedEmail,
+      student_email: studentIdentifier,
       student_name: logName,
     }))
   );
@@ -76,9 +89,9 @@ export async function POST(request: NextRequest) {
   const tokens: Record<string, string> = {};
   for (const s of active) {
     if (s.privacy_accepted_at !== null) {
-      tokens[s.teacher_id] = issueStudentToken(normalizedEmail, s.teacher_id);
+      tokens[s.teacher_id] = issueStudentToken(studentIdentifier, s.teacher_id);
     }
   }
 
-  return NextResponse.json({ teachers, privacy_accepted: privacyAccepted, tokens });
+  return NextResponse.json({ teachers, privacy_accepted: privacyAccepted, tokens, student_email: studentIdentifier });
 }
