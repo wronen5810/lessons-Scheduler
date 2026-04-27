@@ -24,14 +24,14 @@ export async function POST(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const { name, email, phone } = await request.json();
-  if (!name || !email) {
-    return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+  if (!name || (!email && !phone)) {
+    return NextResponse.json({ error: 'Name and email or phone are required' }, { status: 400 });
   }
 
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('students')
-    .insert({ name, email: email.toLowerCase().trim(), phone: phone ?? null, teacher_id: auth.user.id })
+    .insert({ name, email: email ? email.toLowerCase().trim() : null, phone: phone ?? null, teacher_id: auth.user.id })
     .select()
     .single();
 

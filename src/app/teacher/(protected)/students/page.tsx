@@ -100,6 +100,7 @@ function StudentsPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setFormError('');
+    if (!email && !phone) { setFormError(t('students.emailOrPhoneRequired')); return; }
     setAdding(true);
     const res = await fetch('/api/teacher/students', {
       method: 'POST',
@@ -261,7 +262,7 @@ function StudentsPage() {
               <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
                 <input type="text" placeholder={t('students.fullName')} required value={name} onChange={(e) => setName(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input type="email" placeholder={t('students.emailAddress')} required value={email} onChange={(e) => setEmail(e.target.value)}
+                <input type="email" placeholder={t('students.emailAddress')} value={email} onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="tel" placeholder={t('common.phone')} value={phone} onChange={(e) => setPhone(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
