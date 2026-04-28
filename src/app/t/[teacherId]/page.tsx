@@ -13,12 +13,13 @@ import { DAY_NAMES_HE, DAY_NAMES_SHORT_HE } from '@/lib/i18n';
 import type { ComputedSlot } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 import StudentNotebook from '@/components/StudentNotebook';
+import StudentSettingsModal from '@/components/StudentSettingsModal';
 import SaderotLogo from '@/components/SaderotLogo';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
-import { Calendar, BookOpen, LogOut } from 'lucide-react';
+import { Calendar, BookOpen, LogOut, Settings } from 'lucide-react';
 
-type Section = 'schedule' | 'notebook';
+type Section = 'schedule' | 'notebook' | 'settings';
 type Step = 'calendar' | 'times' | 'book' | 'done';
 
 interface StudentBooking {
@@ -59,7 +60,18 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const today = todayInIsrael();
   const [section, setSection] = useState<Section>('schedule');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState(email);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function getToken() {
+    return typeof window !== 'undefined' ? localStorage.getItem(`st_${teacherId}`) : null;
+  }
+
+  function handleEmailChange(newEmail: string, newToken: string) {
+    localStorage.setItem(`st_${teacherId}`, newToken);
+    setCurrentEmail(newEmail);
+  }
   const [month, setMonth] = useState(() => getMonthStr(today));
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,6 +295,15 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     >
                       <BookOpen className="w-4 h-4 flex-shrink-0" />
                       {t('common.notebook')}
+                    </button>
+                  )}
+                  {email && (
+                    <button
+                      onClick={() => { setSettingsOpen(true); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <Settings className="w-4 h-4 flex-shrink-0" />
+                      {t('common.settings')}
                     </button>
                   )}
                   <div className="border-t border-gray-100 my-1" />
@@ -566,6 +587,17 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
           </div>
         )}
       </main>
+
+      {/* Settings modal */}
+      {settingsOpen && email && (
+        <StudentSettingsModal
+          teacherId={teacherId}
+          email={currentEmail}
+          token={getToken()}
+          onClose={() => setSettingsOpen(false)}
+          onEmailChange={handleEmailChange}
+        />
+      )}
 
       {/* Cancel modal */}
       {cancelTarget && (() => {

@@ -13,7 +13,7 @@ interface Teacher {
   display_name: string;
 }
 
-type Step = 'email' | 'privacy' | 'teachers';
+type Step = 'email' | 'otp' | 'privacy' | 'teachers';
 
 export default function StudentEntryPage() {
   const router = useRouter();
@@ -26,6 +26,9 @@ export default function StudentEntryPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [pendingTeachers, setPendingTeachers] = useState<Teacher[]>([]);
   const [privacyChecked, setPrivacyChecked] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [resending, setResending] = useState(false);
 
   function storeTokens(tokens: Record<string, string>) {
     for (const [tid, tok] of Object.entries(tokens)) {
@@ -56,6 +59,12 @@ export default function StudentEntryPage() {
 
     const studentEmail: string = data.student_email || identifier.toLowerCase().trim();
     setResolvedEmail(studentEmail);
+
+    // 2FA required — show OTP entry screen
+    if (data.requires_2fa) {
+      setStep('otp');
+      return;
+    }
 
     if (!data.privacy_accepted) {
       setPendingTeachers(data.teachers);
@@ -88,6 +97,41 @@ export default function StudentEntryPage() {
       setTeachers(pendingTeachers);
       setStep('teachers');
     }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setOtpError('');
+    setLoading(true);
+    const res = await fetch('/api/student/2fa/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resolvedEmail, code: otpCode }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) {
+      setOtpError(data.error || t('join.invalidCode'));
+      return;
+    }
+    if (data.tokens) storeTokens(data.tokens);
+    if (data.teachers?.length === 1) {
+      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
+    } else if (data.teachers?.length > 1) {
+      setTeachers(data.teachers);
+      setStep('teachers');
+    }
+  }
+
+  async function handleResendOtp() {
+    setResending(true);
+    setOtpError('');
+    await fetch('/api/student/2fa/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resolvedEmail }),
+    });
+    setResending(false);
   }
 
   return (
@@ -140,6 +184,55 @@ export default function StudentEntryPage() {
                 {loading ? t('join.lookingUp') : t('common.continue')}
               </button>
             </form>
+          </>
+        )}
+
+        {step === 'otp' && (
+          <>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('join.checkEmail')}</h2>
+            <p className="text-sm text-gray-500 mb-5">{t('join.otpSentTo', { email: resolvedEmail })}</p>
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('join.verificationCode')}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  required
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder={t('join.codePlaceholder')}
+                  autoFocus
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-center tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {otpError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{otpError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={loading || otpCode.length < 6}
+                className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? t('join.verifying') : t('join.verifyCode')}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={resending}
+              className="w-full mt-3 text-sm text-blue-600 hover:underline disabled:opacity-50"
+            >
+              {resending ? t('join.resending') : t('join.resendCode')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStep('email'); setOtpCode(''); setOtpError(''); }}
+              className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600"
+            >
+              {t('join.differentEmail')}
+            </button>
           </>
         )}
 
