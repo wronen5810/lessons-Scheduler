@@ -1,49 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { issueStudentToken } from '@/lib/student-token';
-import { createHash, randomInt } from 'crypto';
-import { Resend } from 'resend';
-
-function hashCode(code: string): string {
-  return createHash('sha256').update(code).digest('hex');
-}
-
-async function sendOtp(email: string): Promise<boolean> {
-  const supabase = createServiceSupabase();
-  await supabase.from('student_otp_codes').delete().eq('email', email);
-
-  const code = String(randomInt(100000, 999999));
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  const { error } = await supabase.from('student_otp_codes').insert({
-    email,
-    code_hash: hashCode(code),
-    expires_at: expiresAt.toISOString(),
-  });
-  if (error) return false;
-
-  try {
-    const resend = new Resend(process.env.RESEND_API_KEY!);
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM!,
-      to: email,
-      subject: `Your login code: ${code}`,
-      html: `
-        <div style="font-family:sans-serif;max-width:400px;margin:0 auto">
-          <h2>Your Login Code</h2>
-          <p>Use the code below to complete your login. It expires in 10 minutes.</p>
-          <div style="font-size:36px;font-weight:bold;letter-spacing:8px;text-align:center;padding:24px;background:#f5f5f5;border-radius:8px;margin:16px 0">
-            ${code}
-          </div>
-          <p style="font-size:13px;color:#888">If you didn't request this, you can ignore this email.</p>
-        </div>
-      `,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function stripPhoneFormatting(phone: string): string {
   return phone.replace(/[\s\-().]/g, '');
@@ -128,11 +85,8 @@ export async function POST(request: NextRequest) {
     }))
   );
 
-  // If any active record has 2FA enabled, send OTP and stop here
-  const requires2FA = active.some((s) => s.two_factor_enabled);
-  if (requires2FA) {
-    const sent = await sendOtp(studentIdentifier);
-    if (!sent) return NextResponse.json({ error: 'Failed to send verification code' }, { status: 500 });
+  // If any active record has 2FA enabled, stop here — client will prompt for TOTP code
+  if (active.some((s) => s.two_factor_enabled)) {
     return NextResponse.json({ requires_2fa: true, student_email: studentIdentifier });
   }
 

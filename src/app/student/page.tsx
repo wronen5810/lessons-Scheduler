@@ -28,7 +28,6 @@ export default function StudentEntryPage() {
   const [privacyChecked, setPrivacyChecked] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
-  const [resending, setResending] = useState(false);
 
   function storeTokens(tokens: Record<string, string>) {
     for (const [tid, tok] of Object.entries(tokens)) {
@@ -103,7 +102,7 @@ export default function StudentEntryPage() {
     e.preventDefault();
     setOtpError('');
     setLoading(true);
-    const res = await fetch('/api/student/2fa/verify-otp', {
+    const res = await fetch('/api/student/2fa/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: resolvedEmail, code: otpCode }),
@@ -115,23 +114,19 @@ export default function StudentEntryPage() {
       return;
     }
     if (data.tokens) storeTokens(data.tokens);
+
+    if (!data.privacy_accepted) {
+      setPendingTeachers(data.teachers);
+      setStep('privacy');
+      return;
+    }
+
     if (data.teachers?.length === 1) {
       router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
     } else if (data.teachers?.length > 1) {
       setTeachers(data.teachers);
       setStep('teachers');
     }
-  }
-
-  async function handleResendOtp() {
-    setResending(true);
-    setOtpError('');
-    await fetch('/api/student/2fa/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: resolvedEmail }),
-    });
-    setResending(false);
   }
 
   return (
@@ -189,8 +184,8 @@ export default function StudentEntryPage() {
 
         {step === 'otp' && (
           <>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('join.checkEmail')}</h2>
-            <p className="text-sm text-gray-500 mb-5">{t('join.otpSentTo', { email: resolvedEmail })}</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('join.twoFactorTitle')}</h2>
+            <p className="text-sm text-gray-500 mb-5">{t('join.twoFactorDesc')}</p>
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('join.verificationCode')}</label>
@@ -220,16 +215,8 @@ export default function StudentEntryPage() {
             </form>
             <button
               type="button"
-              onClick={handleResendOtp}
-              disabled={resending}
-              className="w-full mt-3 text-sm text-blue-600 hover:underline disabled:opacity-50"
-            >
-              {resending ? t('join.resending') : t('join.resendCode')}
-            </button>
-            <button
-              type="button"
               onClick={() => { setStep('email'); setOtpCode(''); setOtpError(''); }}
-              className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600"
+              className="w-full mt-3 text-xs text-gray-400 hover:text-gray-600"
             >
               {t('join.differentEmail')}
             </button>
