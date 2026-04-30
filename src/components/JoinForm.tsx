@@ -47,7 +47,7 @@ function isLight(hex: string): boolean {
 
 export default function JoinForm({ teacherId }: { teacherId: string }) {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const [step, setStep] = useState<Step>('email');
   const [identifier, setIdentifier] = useState('');
   const [resolvedEmail, setResolvedEmail] = useState('');
@@ -178,7 +178,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
   // ── Shared page shell ─────────────────────────────────────────────────────
   function Shell({ children }: { children: React.ReactNode }) {
     return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center px-4 py-10">
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center px-4 py-10" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="bg-white rounded-2xl shadow-sm w-full max-w-sm overflow-hidden">
           {children}
         </div>
@@ -415,7 +415,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
 
   // ── Main email step ───────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-stone-100 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-stone-100 flex items-center justify-center px-4 py-10" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="bg-white rounded-2xl shadow-sm w-full max-w-sm overflow-hidden">
 
         {/* Top bar */}
@@ -454,13 +454,13 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
           <div className="relative flex items-center mb-4">
             <div className="flex-grow border-t border-gray-200" />
             <span className="mx-3 text-xs font-semibold text-gray-400 uppercase tracking-widest whitespace-nowrap">
-              Student Access
+              {t('join.studentAccess')}
             </span>
             <div className="flex-grow border-t border-gray-200" />
           </div>
 
           <p className="text-sm text-gray-500 mb-4 text-center">
-            Enter your email or phone to view your lessons.
+            {t('join.accessDesc')}
           </p>
 
           <form onSubmit={handleEmailSubmit} className="space-y-3">
@@ -469,7 +469,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t('join.emailPlaceholder')}
               autoFocus
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-300 transition-colors"
             />

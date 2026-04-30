@@ -236,6 +236,8 @@ const en = {
   'student.activate2fa': 'Activate 2FA',
   // ── Student join page ────────────────────────────────────
   'join.title': 'Student login',
+  'join.studentAccess': 'Student Access',
+  'join.accessDesc': 'Enter your email or phone to view your lessons.',
   'join.emailOrPhone': 'Email or Phone',
   'join.enterEmailWith': 'Enter your email or phone to book lessons with {teacherName}.',
   'join.enterEmailGeneric': 'Enter your email or phone to access your schedule.',
@@ -541,6 +543,8 @@ const he: typeof en = {
   'student.activate2fa': 'הפעל אימות דו-שלבי',
   // ── Student join page ────────────────────────────────────
   'join.title': 'כניסת תלמידים',
+  'join.studentAccess': 'גישת תלמידים',
+  'join.accessDesc': 'הכנס/י אימייל או טלפון כדי לצפות בשיעורים שלך.',
   'join.emailOrPhone': 'אימייל או טלפון',
   'join.enterEmailWith': 'הכנס/י אימייל או טלפון כדי לקבוע שיעורים עם {teacherName}.',
   'join.enterEmailGeneric': 'הכנס/י אימייל או טלפון כדי לגשת ללוח הזמנים שלך.',
