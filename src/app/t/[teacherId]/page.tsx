@@ -49,6 +49,13 @@ function getCalendarDays(monthStr: string): (string | null)[] {
   return days;
 }
 
+interface TeacherPublicProfile {
+  display_name: string;
+  photo_url: string | null;
+  description: string | null;
+  bio: string | null;
+}
+
 function StudentCalendar({ teacherId }: { teacherId: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -63,6 +70,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentEmail, setCurrentEmail] = useState(email);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [teacherProfile, setTeacherProfile] = useState<TeacherPublicProfile | null>(null);
 
   function getToken() {
     return typeof window !== 'undefined' ? localStorage.getItem(`st_${teacherId}`) : null;
@@ -133,6 +141,11 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     fetch(`/api/teacher-features/${teacherId}`)
       .then(r => r.json())
       .then(d => { if (d.allow_cancellation === false) setAllowCancellation(false); })
+      .catch(() => {});
+
+    fetch(`/api/teacher-profile/${teacherId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setTeacherProfile(d); })
       .catch(() => {});
   }, [teacherId]);
 
@@ -322,6 +335,27 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
+
+        {/* Teacher profile header */}
+        {teacherProfile && (
+          <div className="text-center mb-6">
+            <h1 className="text-xl font-bold text-gray-900">{teacherProfile.display_name}</h1>
+            {teacherProfile.photo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={teacherProfile.photo_url}
+                alt={teacherProfile.display_name}
+                className="w-20 h-20 rounded-full mx-auto mt-3 object-cover border-2 border-white shadow-sm"
+              />
+            )}
+            {teacherProfile.description && (
+              <p className="text-sm font-medium text-gray-600 mt-2">{teacherProfile.description}</p>
+            )}
+            {teacherProfile.bio && (
+              <p className="text-sm text-gray-500 mt-1 leading-relaxed">{teacherProfile.bio}</p>
+            )}
+          </div>
+        )}
 
         {/* Notebook */}
         {section === 'notebook' && email && <StudentNotebook teacherId={teacherId} email={email} />}

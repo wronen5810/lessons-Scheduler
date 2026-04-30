@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -14,11 +14,20 @@ interface Teacher {
   display_name: string;
 }
 
+interface TeacherPublicProfile {
+  display_name: string;
+  photo_url: string | null;
+  description: string | null;
+  bio: string | null;
+}
+
 export default function JoinForm({ teacherId }: { teacherId: string }) {
   const router = useRouter();
   const { t } = useLanguage();
   const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');  // what the user typed (email or phone)
+  const [resolvedEmail, setResolvedEmail] = useState('');  // actual email from DB lookup
+  const [emailForRequest, setEmailForRequest] = useState('');  // email field in not_found form when identifier is a phone
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
@@ -29,6 +38,16 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
   const [error, setError] = useState('');
   const [privacyChecked, setPrivacyChecked] = useState(false);
   const [pendingTeachers, setPendingTeachers] = useState<Teacher[]>([]);
+  const [teacherProfile, setTeacherProfile] = useState<TeacherPublicProfile | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/teacher-profile/${teacherId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setTeacherProfile(d); })
+      .catch(() => {});
+  }, [teacherId]);
+
+  const isEmailIdentifier = identifier.includes('@');
 
   function storeTokens(tokens: Record<string, string>) {
     for (const [tid, tok] of Object.entries(tokens)) {
@@ -44,7 +63,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
     const res = await fetch('/api/student-lookup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, teacherId }),
+      body: JSON.stringify({ identifier, teacherId }),
     });
 
     const data = await res.json();
@@ -52,6 +71,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
 
     if (res.status === 404 && data.not_registered) {
       setTeacherName(data.teacher_name ?? '');
+      if (!isEmailIdentifier) setPhone(identifier.trim());
       setStep('not_found');
       return;
     }
@@ -63,6 +83,9 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
 
     if (data.tokens) storeTokens(data.tokens);
 
+    const studentEmail: string = data.student_email || identifier.toLowerCase().trim();
+    setResolvedEmail(studentEmail);
+
     if (!data.privacy_accepted) {
       setPendingTeachers(data.teachers);
       setTeacherName(data.teachers[0]?.display_name ?? '');
@@ -71,7 +94,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
     }
 
     if (data.teachers.length === 1) {
-      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(email)}`);
+      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(studentEmail)}`);
     } else {
       setTeachers(data.teachers);
       setStep('teachers');
@@ -83,14 +106,14 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
     const res = await fetch('/api/student/accept-privacy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, teacherIds: pendingTeachers.map(t => t.id) }),
+      body: JSON.stringify({ email: resolvedEmail, teacherIds: pendingTeachers.map(t => t.id) }),
     });
     const data = res.ok ? await res.json() : {};
     if (data.tokens) storeTokens(data.tokens);
     setLoading(false);
 
     if (pendingTeachers.length === 1) {
-      router.push(`/t/${pendingTeachers[0].id}?email=${encodeURIComponent(email)}`);
+      router.push(`/t/${pendingTeachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
     } else {
       setTeachers(pendingTeachers);
       setStep('teachers');
@@ -103,10 +126,12 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
     setLoading(true);
     setError('');
 
+    const emailToSend = isEmailIdentifier ? identifier.trim().toLowerCase() : emailForRequest.trim().toLowerCase();
+
     await fetch('/api/student-access-request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name: name.trim(), phone: phone.trim() || null, note: note.trim() || null, teacherId }),
+      body: JSON.stringify({ email: emailToSend, name: name.trim(), phone: phone.trim() || null, note: note.trim() || null, teacherId }),
     });
 
     setLoading(false);
@@ -172,8 +197,8 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
         <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('join.notRegistered')}</h2>
         <p className="text-sm text-gray-500 mb-6">
           {teacherName
-            ? t('join.notRegisteredDesc', { email, teacherName })
-            : t('join.notRegisteredGeneric', { email })}
+            ? t('join.notRegisteredDesc', { identifier: identifier.trim(), teacherName })
+            : t('join.notRegisteredGeneric', { identifier: identifier.trim() })}
         </p>
         <form onSubmit={handleAccessRequest} className="space-y-4">
           <div>
@@ -188,6 +213,19 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          {!isEmailIdentifier && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('join.emailAddress')} <span className="text-red-500">*</span></label>
+              <input
+                type="email"
+                required
+                value={emailForRequest}
+                onChange={(e) => setEmailForRequest(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('join.phoneNumber')}</label>
             <input
@@ -223,7 +261,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
           )}
           <button
             type="submit"
-            disabled={loading || !name.trim() || !privacyChecked}
+            disabled={loading || !name.trim() || !privacyChecked || (!isEmailIdentifier && !emailForRequest.trim())}
             className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {loading ? t('common.sending') : t('join.notifyTeacher')}
@@ -248,14 +286,14 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
           {teachers.map((teacher) => (
             <button
               key={teacher.id}
-              onClick={() => router.push(`/t/${teacher.id}?email=${encodeURIComponent(email)}`)}
+              onClick={() => router.push(`/t/${teacher.id}?email=${encodeURIComponent(resolvedEmail)}`)}
               className="w-full text-left border border-gray-200 rounded-lg px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 hover:border-blue-400 transition-colors"
             >
               {teacher.display_name}
             </button>
           ))}
         </div>
-        <button onClick={() => { setStep('email'); setEmail(''); }} className="mt-4 text-xs text-gray-400 hover:text-gray-600">
+        <button onClick={() => { setStep('email'); setIdentifier(''); }} className="mt-4 text-xs text-gray-400 hover:text-gray-600">
           {t('common.back')}
         </button>
       </>
@@ -268,6 +306,28 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
         <SaderotLogo size="sm" />
         <LanguageToggle />
       </div>
+
+      {/* Teacher profile */}
+      {teacherProfile && (
+        <div className="text-center mb-5">
+          {teacherProfile.photo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={teacherProfile.photo_url}
+              alt={teacherProfile.display_name}
+              className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-gray-100 shadow-sm"
+            />
+          )}
+          <h1 className="text-lg font-bold text-gray-900">{teacherProfile.display_name}</h1>
+          {teacherProfile.description && (
+            <p className="text-sm text-gray-500 mt-1">{teacherProfile.description}</p>
+          )}
+          {teacherProfile.bio && (
+            <p className="text-xs text-gray-400 mt-1 leading-relaxed">{teacherProfile.bio}</p>
+          )}
+        </div>
+      )}
+
       <div className="mb-1">
         <h2 className="text-lg font-semibold text-gray-900">{t('join.title')}</h2>
       </div>
@@ -279,12 +339,12 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
       )}
       <form onSubmit={handleEmailSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.email')}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('join.emailOrPhone')}</label>
           <input
-            type="email"
+            type="text"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             placeholder={t('join.emailPlaceholder')}
             autoFocus
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
