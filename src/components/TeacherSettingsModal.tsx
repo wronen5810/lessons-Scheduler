@@ -26,8 +26,8 @@ const NOTIFICATION_ROWS: { key: NotificationKey; label: string; direction: strin
 
 type Tab = 'general' | 'profile';
 
-export default function TeacherSettingsModal({ settings, onSave, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('general');
+export default function TeacherSettingsModal({ settings, onSave, onClose, initialTab = 'general' }: Props & { initialTab?: Tab }) {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   // ── General settings state ──
   const [duration, setDuration] = useState(settings.default_duration_minutes);

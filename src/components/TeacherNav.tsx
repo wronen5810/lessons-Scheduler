@@ -13,7 +13,7 @@ import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import SaderotLogo from '@/components/SaderotLogo';
 import {
   Calendar, Users, Users2, CreditCard, MessageSquare, Share2,
-  Settings, LogOut, Clock,
+  Settings, LogOut, Clock, UserCircle,
 } from 'lucide-react';
 
 export default function TeacherNav({ title, nextLesson }: { title?: string; nextLesson?: { hours: number; minutes: number } | null }) {
@@ -26,6 +26,7 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
   const [teacherName, setTeacherName] = useState('');
   const [showShareLink, setShowShareLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'profile'>('general');
   const [menuOpen, setMenuOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -101,6 +102,15 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
         <div className="flex-1 sm:hidden" />
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Profile shortcut */}
+          <button
+            onClick={() => { setSettingsTab('profile'); setShowSettings(true); }}
+            title="Profile"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            <UserCircle className="w-4 h-4" />
+          </button>
+
           {/* Menu dropdown */}
           <div className="relative" ref={menuRef}>
             <button
@@ -160,7 +170,7 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
                   {t('teacher.shareLink')}
                 </button>
                 <div className="border-t border-gray-100 my-1" />
-                <button onClick={() => { setShowSettings(true); closeMenu(); }}
+                <button onClick={() => { setSettingsTab('general'); setShowSettings(true); closeMenu(); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
                   <Settings className="w-4 h-4 flex-shrink-0" />
                   {t('common.settings')}
@@ -192,7 +202,7 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
         <ShareLinkModal teacherId={teacherId} teacherName={teacherName} onClose={() => setShowShareLink(false)} />
       )}
       {showSettings && (
-        <TeacherSettingsModal settings={settings} onSave={saveSettings} onClose={() => setShowSettings(false)} />
+        <TeacherSettingsModal settings={settings} onSave={saveSettings} onClose={() => setShowSettings(false)} initialTab={settingsTab} />
       )}
     </>
   );
