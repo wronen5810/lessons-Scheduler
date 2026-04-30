@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
-import { createServiceSupabase } from '@/lib/supabase-server';
-import { createAuthSupabase } from '@/lib/supabase-server';
+import { createServiceSupabase, createAuthSupabase } from '@/lib/supabase-server';
+
+const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
 export async function GET() {
   const auth = await requireTeacher();
@@ -15,7 +16,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from('profiles')
-    .select('display_name, phone, photo_url, description, bio, show_photo, show_description, show_bio')
+    .select('display_name, phone, photo_url, description, bio, show_photo, show_description, show_bio, tutoring_area, quote, page_color')
     .eq('id', auth.user.id)
     .single();
 
@@ -29,6 +30,9 @@ export async function GET() {
     show_photo: data?.show_photo ?? false,
     show_description: data?.show_description ?? false,
     show_bio: data?.show_bio ?? false,
+    tutoring_area: data?.tutoring_area ?? '',
+    quote: data?.quote ?? '',
+    page_color: data?.page_color ?? '#4A9E8A',
   });
 }
 
@@ -51,6 +55,13 @@ export async function PATCH(request: NextRequest) {
   if (body.show_photo !== undefined) update.show_photo = Boolean(body.show_photo);
   if (body.show_description !== undefined) update.show_description = Boolean(body.show_description);
   if (body.show_bio !== undefined) update.show_bio = Boolean(body.show_bio);
+  if (body.tutoring_area !== undefined) update.tutoring_area = body.tutoring_area ? String(body.tutoring_area).trim() : null;
+  if (body.quote !== undefined) update.quote = body.quote ? String(body.quote).trim() : null;
+  if (body.page_color !== undefined) {
+    const color = String(body.page_color).trim();
+    if (!HEX_RE.test(color)) return NextResponse.json({ error: 'Invalid color' }, { status: 400 });
+    update.page_color = color;
+  }
 
   const supabase = createServiceSupabase();
   const { error } = await supabase

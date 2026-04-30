@@ -11,7 +11,7 @@ export async function GET(
 
   const { data } = await supabase
     .from('profiles')
-    .select('display_name, photo_url, description, bio, show_photo, show_description, show_bio')
+    .select('display_name, photo_url, description, bio, show_photo, show_description, show_bio, tutoring_area, quote, page_color')
     .eq('id', teacherId)
     .single();
 
@@ -22,6 +22,9 @@ export async function GET(
     photo_url: data.show_photo ? (data.photo_url ?? null) : null,
     description: data.show_description ? (data.description ?? null) : null,
     bio: data.show_bio ? (data.bio ?? null) : null,
+    tutoring_area: data.tutoring_area ?? null,
+    quote: data.quote ?? null,
+    page_color: data.page_color ?? '#4A9E8A',
   }, {
     headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' },
   });
