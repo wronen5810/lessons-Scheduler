@@ -13,7 +13,7 @@ export async function GET(
   // Try 1: all columns (post-migration)
   let { data, error } = await supabase
     .from('profiles')
-    .select('display_name, photo_url, description, bio, show_photo, show_description, show_bio, tutoring_area, quote, page_color')
+    .select('display_name, photo_url, description, bio, tutoring_area, quote, page_color')
     .eq('id', teacherId)
     .single();
 
@@ -21,7 +21,7 @@ export async function GET(
   if (error) {
     ({ data, error } = await supabase
       .from('profiles')
-      .select('display_name, photo_url, description, bio, show_photo, show_description, show_bio')
+      .select('display_name, photo_url, description, bio')
       .eq('id', teacherId)
       .single());
   }
@@ -41,9 +41,9 @@ export async function GET(
 
   return NextResponse.json({
     display_name: (d.display_name as string) ?? '',
-    photo_url: d.show_photo ? ((d.photo_url as string) ?? null) : null,
-    description: d.show_description ? ((d.description as string) ?? null) : null,
-    bio: d.show_bio ? ((d.bio as string) ?? null) : null,
+    photo_url: (d.photo_url as string) ?? null,
+    description: (d.description as string) ?? null,
+    bio: (d.bio as string) ?? null,
     tutoring_area: (d.tutoring_area as string) ?? null,
     quote: (d.quote as string) ?? null,
     page_color: (d.page_color as string) ?? '#4A9E8A',
