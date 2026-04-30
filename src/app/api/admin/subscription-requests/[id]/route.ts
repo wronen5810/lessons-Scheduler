@@ -128,7 +128,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'recovery',
     email: req.email,
-    options: { redirectTo: `${baseUrl}/teacher/set-password` },
+    options: { redirectTo: `${baseUrl}/auth/callback?next=/teacher/set-password` },
   });
 
   if (linkError) {

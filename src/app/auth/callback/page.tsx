@@ -13,7 +13,7 @@ function CallbackHandler() {
     if (handled.current) return;
     handled.current = true;
 
-    const next = '/teacher';
+    const next = searchParams.get('next') ?? '/teacher';
     const supabase = createBrowserSupabase();
 
     async function handle() {

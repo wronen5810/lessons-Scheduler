@@ -10,7 +10,7 @@ export async function POST() {
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
 
-  const placeholderLink = `${BASE_URL}/teacher/set-password?test=1`;
+  const placeholderLink = `${BASE_URL}/auth/callback?next=/teacher/set-password&test=1`;
 
   try {
     await emailTeacherWelcome({
