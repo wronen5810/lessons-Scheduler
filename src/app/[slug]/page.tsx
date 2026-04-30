@@ -20,12 +20,12 @@ export default async function TeacherSlugPage({ params }: { params: Promise<{ sl
   if (!match) notFound();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
-        <Suspense fallback={<p className="text-center text-gray-400 text-sm">Loading...</p>}>
-          <JoinForm teacherId={match.id} />
-        </Suspense>
+    <Suspense fallback={
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center">
+        <div className="text-sm text-gray-400">Loading…</div>
       </div>
-    </div>
+    }>
+      <JoinForm teacherId={match.id} />
+    </Suspense>
   );
 }
