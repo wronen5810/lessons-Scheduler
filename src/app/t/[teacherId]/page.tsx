@@ -18,6 +18,7 @@ import SaderotLogo from '@/components/SaderotLogo';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 import { Calendar, BookOpen, LogOut, Settings } from 'lucide-react';
+import PolicyFooter from '@/components/PolicyFooter';
 
 type Section = 'schedule' | 'notebook' | 'settings';
 type Step = 'calendar' | 'times' | 'book' | 'done';
@@ -596,6 +597,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
           </div>
         )}
       </main>
+
+      <PolicyFooter />
 
       {/* Settings modal */}
       {settingsOpen && email && (

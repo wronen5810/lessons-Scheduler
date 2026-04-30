@@ -17,8 +17,9 @@ export async function POST(request: NextRequest) {
   const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   const user = users.find((u) => u.email?.toLowerCase() === email.toLowerCase().trim());
 
-  // Always return success to avoid user enumeration
-  if (!user) return NextResponse.json({ ok: true });
+  if (!user) {
+    return NextResponse.json({ error: 'No account found with that email address.' }, { status: 404 });
+  }
 
   const { data: profile } = await supabase
     .from('profiles')
