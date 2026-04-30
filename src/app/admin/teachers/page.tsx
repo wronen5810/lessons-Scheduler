@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Teacher {
   id: string;
@@ -44,6 +44,21 @@ export default function AdminTeachersPage() {
 
   // Impersonate
   const [impersonating, setImpersonating] = useState<string | null>(null);
+
+  // 3-dot menu
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
+    }
+    if (openMenuId) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [openMenuId]);
+
+  // Resend welcome email
+  const [resending, setResending] = useState<string | null>(null);
 
   // Subscriptions
   const [subsTeacher, setSubsTeacher] = useState<Teacher | null>(null);
@@ -215,8 +230,22 @@ export default function AdminTeachersPage() {
 
   async function handleDelete(teacher: Teacher) {
     if (!confirm(`Delete teacher ${teacher.display_name} (${teacher.email})? This will remove all their slots, bookings, and students.`)) return;
+    setOpenMenuId(null);
     await fetch(`/api/admin/teachers/${teacher.id}`, { method: 'DELETE' });
     load();
+  }
+
+  async function handleResendWelcome(teacher: Teacher) {
+    setOpenMenuId(null);
+    setResending(teacher.id);
+    const res = await fetch(`/api/admin/teachers/${teacher.id}/resend-welcome`, { method: 'POST' });
+    const data = await res.json();
+    setResending(null);
+    if (res.ok) {
+      alert(`Welcome email sent to ${data.sent_to}`);
+    } else {
+      alert(data.error ?? 'Failed to send email');
+    }
   }
 
   return (
@@ -279,43 +308,74 @@ export default function AdminTeachersPage() {
           <div className="px-5 py-8 text-center text-sm text-gray-400">No teachers yet.</div>
         ) : teachers.map((teacher) => (
           <div key={teacher.id} className="flex items-center justify-between px-5 py-4">
-            <div>
-              <p className="text-sm font-medium text-gray-900">{teacher.display_name}</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-900">{teacher.display_name}</p>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  teacher.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {teacher.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
               <p className="text-xs text-gray-500">{teacher.email}</p>
               {teacher.phone && <p className="text-xs text-gray-400">{teacher.phone}</p>}
-              <p className="text-xs text-gray-400 mt-0.5">Booking link: /t/{teacher.id}</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+
+            {/* 3-dot menu */}
+            <div className="relative flex-shrink-0" ref={openMenuId === teacher.id ? menuRef : undefined}>
               <button
-                onClick={() => handleImpersonate(teacher)}
-                disabled={impersonating === teacher.id}
-                className="text-xs text-emerald-600 hover:text-emerald-800 px-2 py-1 rounded hover:bg-emerald-50 disabled:opacity-50 transition-colors"
+                onClick={() => setOpenMenuId(openMenuId === teacher.id ? null : teacher.id)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                title="Actions"
               >
-                {impersonating === teacher.id ? 'Opening...' : 'Login as'}
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
               </button>
-              <button
-                onClick={() => openSubscriptions(teacher)}
-                className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50 transition-colors"
-              >
-                Subscriptions
-              </button>
-              <button
-                onClick={() => { setEditing({ ...teacher }); setEditError(''); }}
-                className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => toggleActive(teacher)}
-                className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
-                  teacher.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}
-              >
-                {teacher.is_active ? 'Active' : 'Inactive'}
-              </button>
-              <button onClick={() => handleDelete(teacher)} className="text-xs text-red-500 hover:text-red-700">
-                Delete
-              </button>
+
+              {openMenuId === teacher.id && (
+                <div className="absolute end-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-30 py-1 overflow-hidden">
+                  <button
+                    onClick={() => { setOpenMenuId(null); handleImpersonate(teacher); }}
+                    disabled={impersonating === teacher.id}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors text-start"
+                  >
+                    {impersonating === teacher.id ? 'Opening…' : 'Login as teacher'}
+                  </button>
+                  <button
+                    onClick={() => { setOpenMenuId(null); openSubscriptions(teacher); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-start"
+                  >
+                    Subscriptions
+                  </button>
+                  <button
+                    onClick={() => { setOpenMenuId(null); setEditing({ ...teacher }); setEditError(''); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-start"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => { setOpenMenuId(null); toggleActive(teacher); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-start"
+                  >
+                    {teacher.is_active ? 'Set inactive' : 'Set active'}
+                  </button>
+                  <button
+                    onClick={() => handleResendWelcome(teacher)}
+                    disabled={resending === teacher.id}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors text-start"
+                  >
+                    {resending === teacher.id ? 'Sending…' : 'Resend welcome email'}
+                  </button>
+                  <div className="border-t border-gray-100 my-1" />
+                  <button
+                    onClick={() => handleDelete(teacher)}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-start"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
