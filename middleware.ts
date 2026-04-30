@@ -33,7 +33,8 @@ export async function middleware(request: NextRequest) {
   const isTeacherRoute = pathname.startsWith('/teacher') &&
     !pathname.startsWith('/teacher/login') &&
     !pathname.startsWith('/teacher/forgot-password') &&
-    !pathname.startsWith('/teacher/reset-password');
+    !pathname.startsWith('/teacher/reset-password') &&
+    !pathname.startsWith('/teacher/set-password');
   const isAdminRoute = pathname.startsWith('/admin') && !pathname.startsWith('/admin/login');
 
   if ((isTeacherRoute || isAdminRoute) && !user) {
