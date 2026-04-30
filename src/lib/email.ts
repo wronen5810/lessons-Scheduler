@@ -164,6 +164,40 @@ export async function emailStudentCancelledByTeacher(info: LessonInfo) {
   });
 }
 
+export async function emailTeacherPasswordReset({
+  teacherName,
+  teacherEmail,
+  resetLink,
+}: {
+  teacherName: string;
+  teacherEmail: string;
+  resetLink: string;
+}) {
+  await getResend().emails.send({
+    from: FROM(),
+    reply_to: 'info@saderot.com',
+    to: teacherEmail,
+    subject: 'Reset your Saderot password',
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;padding:24px">
+        <h1 style="font-size:20px;font-weight:700;margin:0 0 16px">Reset your password</h1>
+        <p>Hi ${teacherName},</p>
+        <p>We received a request to reset the password for your Saderot account.</p>
+        <p>Click the button below to choose a new password. This link is valid for <strong>2 hours</strong>.</p>
+        <p style="margin:28px 0">
+          <a href="${resetLink}"
+             style="background:#2563EB;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block">
+            Reset password →
+          </a>
+        </p>
+        <p style="font-size:13px;color:#888">If you didn't request this, you can safely ignore this email — your password won't change.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:28px 0 16px"/>
+        <p style="font-size:12px;color:#aaa;margin:0">Saderot · <a href="${BASE_URL()}" style="color:#aaa">${BASE_URL()}</a></p>
+      </div>
+    `,
+  });
+}
+
 export async function emailTeacherWelcome({
   teacherName,
   teacherEmail,

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 import SaderotLogo from '@/components/SaderotLogo';
@@ -18,13 +17,15 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const supabase = createBrowserSupabase();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/teacher/reset-password`,
+    const res = await fetch('/api/teacher/send-reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
     setLoading(false);
-    if (error) {
-      setError(error.message);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? 'Something went wrong. Please try again.');
       return;
     }
     setSent(true);
