@@ -49,27 +49,6 @@ function getCalendarDays(monthStr: string): (string | null)[] {
   return days;
 }
 
-interface TeacherPublicProfile {
-  display_name: string;
-  photo_url: string | null;
-  description: string | null;
-  bio: string | null;
-  tutoring_area: string | null;
-  quote: string | null;
-  page_color: string;
-}
-
-function colorIsLight(hex: string): boolean {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 155;
-}
-
-function nameInitials(name: string): string {
-  return name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-}
 
 function StudentCalendar({ teacherId }: { teacherId: string }) {
   const searchParams = useSearchParams();
@@ -85,7 +64,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentEmail, setCurrentEmail] = useState(email);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [teacherProfile, setTeacherProfile] = useState<TeacherPublicProfile | null>(null);
+  const [teacherName, setTeacherName] = useState('');
 
   function getToken() {
     return typeof window !== 'undefined' ? localStorage.getItem(`st_${teacherId}`) : null;
@@ -160,7 +139,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
     fetch(`/api/teacher-profile/${teacherId}`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setTeacherProfile(d); })
+      .then(d => { if (d?.display_name) setTeacherName(d.display_name); })
       .catch(() => {});
   }, [teacherId]);
 
@@ -285,48 +264,24 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     ? `${format(selectedDateObj, 'dd/MM/yyyy')} (${dayNamesFull[selectedDateObj.getDay()]})`
     : '';
 
-  // ── Accent color helpers ───────────────────────────────────────────────────
-  const accent = teacherProfile?.page_color ?? '#4A9E8A';
-  const accentBg  = `${accent}14`;
-  const accentMid = `${accent}22`;
-  const btnText   = colorIsLight(accent) ? '#1a1a1a' : '#ffffff';
-  const initials  = nameInitials(teacherProfile?.display_name ?? '');
-
   return (
-    <div className="min-h-screen bg-stone-50" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
 
-      {/* ── Sticky header ──────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-
-          {/* Left: mini avatar + name + email */}
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            {teacherProfile?.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={teacherProfile.photo_url} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-            ) : (
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{ backgroundColor: accentMid, color: accent }}
-              >
-                {initials || <SaderotLogo size="sm" />}
-              </div>
+            <SaderotLogo size="sm" />
+            {teacherName && (
+              <span className="text-sm font-semibold text-gray-800 truncate">{teacherName}</span>
             )}
-            {teacherProfile
-              ? <span className="text-sm font-semibold text-gray-900 truncate">{teacherProfile.display_name}</span>
-              : <SaderotLogo size="sm" />
-            }
-            {email && <span className="text-xs text-gray-400 hidden sm:block truncate">{email}</span>}
           </div>
-
-          {/* Right: language + menu */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2">
             <LanguageToggle />
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(o => !o)}
-                className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors"
-                style={{ color: accent, backgroundColor: accentBg, borderColor: accentMid }}
+                className="flex items-center gap-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-colors"
               >
                 {t('common.menu')}
                 <svg className={`w-3.5 h-3.5 transition-transform ${menuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -337,8 +292,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                 <div className="absolute end-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
                   <button
                     onClick={() => { setSection('schedule'); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors text-gray-700 hover:bg-gray-50"
-                    style={section === 'schedule' ? { color: accent, backgroundColor: accentBg } : {}}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
                   >
                     <Calendar className="w-4 h-4 flex-shrink-0" />
                     {t('schedule.schedule')}
@@ -346,8 +300,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                   {email && (
                     <button
                       onClick={() => { setSection('notebook'); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors text-gray-700 hover:bg-gray-50"
-                      style={section === 'notebook' ? { color: accent, backgroundColor: accentBg } : {}}
+                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'notebook' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
                     >
                       <BookOpen className="w-4 h-4 flex-shrink-0" />
                       {t('common.notebook')}
@@ -356,7 +309,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                   {email && (
                     <button
                       onClick={() => { setSettingsOpen(true); setMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                     >
                       <Settings className="w-4 h-4 flex-shrink-0" />
                       {t('common.settings')}
@@ -377,94 +330,22 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
         </div>
       </header>
 
-      {/* ── Two-column body ─────────────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-
-          {/* ── Teacher profile sidebar ──────────────────────────────────── */}
-          <aside className="w-full lg:w-64 xl:w-72 flex-shrink-0 lg:sticky lg:top-[61px]">
-            <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-
-              {/* Photo or initials backdrop */}
-              {teacherProfile?.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={teacherProfile.photo_url}
-                  alt={teacherProfile.display_name}
-                  className="w-full aspect-[4/3] object-cover object-top"
-                />
-              ) : (
-                <div
-                  className="w-full aspect-[4/3] flex items-center justify-center"
-                  style={{ backgroundColor: accentBg }}
-                >
-                  <div
-                    className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold"
-                    style={{ backgroundColor: accentMid, color: accent }}
-                  >
-                    {initials}
-                  </div>
-                </div>
-              )}
-
-              {/* Text info */}
-              <div className="p-5">
-                <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                  {teacherProfile?.display_name ?? ''}
-                </h1>
-
-                {teacherProfile?.tutoring_area && (
-                  <span
-                    className="inline-block mt-2 text-xs font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full"
-                    style={{ backgroundColor: accentBg, color: accent }}
-                  >
-                    {teacherProfile.tutoring_area}
-                  </span>
-                )}
-
-                {teacherProfile?.description && (
-                  <p className="text-sm text-gray-600 mt-3 leading-relaxed">
-                    {teacherProfile.description}
-                  </p>
-                )}
-
-                {teacherProfile?.bio && (
-                  <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                    {teacherProfile.bio}
-                  </p>
-                )}
-
-                {teacherProfile?.quote && (
-                  <div className="mt-4 pt-3 border-t border-gray-100">
-                    <p className="text-sm text-gray-400 italic">
-                      &ldquo;{teacherProfile.quote}&rdquo;
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </aside>
-
-          {/* ── Main content (schedule + notebook) ───────────────────────── */}
-          <div className="flex-1 min-w-0">
+      <main className="max-w-lg mx-auto px-4 py-6">
 
         {/* Notebook */}
         {section === 'notebook' && email && <StudentNotebook teacherId={teacherId} email={email} />}
 
         {/* Schedule */}
         {section === 'schedule' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
 
             {/* Next lesson countdown */}
             {step === 'calendar' && email && nextLesson && (
-              <div
-                className="flex items-center gap-3 rounded-xl px-4 py-3 border"
-                style={{ backgroundColor: accentBg, borderColor: accentMid }}
-              >
-                <svg className="w-4 h-4 flex-shrink-0" style={{ color: accent }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <circle cx="12" cy="12" r="9"/><path strokeLinecap="round" d="M12 7v5l3 3"/>
                 </svg>
-                <p className="text-sm font-medium" style={{ color: accent }}>
+                <p className="text-sm font-medium text-blue-800">
                   {nextLesson.hours > 0
                     ? `${t('teacher.nextLesson').split('{')[0].trim()} ${nextLesson.hours}h ${nextLesson.minutes}m`
                     : `${t('teacher.nextLesson').split('{')[0].trim()} ${nextLesson.minutes}m`}
@@ -690,8 +571,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                       <button
                         onClick={handleBook}
                         disabled={bookingLoading}
-                        style={{ backgroundColor: accent, color: btnText }}
-                        className="w-full font-semibold py-3 rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity"
+                        className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
                       >
                         {bookingLoading ? t('common.sending') : t('schedule.submitRequest')}
                       </button>
@@ -715,10 +595,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
           </div>
         )}
-
-          </div>{/* end main content column */}
-        </div>{/* end flex row */}
-      </div>{/* end max-w-5xl */}
+      </main>
 
       {/* Settings modal */}
       {settingsOpen && email && (
