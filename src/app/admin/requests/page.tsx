@@ -20,6 +20,8 @@ export default function AdminRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [acting, setActing] = useState<string | null>(null);
+  const [testEmailStatus, setTestEmailStatus] = useState<'idle' | 'sending' | 'ok' | 'error'>('idle');
+  const [testEmailMsg, setTestEmailMsg] = useState('');
 
   async function load() {
     setLoading(true);
@@ -35,6 +37,21 @@ export default function AdminRequestsPage() {
   }
 
   useEffect(() => { load(); }, [filter]);
+
+  async function sendTestEmail() {
+    setTestEmailStatus('sending');
+    setTestEmailMsg('');
+    const res = await fetch('/api/admin/test-email', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      setTestEmailStatus('ok');
+      setTestEmailMsg(`Sent to ${data.sent_to}`);
+    } else {
+      setTestEmailStatus('error');
+      setTestEmailMsg(data.error ?? 'Failed');
+    }
+    setTimeout(() => setTestEmailStatus('idle'), 5000);
+  }
 
   async function handleAction(req: SubscriptionRequest, action: 'approve' | 'reject') {
     if (action === 'approve' && !confirm(`Approve ${req.name} (${req.email}) and create their teacher account?`)) return;
@@ -57,7 +74,24 @@ export default function AdminRequestsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Teacher Requests</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {/* Test email button */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={sendTestEmail}
+              disabled={testEmailStatus === 'sending'}
+              className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              {testEmailStatus === 'sending' ? 'Sending…' : 'Send test email'}
+            </button>
+            {testEmailMsg && (
+              <span className={`text-xs font-medium ${testEmailStatus === 'ok' ? 'text-green-600' : 'text-red-600'}`}>
+                {testEmailStatus === 'ok' ? '✓' : '✗'} {testEmailMsg}
+              </span>
+            )}
+          </div>
+          <div className="w-px h-5 bg-gray-200" />
+          <div className="flex gap-2">
           {(['pending', 'approved', 'rejected', 'all'] as const).map((f) => (
             <button
               key={f}
@@ -71,6 +105,7 @@ export default function AdminRequestsPage() {
               {f}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
