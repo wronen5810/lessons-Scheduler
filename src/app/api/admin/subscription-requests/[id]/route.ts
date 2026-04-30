@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { randomBytes } from 'crypto';
+import { emailTeacherWelcome } from '@/lib/email';
 
 function addMonths(dateStr: string, months: number): string {
   const d = new Date(dateStr);
@@ -120,13 +121,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
-  // Send magic link so teacher can set their password and log in
+  // Generate a password-recovery link so the teacher can set their password
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
-  await supabase.auth.admin.generateLink({
-    type: 'magiclink',
+  const teacherName = display_name || req.name;
+
+  const { data: linkData } = await supabase.auth.admin.generateLink({
+    type: 'recovery',
     email: req.email,
-    options: { redirectTo: `${baseUrl}/auth/callback` },
+    options: { redirectTo: `${baseUrl}/teacher/set-password` },
   });
+
+  const setPasswordLink = (linkData as { properties?: { action_link?: string } })?.properties?.action_link ?? '';
+
+  // Send welcome email with the set-password link
+  if (setPasswordLink) {
+    await emailTeacherWelcome({ teacherName, teacherEmail: req.email, setPasswordLink }).catch(() => {});
+  }
 
   await supabase.from('teacher_subscription_requests').update({ status: 'approved' }).eq('id', id);
 

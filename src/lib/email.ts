@@ -164,6 +164,42 @@ export async function emailStudentCancelledByTeacher(info: LessonInfo) {
   });
 }
 
+export async function emailTeacherWelcome({
+  teacherName,
+  teacherEmail,
+  setPasswordLink,
+}: {
+  teacherName: string;
+  teacherEmail: string;
+  setPasswordLink: string;
+}) {
+  await getResend().emails.send({
+    from: 'info@saderot.com',
+    to: teacherEmail,
+    subject: 'Welcome to Saderot — set your password to get started',
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;padding:24px">
+        <h1 style="font-size:24px;font-weight:700;margin:0 0 4px">Welcome to Saderot!</h1>
+        <p style="color:#555;margin:0 0 20px">Your scheduling platform for private teachers.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:0 0 24px"/>
+        <p>Hi ${teacherName},</p>
+        <p>Great news — your subscription has been approved! 🎉</p>
+        <p>You can now manage your students, schedule lessons, and share your personal booking link with students.</p>
+        <p>To get started, set your password by clicking the button below:</p>
+        <p style="margin:28px 0">
+          <a href="${setPasswordLink}"
+             style="background:#2563EB;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block">
+            Set my password →
+          </a>
+        </p>
+        <p style="font-size:13px;color:#888">This link expires in 24 hours. If you have any questions, reply to this email and we'll be happy to help.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:28px 0 16px"/>
+        <p style="font-size:12px;color:#aaa;margin:0">Saderot · Lesson Scheduling for Teachers · <a href="${BASE_URL()}" style="color:#aaa">${BASE_URL()}</a></p>
+      </div>
+    `,
+  });
+}
+
 export async function emailDirectMessage({
   to,
   studentName,

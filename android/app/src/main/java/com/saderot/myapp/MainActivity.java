@@ -1,4 +1,4 @@
-package com.saderot.app;
+package com.saderOT.myapp;
 
 import com.getcapacitor.BridgeActivity;
 
