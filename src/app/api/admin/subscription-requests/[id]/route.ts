@@ -127,10 +127,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // Generate a one-time setup token (valid 48 h) and store it on the profile
   const setupToken = randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-  await supabase
+  const { error: tokenSaveError } = await supabase
     .from('profiles')
     .update({ setup_token: setupToken, setup_token_expires_at: expiresAt })
     .eq('id', user.id);
+
+  if (tokenSaveError) {
+    console.error('[approval] Failed to save setup token — run add_setup_token.sql migration:', tokenSaveError.message);
+  }
 
   const setPasswordLink = `${baseUrl}/teacher/set-password?token=${setupToken}`;
 

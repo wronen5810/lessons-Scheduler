@@ -22,7 +22,18 @@ export async function POST(request: NextRequest) {
     .eq('setup_token', token)
     .single();
 
-  if (lookupError || !profile) {
+  if (lookupError) {
+    const msg = lookupError.message ?? '';
+    // Column missing = migration not applied yet
+    if (msg.includes('column') || msg.includes('does not exist')) {
+      console.error('[set-password] setup_token column missing — run add_setup_token.sql in Supabase');
+      return NextResponse.json({ error: 'Setup not configured. Please contact your administrator.' }, { status: 500 });
+    }
+    console.error('[set-password] token lookup error:', msg);
+    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 400 });
+  }
+
+  if (!profile) {
     return NextResponse.json({ error: 'Invalid or expired link' }, { status: 400 });
   }
 
