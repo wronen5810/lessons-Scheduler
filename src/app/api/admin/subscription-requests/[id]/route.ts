@@ -125,20 +125,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
   const teacherName = display_name || req.name;
 
-  const { data: linkData } = await supabase.auth.admin.generateLink({
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'recovery',
     email: req.email,
     options: { redirectTo: `${baseUrl}/teacher/set-password` },
   });
 
-  const setPasswordLink = (linkData as { properties?: { action_link?: string } })?.properties?.action_link ?? '';
+  if (linkError) {
+    console.error('[approval] generateLink failed:', linkError.message);
+  }
 
-  // Send welcome email with the set-password link
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const setPasswordLink: string = (linkData as any)?.properties?.action_link ?? '';
+
+  // Send welcome email
+  let emailError: string | null = null;
   if (setPasswordLink) {
-    await emailTeacherWelcome({ teacherName, teacherEmail: req.email, setPasswordLink }).catch(() => {});
+    try {
+      await emailTeacherWelcome({ teacherName, teacherEmail: req.email, setPasswordLink });
+    } catch (e) {
+      emailError = e instanceof Error ? e.message : String(e);
+      console.error('[approval] welcome email failed:', emailError);
+    }
+  } else {
+    emailError = linkError?.message ?? 'Could not generate set-password link';
   }
 
   await supabase.from('teacher_subscription_requests').update({ status: 'approved' }).eq('id', id);
 
-  return NextResponse.json({ ok: true, teacher_id: user.id });
+  return NextResponse.json({ ok: true, teacher_id: user.id, email_error: emailError });
 }

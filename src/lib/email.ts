@@ -174,7 +174,8 @@ export async function emailTeacherWelcome({
   setPasswordLink: string;
 }) {
   await getResend().emails.send({
-    from: 'info@saderot.com',
+    from: FROM(),
+    reply_to: 'info@saderot.com',
     to: teacherEmail,
     subject: 'Welcome to Saderot — set your password to get started',
     html: `
