@@ -1,40 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createBrowserSupabase } from '@/lib/supabase-browser';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SaderotLogo from '@/components/SaderotLogo';
 
-type PageState = 'loading' | 'ready' | 'done' | 'invalid';
+type PageState = 'ready' | 'done' | 'invalid';
 
-export default function SetPasswordPage() {
+function SetPasswordForm() {
   const router = useRouter();
-  const [pageState, setPageState] = useState<PageState>('loading');
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token') ?? '';
+
+  const [pageState, setPageState] = useState<PageState>(token ? 'ready' : 'invalid');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const supabase = createBrowserSupabase();
-
-    // Supabase fires PASSWORD_RECOVERY after processing the link hash/code
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setPageState('ready');
-    });
-
-    // Fallback: already exchanged the token (PKCE flow)
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setPageState('ready');
-    });
-
-    // If no recovery event after 6s the link is invalid/expired
-    const timeout = setTimeout(() => {
-      setPageState((s) => s === 'loading' ? 'invalid' : s);
-    }, 6000);
-
-    return () => { subscription.unsubscribe(); clearTimeout(timeout); };
-  }, []);
+    if (!token) setPageState('invalid');
+  }, [token]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,14 +29,17 @@ export default function SetPasswordPage() {
     if (password !== confirm) { setError('Passwords do not match.'); return; }
 
     setLoading(true);
-    const supabase = createBrowserSupabase();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const res = await fetch('/api/teacher/set-initial-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+    const data = await res.json();
     setLoading(false);
 
-    if (updateError) { setError(updateError.message); return; }
+    if (!res.ok) { setError(data.error ?? 'Something went wrong.'); return; }
 
     setPageState('done');
-    await supabase.auth.signOut();
     setTimeout(() => router.replace('/teacher/login'), 2500);
   }
 
@@ -59,20 +47,11 @@ export default function SetPasswordPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
 
-        {/* Logo */}
         <div className="flex justify-center mb-6">
           <SaderotLogo size="md" showTagline />
         </div>
 
-        {/* Loading */}
-        {pageState === 'loading' && (
-          <div className="text-center py-6">
-            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-400">Verifying your link…</p>
-          </div>
-        )}
-
-        {/* Invalid / expired link */}
+        {/* Invalid / missing token */}
         {pageState === 'invalid' && (
           <div className="text-center space-y-4">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
@@ -81,7 +60,7 @@ export default function SetPasswordPage() {
               </svg>
             </div>
             <h2 className="text-base font-semibold text-gray-900">Link expired or invalid</h2>
-            <p className="text-sm text-gray-500">This set-password link has expired. Please contact your administrator to resend the welcome email.</p>
+            <p className="text-sm text-gray-500">This link has expired or already been used. Please contact your administrator to resend the welcome email.</p>
           </div>
         )}
 
@@ -149,5 +128,17 @@ export default function SetPasswordPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <SetPasswordForm />
+    </Suspense>
   );
 }

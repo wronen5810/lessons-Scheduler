@@ -121,34 +121,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
-  // Generate a password-recovery link so the teacher can set their password
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
   const teacherName = display_name || req.name;
 
-  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-    type: 'recovery',
-    email: req.email,
-    options: { redirectTo: `${baseUrl}/auth/callback?next=/teacher/set-password` },
-  });
+  // Generate a one-time setup token (valid 48 h) and store it on the profile
+  const setupToken = randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  await supabase
+    .from('profiles')
+    .update({ setup_token: setupToken, setup_token_expires_at: expiresAt })
+    .eq('id', user.id);
 
-  if (linkError) {
-    console.error('[approval] generateLink failed:', linkError.message);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const setPasswordLink: string = (linkData as any)?.properties?.action_link ?? '';
+  const setPasswordLink = `${baseUrl}/teacher/set-password?token=${setupToken}`;
 
   // Send welcome email
   let emailError: string | null = null;
-  if (setPasswordLink) {
-    try {
-      await emailTeacherWelcome({ teacherName, teacherEmail: req.email, setPasswordLink });
-    } catch (e) {
-      emailError = e instanceof Error ? e.message : String(e);
-      console.error('[approval] welcome email failed:', emailError);
-    }
-  } else {
-    emailError = linkError?.message ?? 'Could not generate set-password link';
+  try {
+    await emailTeacherWelcome({ teacherName, teacherEmail: req.email, setPasswordLink });
+  } catch (e) {
+    emailError = e instanceof Error ? e.message : String(e);
+    console.error('[approval] welcome email failed:', emailError);
   }
 
   await supabase.from('teacher_subscription_requests').update({ status: 'approved' }).eq('id', id);
