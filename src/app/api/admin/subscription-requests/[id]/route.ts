@@ -80,8 +80,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .single();
 
     if (plan) {
-      if (plan.free_months > 0) {
-        // Free subscription: today → today + free_months (exclusive end = day before paid starts)
+      const isFree = plan.paid_months === 0;
+
+      if (isFree) {
+        // Free plan: one 3-month subscription at no cost
+        const freeEnd = subtractDay(addMonths(today, 3));
+        await supabase.from('teacher_subscriptions').insert({
+          teacher_id: user.id,
+          start_date: today,
+          end_date: freeEnd,
+          cost: 0,
+          monthly_charge: 0,
+          free_period_days: 0,
+          notes: `Free plan · Plan: ${plan.name}`,
+        });
+      } else if (plan.free_months > 0) {
+        // Paid plan with a free trial period
         const freeEnd = subtractDay(addMonths(today, plan.free_months));
         await supabase.from('teacher_subscriptions').insert({
           teacher_id: user.id,
@@ -93,7 +107,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           notes: `Free period · Plan: ${plan.name}`,
         });
 
-        // Paid subscription: immediately after free → + paid_months
         const paidStart = addMonths(today, plan.free_months);
         const paidEnd = subtractDay(addMonths(paidStart, plan.paid_months));
         await supabase.from('teacher_subscriptions').insert({
@@ -106,7 +119,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           notes: `Paid period · Plan: ${plan.name}`,
         });
       } else {
-        // No free period — single paid subscription starting today
+        // Paid plan with no trial — single subscription starting today
         const paidEnd = subtractDay(addMonths(today, plan.paid_months));
         await supabase.from('teacher_subscriptions').insert({
           teacher_id: user.id,
