@@ -42,6 +42,10 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
   const [groupPayments, setGroupPayments] = useState<GroupPaymentRecord[]>([]);
   const [payingStudentId, setPayingStudentId] = useState<string | null>(null);
 
+  const today = new Date().toISOString().slice(0, 10);
+  const isPast = slot.date < today;
+  const isRecurring = !slot.one_time_slot_id && !!slot.template_id;
+
   const dayOfWeek = parseISO(slot.date).getDay();
   const isMultiParticipant = (slot.max_participants ?? 1) > 1;
   const hasBooking = !!slot.booking_id && !!slot.booking_type && !isMultiParticipant;
@@ -160,16 +164,19 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
   }
 
   async function deleteSlot() {
-    const isRecurring = !slot.one_time_slot_id && !!slot.template_id;
     const msg = isRecurring
-      ? 'Delete this recurring slot? All future occurrences will be removed from the schedule.'
+      ? 'Stop this recurring slot from today onwards? Future occurrences will be removed from the schedule and pending/approved bookings will be cancelled.'
       : 'Delete this slot?';
     if (!confirm(msg)) return;
     setLoading(true);
     if (slot.one_time_slot_id) {
       await fetch(`/api/teacher/one-time-slots/${slot.one_time_slot_id}`, { method: 'DELETE' });
     } else if (slot.template_id) {
-      await fetch(`/api/templates/${slot.template_id}`, { method: 'DELETE' });
+      await fetch(`/api/templates/${slot.template_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: false, end_date: today }),
+      });
     }
     setLoading(false);
     onAction();
@@ -327,22 +334,10 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
                   Block this slot
                 </button>
               )}
-              {(slot.one_time_slot_id || slot.template_id) && (
-                <>
-                  <button onClick={() => setShowEditSlot(true)}
-                    className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors">
-                    Edit slot
-                  </button>
-                  <button onClick={deleteSlot} disabled={loading}
-                    className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
-                    {slot.template_id && !slot.one_time_slot_id ? 'Delete recurring slot' : 'Delete slot'}
-                  </button>
-                </>
-              )}
             </div>
           )}
 
-          {!isMultiParticipant && slot.state === 'available' && showEditSlot && (
+          {!isPast && showEditSlot && (
             <div className="space-y-3 bg-gray-50 rounded-xl p-4">
               <h3 className="text-sm font-semibold text-gray-700">Edit slot</h3>
               <div>
@@ -382,14 +377,14 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             <DirectBookForm slot={slot} onCancel={() => setShowBookForm(false)} onDone={onAction} />
           )}
 
-          {slot.state === 'blocked' && (
+          {slot.state === 'blocked' && !showEditSlot && (
             <button onClick={() => toggleOverride(false)} disabled={loading}
               className="w-full py-2.5 px-4 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
               Unblock this slot
             </button>
           )}
 
-          {!isMultiParticipant && slot.state === 'pending' && (
+          {!isMultiParticipant && slot.state === 'pending' && !showEditSlot && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('approve')} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
@@ -402,7 +397,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {!isMultiParticipant && slot.state === 'confirmed' && (
+          {!isMultiParticipant && slot.state === 'confirmed' && !showEditSlot && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('complete')} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
@@ -415,7 +410,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {!isMultiParticipant && slot.state === 'completed' && !isGroupBooking && (
+          {!isMultiParticipant && slot.state === 'completed' && !isGroupBooking && !showEditSlot && (
             <div className="space-y-2">
               <button onClick={() => patchBooking('pay')} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -432,7 +427,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {!isMultiParticipant && slot.state === 'cancellation_requested' && (
+          {!isMultiParticipant && slot.state === 'cancellation_requested' && !showEditSlot && (
             <div className="space-y-3">
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-sm text-orange-800">
                 <p className="font-medium">Student requested cancellation</p>
@@ -449,7 +444,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
             </div>
           )}
 
-          {!isMultiParticipant && slot.state === 'paid' && !isGroupBooking && (
+          {!isMultiParticipant && slot.state === 'paid' && !isGroupBooking && !showEditSlot && (
             <div className="space-y-2">
               <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center font-medium">
                 Paid
@@ -466,7 +461,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
           )}
 
           {/* Group payment panel — shown for completed or paid group lessons */}
-          {showGroupPayments && (
+          {showGroupPayments && !showEditSlot && (
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payment per student</span>
@@ -531,6 +526,20 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
                   {slot.booking_type === 'recurring' ? 'Set end date' : 'Cancel booking'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Edit / Delete — available for any non-past slot */}
+          {!isPast && !showEditSlot && !showBookForm && (slot.one_time_slot_id || slot.template_id) && (
+            <div className="space-y-2 border-t border-gray-100 pt-3">
+              <button onClick={() => setShowEditSlot(true)}
+                className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors">
+                Edit slot
+              </button>
+              <button onClick={deleteSlot} disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
+                {isRecurring ? 'Delete recurring slot' : 'Delete slot'}
+              </button>
             </div>
           )}
 
