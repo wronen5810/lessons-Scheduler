@@ -42,6 +42,7 @@ const en = {
   'common.refresh': 'Refresh',
   'common.share': 'Share',
   'common.settings': 'Settings',
+  'common.help': 'Help',
   'common.menu': 'Menu',
   'common.home': 'Home',
   'common.day': 'Day',
@@ -305,6 +306,8 @@ const en = {
   'subscribe.monthShort': 'mo',
   'subscribe.monthsLabel': 'months',
   'subscribe.total': 'total',
+  'subscribe.tagline': 'The scheduling tool built for private teachers',
+  'subscribe.noCommitment': 'No credit card or any commitment required, to start',
 };
 
 const he: typeof en = {
@@ -349,6 +352,7 @@ const he: typeof en = {
   'common.refresh': 'רענן',
   'common.share': 'שתף',
   'common.settings': 'הגדרות',
+  'common.help': 'עזרה',
   'common.menu': 'תפריט',
   'common.home': 'בית',
   'common.day': 'יום',
@@ -612,6 +616,8 @@ const he: typeof en = {
   'subscribe.monthShort': 'חודש',
   'subscribe.monthsLabel': 'חודשים',
   'subscribe.total': 'סה״כ',
+  'subscribe.tagline': 'כלי הזמנון שנבנה למורים פרטיים',
+  'subscribe.noCommitment': 'ללא כרטיס אשראי או כל התחייבות, להתחלה',
 };
 
 export const translations: Record<Lang, typeof en> = { en, he };

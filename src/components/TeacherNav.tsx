@@ -13,7 +13,7 @@ import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import SaderotLogo from '@/components/SaderotLogo';
 import {
   Calendar, Users, Users2, CreditCard, MessageSquare, Share2,
-  Settings, LogOut, Clock, UserCircle,
+  Settings, LogOut, Clock, UserCircle, HelpCircle,
 } from 'lucide-react';
 
 export default function TeacherNav({ title, nextLesson }: { title?: string; nextLesson?: { hours: number; minutes: number } | null }) {
@@ -102,6 +102,17 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
         <div className="flex-1 sm:hidden" />
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Help shortcut */}
+          <a
+            href="/guide"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={t('common.help')}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </a>
+
           {/* Profile shortcut */}
           <button
             onClick={() => { setSettingsTab('profile'); setShowSettings(true); }}
@@ -169,6 +180,11 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
                   <Share2 className="w-4 h-4 flex-shrink-0" />
                   {t('teacher.shareLink')}
                 </button>
+                <a href="/guide" target="_blank" rel="noopener noreferrer" onClick={closeMenu}
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                  <HelpCircle className="w-4 h-4 flex-shrink-0" />
+                  {t('common.help')}
+                </a>
                 <div className="border-t border-gray-100 my-1" />
                 <button onClick={() => { setSettingsTab('general'); setShowSettings(true); closeMenu(); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
