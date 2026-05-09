@@ -1,288 +1,133 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 import SaderotLogo from '@/components/SaderotLogo';
+import { createBrowserSupabase } from '@/lib/supabase-browser';
 
-interface Plan {
-  id: string;
-  name: string;
-  description: string | null;
-  plan_type: 'new' | 'renewal' | 'both';
-  free_months: number;
-  paid_months: number;
-  monthly_cost: number;
-}
-
-interface TeacherSubStatus {
-  status: 'active' | 'expired' | 'none';
-  active_end_date: string | null;
-  last_end_date: string | null;
-  teacher: { id: string; name: string; email: string; phone: string };
-}
-
-function formatDate(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
-}
-
-function addDays(iso: string, days: number) {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function SubscribeForm() {
-  const { t } = useLanguage();
+function SignupForm() {
+  const { t, lang, isRTL } = useLanguage();
+  const router = useRouter();
   const searchParams = useSearchParams();
 
+  const prefillEmail = searchParams.get('email') ?? '';
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [comments, setComments] = useState('');
-  const [policiesAccepted, setPoliciesAccepted] = useState(false);
+  const [email, setEmail] = useState(prefillEmail);
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailTaken, setEmailTaken] = useState(false);
 
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [plansLoading, setPlansLoading] = useState(false);
-
-  const [isExistingTeacher, setIsExistingTeacher] = useState<boolean | null>(null);
-  const checkedEmail = useRef('');
-
-  const [subStatus, setSubStatus] = useState<TeacherSubStatus | null>(null);
-  const [statusLoaded, setStatusLoaded] = useState(false);
-  const [confirmExtend, setConfirmExtend] = useState<boolean | null>(null);
-  const [startsAfter, setStartsAfter] = useState<string | null>(null);
-
-  const prefilled = useRef(false);
-
-  async function loadPlans(type: 'new' | 'renewal') {
-    setPlansLoading(true);
-    setSelectedPlanId(null);
-    const res = await fetch(`/api/plans?type=${type}`);
-    const data: Plan[] = res.ok ? await res.json() : [];
-    setPlans(data);
-    if (data.length === 1) setSelectedPlanId(data[0].id);
-    setPlansLoading(false);
-  }
-
-  useEffect(() => {
-    const pName = searchParams.get('name') ?? '';
-    const pEmail = searchParams.get('email') ?? '';
-    const pPhone = searchParams.get('phone') ?? '';
-    const pType = searchParams.get('type');
-
-    if (pEmail) {
-      setName(pName);
-      setEmail(pEmail);
-      setPhone(pPhone);
-      prefilled.current = true;
-      if (pType === 'renewal') {
-        setIsExistingTeacher(true);
-        loadPlans('renewal');
-      }
+  async function handleGoogleSignup() {
+    setError('');
+    setGoogleLoading(true);
+    const supabase = createBrowserSupabase();
+    const origin = window.location.origin;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${origin}/auth/callback?next=/teacher` },
+    });
+    if (error) {
+      setError(error.message);
+      setGoogleLoading(false);
     }
-
-    fetch('/api/teacher/me/subscription')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: TeacherSubStatus | null) => {
-        setSubStatus(data);
-        setStatusLoaded(true);
-
-        if (!data) return;
-
-        if (data.status === 'expired' && !prefilled.current) {
-          setName(data.teacher.name);
-          setEmail(data.teacher.email);
-          setPhone(data.teacher.phone);
-          prefilled.current = true;
-          setIsExistingTeacher(true);
-          loadPlans('renewal');
-        }
-      })
-      .catch(() => setStatusLoaded(true));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function handleEmailBlur() {
-    if (prefilled.current) return;
-    const normalized = email.toLowerCase().trim();
-    if (!normalized || normalized === checkedEmail.current) return;
-    checkedEmail.current = normalized;
-
-    setIsExistingTeacher(null);
-    setPlans([]);
-    setSelectedPlanId(null);
-
-    const res = await fetch(`/api/check-teacher?email=${encodeURIComponent(normalized)}`);
-    const { exists } = await res.json();
-    setIsExistingTeacher(exists);
-    await loadPlans(exists ? 'renewal' : 'new');
-  }
-
-  function handleConfirmExtend(yes: boolean) {
-    setConfirmExtend(yes);
-    if (yes && subStatus?.active_end_date) {
-      const after = addDays(subStatus.active_end_date, 1);
-      setStartsAfter(after);
-      setName(subStatus.teacher.name);
-      setEmail(subStatus.teacher.email);
-      setPhone(subStatus.teacher.phone);
-      prefilled.current = true;
-      setIsExistingTeacher(true);
-      loadPlans('renewal');
-    }
+    // On success the browser redirects — no need to setGoogleLoading(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!policiesAccepted) {
-      setError(t('subscribe.policyError'));
-      return;
-    }
-    if (plans.length > 0 && !selectedPlanId) {
-      setError(t('subscribe.planRequired'));
-      return;
-    }
-    setSubmitting(true);
     setError('');
-    const res = await fetch('/api/subscribe', {
+    setEmailTaken(false);
+    setSubmitting(true);
+
+    const supabase = createBrowserSupabase();
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { full_name: name.trim() } },
+    });
+
+    if (signUpError) {
+      setSubmitting(false);
+      if (
+        signUpError.message.toLowerCase().includes('already registered') ||
+        signUpError.message.toLowerCase().includes('already been registered') ||
+        signUpError.message.toLowerCase().includes('email address is already')
+      ) {
+        setEmailTaken(true);
+      } else {
+        setError(signUpError.message);
+      }
+      return;
+    }
+
+    // signUp succeeded — if identities array is empty the email was already taken
+    // (Supabase returns 200 but no session in this case)
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setSubmitting(false);
+      setEmailTaken(true);
+      return;
+    }
+
+    // Create profile + subscription
+    await fetch('/api/self-register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        email,
-        phone,
-        comments,
-        plan_id: selectedPlanId,
-        policies_accepted_at: new Date().toISOString(),
-        starts_after: startsAfter,
-      }),
-    });
-    const data = await res.json();
-    setSubmitting(false);
-    if (!res.ok) {
-      setError(data.error ?? t('common.noResults'));
-    } else {
-      setDone(true);
-    }
-  }
+      body: JSON.stringify({ name: name.trim() }),
+    }).catch(() => {});
 
-  if (done) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-5">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">{t('subscribe.received')}</h1>
-            <p className="text-sm text-gray-500 mt-2">{t('subscribe.receivedDesc')}</p>
-          </div>
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-left">
-            <p className="font-medium text-blue-800 mb-1">What happens next?</p>
-            <p className="text-blue-600">We&apos;ll review your request and get back to you within 24 hours.</p>
-          </div>
-          <Link href="/" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">{t('common.backHome')}</Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Active subscription — show extend prompt
-  if (statusLoaded && subStatus?.status === 'active' && confirmExtend === null) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
-          <div className="flex items-center justify-between mb-2">
-            <Link href="/teacher" className="text-xs text-gray-400 hover:text-gray-600">← Dashboard</Link>
-            <LanguageToggle />
-          </div>
-          <div className="space-y-3">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h1 className="text-lg font-semibold text-gray-900">Subscription Active</h1>
-            <p className="text-sm text-gray-600">
-              Your subscription is active
-              {subStatus.active_end_date
-                ? <> until <span className="font-medium text-gray-900">{formatDate(subStatus.active_end_date)}</span></>
-                : ' with no expiry date'
-              }.
-            </p>
-            {subStatus.active_end_date && (
-              <p className="text-sm text-gray-500">
-                Would you like to extend your subscription beyond that date?
-              </p>
-            )}
-          </div>
-          {subStatus.active_end_date ? (
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleConfirmExtend(true)}
-                className="flex-1 bg-blue-600 text-white text-sm font-medium rounded-xl py-2.5 hover:bg-blue-700 transition-colors"
-              >
-                Yes, extend
-              </button>
-              <button
-                onClick={() => handleConfirmExtend(false)}
-                className="flex-1 border border-gray-300 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 transition-colors"
-              >
-                No, thanks
-              </button>
-            </div>
-          ) : (
-            <Link href="/teacher" className="block w-full text-center border border-gray-300 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 transition-colors">
-              Back to Dashboard
-            </Link>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Declined extend
-  if (statusLoaded && subStatus?.status === 'active' && confirmExtend === false) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-4">
-          <p className="text-sm text-gray-500">No problem! Come back when you&apos;re ready to renew.</p>
-          <Link href="/teacher" className="block text-sm text-blue-600 hover:underline">Back to Dashboard</Link>
-        </div>
-      </div>
-    );
+    router.push('/teacher');
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-10">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-5">
+    <div
+      className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-10"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full space-y-6">
         {/* Header */}
         <div>
           <div className="flex items-center justify-between mb-5">
-            <SaderotLogo size="md" />
+            <SaderotLogo size="md" lang={lang} />
             <LanguageToggle />
           </div>
-          <p className="text-xs text-blue-600 font-medium mb-3">The scheduling tool built for private teachers</p>
-          <h1 className="text-xl font-semibold text-gray-900">{t('subscribe.title')}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('subscribe.subtitle')}</p>
-          {startsAfter && (
-            <p className="text-sm text-blue-600 mt-2 font-medium">
-              New plan will start on {formatDate(startsAfter)}
-            </p>
-          )}
+          <h1 className="text-xl font-semibold text-gray-900">{t('signup.title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('signup.subtitle')}</p>
         </div>
 
+        {/* Google OAuth */}
+        <button
+          type="button"
+          onClick={handleGoogleSignup}
+          disabled={googleLoading || submitting}
+          className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          {googleLoading ? (
+            <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+              <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+              <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+            </svg>
+          )}
+          {t('signup.googleCta')}
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400">{t('signup.orDivider')}</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        {/* Email / password form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -293,7 +138,7 @@ function SubscribeForm() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Jane Smith"
+              placeholder={t('signup.namePlaceholder')}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -306,169 +151,57 @@ function SubscribeForm() {
               type="email"
               required
               value={email}
-              readOnly={prefilled.current}
-              onChange={(e) => {
-                if (prefilled.current) return;
-                setEmail(e.target.value);
-                if (e.target.value.toLowerCase().trim() !== checkedEmail.current) {
-                  setIsExistingTeacher(null);
-                  setPlans([]);
-                  setSelectedPlanId(null);
-                }
-              }}
-              onBlur={handleEmailBlur}
-              placeholder="jane@example.com"
-              className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${prefilled.current ? 'bg-gray-50 text-gray-500' : ''}`}
+              onChange={(e) => { setEmail(e.target.value); setEmailTaken(false); }}
+              placeholder="you@example.com"
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                prefillEmail && email === prefillEmail
+                  ? 'border-green-400 bg-green-50 focus:ring-green-400'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
             />
-            {!prefilled.current && isExistingTeacher === null && email.includes('@') && (
-              <p className="text-xs text-gray-400 mt-1">Tab out of this field to load the right plan for your account.</p>
+            {prefillEmail && email === prefillEmail && !emailTaken && (
+              <p className="text-xs text-green-600 mt-1">✓ מוּלא מהדף הקודם — תוכל/י לשנות</p>
             )}
-            {!prefilled.current && isExistingTeacher === true && (
-              <p className="text-xs text-blue-600 mt-1">Welcome back! Showing renewal plans.</p>
-            )}
-            {!prefilled.current && isExistingTeacher === false && (
-              <p className="text-xs text-green-600 mt-1">New account detected. Showing new teacher plans.</p>
+            {emailTaken && (
+              <p className="text-sm text-amber-600 mt-1">
+                {t('signup.emailTaken')}{' '}
+                <Link href="/teacher/login" className="text-blue-600 hover:underline font-medium">
+                  {t('signup.signIn')}
+                </Link>
+              </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.phone')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('signup.passwordLabel')} <span className="text-red-500">*</span>
+            </label>
             <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="e.g. 0501234567"
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('subscribe.comments')}</label>
-            <textarea
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder={t('subscribe.commentsPlaceholder')}
-              rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
-          </div>
-
-          {/* Plan selection */}
-          {isExistingTeacher !== null && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {t('subscribe.choosePlan')} <span className="text-red-500">*</span>
-              </label>
-              {plansLoading ? (
-                <div className="space-y-2">
-                  {[1, 2].map(i => (
-                    <div key={i} className="border border-gray-100 rounded-xl p-4 animate-pulse">
-                      <div className="flex justify-between">
-                        <div className="space-y-1.5">
-                          <div className="h-4 w-28 bg-gray-200 rounded" />
-                          <div className="h-3 w-20 bg-gray-100 rounded" />
-                        </div>
-                        <div className="space-y-1.5 text-right">
-                          <div className="h-5 w-16 bg-gray-200 rounded" />
-                          <div className="h-3 w-12 bg-gray-100 rounded ml-auto" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : plans.length === 0 ? (
-                <p className="text-xs text-gray-400">No plans available.</p>
-              ) : plans.map((plan) => (
-                <label
-                  key={plan.id}
-                  className={`block border rounded-xl p-4 cursor-pointer transition-colors ${
-                    selectedPlanId === plan.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="plan"
-                    value={plan.id}
-                    checked={selectedPlanId === plan.id}
-                    onChange={() => setSelectedPlanId(plan.id)}
-                    className="sr-only"
-                  />
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">{plan.name}</p>
-                      {plan.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">{plan.description}</p>
-                      )}
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-base font-bold text-gray-900">
-                        ₪{plan.monthly_cost}
-                        <span className="text-xs font-normal text-gray-400">/{t('subscribe.monthShort')}</span>
-                      </p>
-                      <p className="text-xs text-gray-400">× {plan.paid_months} {t('subscribe.monthsLabel')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    {plan.free_months > 0 && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                        +{plan.free_months} {t('subscribe.monthsFree')}
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-400">
-                      {t('subscribe.total')}: ₪{(plan.monthly_cost * plan.paid_months).toFixed(0)}
-                    </span>
-                    {selectedPlanId === plan.id && (
-                      <span className="ml-auto">
-                        <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-
-          {/* Policy acceptance */}
-          <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={policiesAccepted}
-                onChange={(e) => {
-                  setPoliciesAccepted(e.target.checked);
-                  if (e.target.checked) setError('');
-                }}
-                className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700 leading-snug">
-                {t('subscribe.policyAccept').split(/\{(terms|privacy|refund)\}/).map((p, i) => {
-                  if (p === 'terms') return <Link key={i} href="/terms-of-service" target="_blank" className="text-blue-600 hover:underline font-medium">{t('common.termsOfService')}</Link>;
-                  if (p === 'privacy') return <Link key={i} href="/privacy" target="_blank" className="text-blue-600 hover:underline font-medium">{t('common.privacyPolicy')}</Link>;
-                  if (p === 'refund') return <Link key={i} href="/refund-policy" target="_blank" className="text-blue-600 hover:underline font-medium">{t('common.refundPolicy')}</Link>;
-                  return p;
-                })}
-                {' '}<span className="text-red-500">*</span>
-              </span>
-            </label>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
-            disabled={submitting || !policiesAccepted}
+            disabled={submitting || googleLoading || !name.trim() || !email.trim() || !password}
             className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {submitting ? t('common.sending') : t('subscribe.submitRequest')}
+            {submitting ? t('common.loading') : t('signup.cta')}
           </button>
 
-          <p className="text-center text-xs text-gray-400">
-            Already a teacher?{' '}
-            <Link href="/teacher/login" className="text-blue-600 hover:underline">Sign in</Link>
+          <p className="text-center text-sm text-gray-500">
+            {t('signup.alreadyHave')}{' '}
+            <Link href="/teacher/login" className="text-blue-600 hover:underline font-medium">
+              {t('signup.signIn')}
+            </Link>
           </p>
         </form>
       </div>
@@ -479,7 +212,7 @@ function SubscribeForm() {
 export default function SubscribePage() {
   return (
     <Suspense>
-      <SubscribeForm />
+      <SignupForm />
     </Suspense>
   );
 }
