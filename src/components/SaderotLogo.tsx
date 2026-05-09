@@ -3,6 +3,7 @@ interface Props {
   showText?: boolean;
   showTagline?: boolean;
   darkBg?: boolean;
+  lang?: 'en' | 'he';
 }
 
 // Brand mark: 5×3 weekly schedule grid
@@ -22,7 +23,7 @@ const PITCH = CELL + GAP; // 13
 const W = 5 * PITCH - GAP; // 63
 const H = 3 * PITCH - GAP; // 37
 
-export default function SaderotLogo({ size = 'sm', showText = true, showTagline = false, darkBg = false }: Props) {
+export default function SaderotLogo({ size = 'sm', showText = true, showTagline = false, darkBg = false, lang = 'en' }: Props) {
   const heights = { sm: 28, md: 36, lg: 48 };
   const h = heights[size];
   const w = Math.round(h * W / H);
@@ -54,9 +55,15 @@ export default function SaderotLogo({ size = 'sm', showText = true, showTagline 
 
       {showText && (
         <div>
-          <span className={`${textSizes[size]} font-semibold tracking-tight leading-none ${darkBg ? 'text-white' : 'text-gray-900'}`}>
-            sader<span style={{ color: '#c73e1d' }}>OT</span>
-          </span>
+          {lang === 'he' ? (
+            <span className={`${textSizes[size]} font-semibold tracking-tight leading-none ${darkBg ? 'text-white' : 'text-gray-900'}`}>
+              סדר <span style={{ color: '#c73e1d' }}>אותי</span>
+            </span>
+          ) : (
+            <span className={`${textSizes[size]} font-semibold tracking-tight leading-none ${darkBg ? 'text-white' : 'text-gray-900'}`}>
+              sader<span style={{ color: '#c73e1d' }}>OT</span>
+            </span>
+          )}
           {showTagline && (
             <p className={`${taglineSizes[size]} ${darkBg ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>סדר אותי</p>
           )}
