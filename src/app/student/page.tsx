@@ -71,12 +71,11 @@ export default function StudentEntryPage() {
       return;
     }
 
+    localStorage.setItem('last_student_email', studentEmail);
     if (data.teachers.length === 1) {
-      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(studentEmail)}`);
-    } else {
-      setTeachers(data.teachers);
-      setStep('teachers');
+      localStorage.setItem('last_teacher_id', data.teachers[0].id);
     }
+    router.push('/student/portal');
   }
 
   async function handlePrivacyAccept() {
@@ -90,12 +89,11 @@ export default function StudentEntryPage() {
     if (data.tokens) storeTokens(data.tokens);
     setLoading(false);
 
+    localStorage.setItem('last_student_email', resolvedEmail);
     if (pendingTeachers.length === 1) {
-      router.push(`/t/${pendingTeachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
-    } else {
-      setTeachers(pendingTeachers);
-      setStep('teachers');
+      localStorage.setItem('last_teacher_id', pendingTeachers[0].id);
     }
+    router.push('/student/portal');
   }
 
   async function handleVerifyOtp(e: React.FormEvent) {
@@ -121,12 +119,11 @@ export default function StudentEntryPage() {
       return;
     }
 
+    localStorage.setItem('last_student_email', resolvedEmail);
     if (data.teachers?.length === 1) {
-      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
-    } else if (data.teachers?.length > 1) {
-      setTeachers(data.teachers);
-      setStep('teachers');
+      localStorage.setItem('last_teacher_id', data.teachers[0].id);
     }
+    router.push('/student/portal');
   }
 
   return (
@@ -267,7 +264,11 @@ export default function StudentEntryPage() {
               {teachers.map((teacher) => (
                 <button
                   key={teacher.id}
-                  onClick={() => router.push(`/t/${teacher.id}?email=${encodeURIComponent(resolvedEmail)}`)}
+                  onClick={() => {
+                    localStorage.setItem('last_teacher_id', teacher.id);
+                    localStorage.setItem('last_student_email', resolvedEmail);
+                    router.push('/student/portal');
+                  }}
                   className="w-full text-left border border-gray-200 rounded-lg px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 hover:border-blue-400 transition-colors"
                 >
                   {teacher.display_name}

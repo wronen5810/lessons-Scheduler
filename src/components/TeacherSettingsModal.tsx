@@ -37,12 +37,13 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
     ...settings.notification_preferences,
   });
   const [features, setFeatures] = useState<TeacherFeatures>({
-    billing:             settings.features?.billing             ?? false,
-    messages:            settings.features?.messages            ?? false,
-    groups:              settings.features?.groups              ?? false,
-    notebook:            settings.features?.notebook            ?? false,
-    allow_cancellation:  settings.features?.allow_cancellation  ?? false,
-    policies_accepted_at: settings.features?.policies_accepted_at ?? null,
+    billing:               settings.features?.billing               ?? false,
+    messages:              settings.features?.messages              ?? false,
+    groups:                settings.features?.groups                ?? false,
+    notebook:              settings.features?.notebook              ?? false,
+    allow_cancellation:    settings.features?.allow_cancellation    ?? false,
+    auto_approve_students: settings.features?.auto_approve_students ?? true,
+    policies_accepted_at:  settings.features?.policies_accepted_at  ?? null,
   });
 
   // ── Profile state ──
@@ -309,6 +310,25 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   <span className="text-sm text-gray-700">12-hour <span className="text-gray-400">(2:30 PM)</span></span>
                 </label>
               </div>
+            </div>
+
+            {/* Student enrollment */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Student enrollment</label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!features.auto_approve_students}
+                  onChange={(e) => setFeatures((f) => ({ ...f, auto_approve_students: e.target.checked }))}
+                  className="w-4 h-4 accent-blue-600 cursor-pointer mt-0.5"
+                />
+                <span className="text-sm text-gray-800">
+                  Automatic approval
+                  <span className="block text-xs text-gray-400 mt-0.5">
+                    Students who request access are added automatically without waiting for your approval. You will be notified when a new student joins.
+                  </span>
+                </span>
+              </label>
             </div>
 
             {/* Features */}

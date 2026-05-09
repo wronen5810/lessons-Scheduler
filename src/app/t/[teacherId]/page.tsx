@@ -17,10 +17,10 @@ import StudentSettingsModal from '@/components/StudentSettingsModal';
 import SaderotLogo from '@/components/SaderotLogo';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
-import { Calendar, BookOpen, LogOut, Settings } from 'lucide-react';
+import { ArrowLeft, Calendar, BookOpen, LogOut, MessageSquare, Settings } from 'lucide-react';
 import PolicyFooter from '@/components/PolicyFooter';
 
-type Section = 'schedule' | 'notebook' | 'settings';
+type Section = 'schedule' | 'messages' | 'notebook' | 'settings';
 type Step = 'calendar' | 'times' | 'book' | 'done';
 
 interface StudentBooking {
@@ -95,6 +95,12 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState('');
 
+  // Messages
+  const [messages, setMessages] = useState<Array<{ id: string; direction: string; body: string; sent_at: string }>>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+
   async function loadMonth(monthStr: string) {
     setLoading(true);
     const emailParam = email ? `&studentEmail=${encodeURIComponent(email)}` : '';
@@ -116,8 +122,35 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     if (res.ok) setBookings(await res.json());
   }
 
+  async function loadMessages() {
+    if (!email) return;
+    const tok = localStorage.getItem(`st_${teacherId}`);
+    if (!tok) return;
+    setLoadingMessages(true);
+    const res = await fetch(`/api/student/messages?teacherId=${teacherId}`, {
+      headers: { Authorization: `Bearer ${tok}` },
+    });
+    if (res.ok) setMessages(await res.json());
+    setLoadingMessages(false);
+  }
+
+  async function sendMessage() {
+    if (!email || !newMessage.trim()) return;
+    const tok = localStorage.getItem(`st_${teacherId}`);
+    if (!tok) return;
+    setSendingMessage(true);
+    const res = await fetch('/api/student/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ teacherId, body: newMessage }),
+    });
+    setSendingMessage(false);
+    if (res.ok) { setNewMessage(''); loadMessages(); }
+  }
+
   useEffect(() => { loadMonth(month); }, [month]);
   useEffect(() => { loadBookings(); }, [email, teacherId]);
+  useEffect(() => { if (section === 'messages') loadMessages(); }, [section]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -290,7 +323,15 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                 </svg>
               </button>
               {menuOpen && (
-                <div className="absolute end-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                <div className="absolute end-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                  <button
+                    onClick={() => { router.push('/student/portal'); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4 flex-shrink-0" />
+                    {t('student.portal')}
+                  </button>
+                  <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => { setSection('schedule'); setMenuOpen(false); }}
                     className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
@@ -298,6 +339,15 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     <Calendar className="w-4 h-4 flex-shrink-0" />
                     {t('schedule.schedule')}
                   </button>
+                  {email && (
+                    <button
+                      onClick={() => { setSection('messages'); setMenuOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'messages' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
+                    >
+                      <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                      {t('student.messages')}
+                    </button>
+                  )}
                   {email && (
                     <button
                       onClick={() => { setSection('notebook'); setMenuOpen(false); }}
@@ -335,6 +385,47 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
 
         {/* Notebook */}
         {section === 'notebook' && email && <StudentNotebook teacherId={teacherId} email={email} />}
+
+        {/* Messages */}
+        {section === 'messages' && email && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {loadingMessages ? (
+                <p className="text-center text-sm text-gray-400 py-8">{t('common.loading')}</p>
+              ) : messages.length === 0 ? (
+                <p className="text-center text-sm text-gray-400 py-8">{t('student.noMessages')}</p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {messages.map(msg => (
+                    <div key={msg.id} className={`px-4 py-3 ${msg.direction === 'to_student' ? 'bg-blue-50' : ''}`}>
+                      <p className="text-xs text-gray-400 mb-1">
+                        {msg.direction === 'to_student' ? teacherName || t('common.teacher') : t('student.me')}
+                        {' · '}{new Date(msg.sent_at).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+              <textarea
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                placeholder={t('student.messagePlaceholder')}
+                rows={3}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={sendingMessage || !newMessage.trim()}
+                className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {sendingMessage ? t('common.saving') : t('student.sendMessage')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Schedule */}
         {section === 'schedule' && (

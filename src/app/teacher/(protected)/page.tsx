@@ -2,31 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translate } from '@/lib/i18n';
 import TeacherSettingsModal from '@/components/TeacherSettingsModal';
-import ShareLinkModal from '@/components/ShareLinkModal';
-import {
-  Calendar, Users, Users2, CreditCard, MessageSquare, Share2,
-} from 'lucide-react';
-import type { ReactNode } from 'react';
+import QuickActionsWizard from '@/components/QuickActionsWizard';
+import { toSlug } from '@/lib/slug';
 
 export default function TeacherDashboard() {
-  const router = useRouter();
   const { settings, loading, save: saveSettings } = useTeacherSettings();
   const { t, lang, isRTL } = useLanguage();
-  const f = settings.features;
   const [showSettings, setShowSettings] = useState(false);
-  const [showShare, setShowShare] = useState(false);
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('');
   const [nextLesson, setNextLesson] = useState<{ hours: number; minutes: number; start_time?: string; student_name?: string } | null>(null);
   const [todayCount, setTodayCount] = useState<number | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [studentCount, setStudentCount] = useState<number | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     createBrowserSupabase().auth.getUser().then(({ data }) => {
@@ -64,29 +58,31 @@ export default function TeacherDashboard() {
     return d.toISOString().slice(0, 10);
   }
 
-  async function handleSignOut() {
-    const supabase = createBrowserSupabase();
-    await supabase.auth.signOut();
-    router.push('/teacher/login');
+  function copyShareLink() {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://saderot.com';
+    const slug = toSlug(teacherName);
+    const link = slug ? `${origin}/${slug}` : teacherId ? `${origin}/join/${teacherId}` : '';
+    if (!link) return;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(link).then(() => {
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2000);
+      }).catch(fallback);
+    } else {
+      fallback();
+    }
+    function fallback() {
+      const el = document.createElement('textarea');
+      el.value = link;
+      el.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   }
-
-  const quickActions: {
-    label: string;
-    desc: string;
-    href: string | null;
-    icon: ReactNode;
-    show: boolean;
-    badge?: number | null;
-    onClick?: () => void;
-    danger?: boolean;
-  }[] = [
-    { label: t('teacher.schedule'),  desc: t('teacher.scheduleDesc'),  href: '/teacher/schedule',           icon: <Calendar className="w-5 h-5" />,     show: true, badge: pendingCount || null },
-    { label: t('common.students'),   desc: t('teacher.studentsDesc'),  href: '/teacher/students',            icon: <Users className="w-5 h-5" />,        show: true },
-    { label: t('common.groups'),     desc: t('teacher.groupsDesc'),    href: '/teacher/students?tab=groups', icon: <Users2 className="w-5 h-5" />,       show: f.groups },
-    { label: t('teacher.billing'),   desc: t('teacher.billingDesc'),   href: '/teacher/billing',             icon: <CreditCard className="w-5 h-5" />,   show: f.billing },
-    { label: t('teacher.messages'),  desc: t('teacher.messagesDesc'),  href: '/teacher/messages',            icon: <MessageSquare className="w-5 h-5" />,show: f.messages },
-    { label: t('common.share'),      desc: t('teacher.shareDesc'),     href: null, icon: <Share2 className="w-5 h-5" />, show: true, onClick: () => setShowShare(true) },
-  ].filter(a => a.show);
 
   if (loading) {
     return (
@@ -155,45 +151,39 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        {/* Quick actions */}
-        <div className="space-y-2">
-          {quickActions.map((action) => {
-            const isDanger = action.danger;
-            const inner = (
-              <div className="flex items-center gap-3 w-full">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${isDanger ? 'bg-red-50 border-red-100 text-red-500' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                  {action.icon}
-                </div>
-                <div className="flex-1 min-w-0 text-start">
-                  <p className={`text-sm font-semibold ${isDanger ? 'text-red-600' : 'text-gray-900'}`}>{action.label}</p>
-                  {action.desc && <p className="text-xs text-gray-400 truncate">{action.desc}</p>}
-                </div>
-                {action.badge ? (
-                  <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0">
-                    {action.badge}
-                  </span>
-                ) : !isDanger && (
-                  <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={isRTL ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'} />
-                  </svg>
-                )}
-              </div>
-            );
-            const baseCls = `flex items-center w-full bg-white border rounded-xl px-4 py-3 shadow-sm transition-all ${isDanger ? 'border-red-100 hover:border-red-200 hover:bg-red-50' : 'border-gray-100 hover:shadow-md hover:border-blue-200'}`;
-            return action.href ? (
-              <Link key={action.label} href={action.href} className={baseCls}>{inner}</Link>
-            ) : (
-              <button key={action.label} onClick={action.onClick} className={baseCls}>{inner}</button>
-            );
-          })}
-        </div>
+        {/* Quick action wizards */}
+        <QuickActionsWizard onRefresh={() => {
+          fetch('/api/teacher/students').then(r => r.json()).then(data => {
+            if (Array.isArray(data)) setStudentCount(data.filter((s: { is_active: boolean }) => s.is_active).length);
+          }).catch(() => {});
+        }} />
+
+        {/* Share link */}
+        {(teacherId || teacherName) && (
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
+            <p className="text-xs text-gray-400 mb-1.5">{t('teacher.copyShareLink')}</p>
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-sm text-gray-700 truncate">
+                {(() => {
+                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://saderot.com';
+                  const slug = toSlug(teacherName);
+                  return slug ? `${origin}/${slug}` : `${origin}/join/${teacherId}`;
+                })()}
+              </span>
+              <button
+                onClick={copyShareLink}
+                className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${linkCopied ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+              >
+                {linkCopied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
+
       </main>
 
       {showSettings && (
         <TeacherSettingsModal settings={settings} onSave={saveSettings} onClose={() => setShowSettings(false)} />
-      )}
-      {showShare && teacherId && (
-        <ShareLinkModal teacherId={teacherId} teacherName={teacherName} onClose={() => setShowShare(false)} />
       )}
     </>
   );

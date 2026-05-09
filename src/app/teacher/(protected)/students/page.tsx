@@ -1,6 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { StudentNote } from '@/app/api/teacher/students/[id]/notes/route';
 import StudentNotebook from '@/components/StudentNotebook';
@@ -19,6 +20,7 @@ interface Student {
   rate: number | null;
   notes: string | null;
   is_active: boolean;
+  is_waitlisted: boolean;
   created_at: string;
 }
 
@@ -53,6 +55,7 @@ function StudentsPage() {
   const [loginHistory, setLoginHistory] = useState<{ id: string; student_name: string; student_email: string; logged_in_at: string }[]>([]);
   const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [studentFilter, setStudentFilter] = useState<'all' | 'active' | 'waiting'>('all');
 
   // ── Groups state ─────────────────────────────────────────────────
   const [groups, setGroups] = useState<StudentGroup[]>([]);
@@ -115,11 +118,19 @@ function StudentsPage() {
     setAdding(false);
   }
 
-  async function toggleActive(student: Student) {
+  async function cycleStatus(student: Student) {
+    let next: { is_active: boolean; is_waitlisted: boolean };
+    if (student.is_active) {
+      next = { is_active: false, is_waitlisted: true };
+    } else if (student.is_waitlisted) {
+      next = { is_active: false, is_waitlisted: false };
+    } else {
+      next = { is_active: true, is_waitlisted: false };
+    }
     await fetch(`/api/teacher/students/${student.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: !student.is_active }),
+      body: JSON.stringify(next),
     });
     load();
   }
@@ -222,7 +233,7 @@ function StudentsPage() {
 
   function availableStudents(group: StudentGroup) {
     const memberIds = new Set((group.members ?? []).map((m) => m.student_id));
-    return students.filter((s) => s.is_active && !memberIds.has(s.id));
+    return students.filter((s) => s.is_active && !s.is_waitlisted && !memberIds.has(s.id));
   }
 
   const tabs: { key: 'students' | 'groups'; label: string }[] = [
@@ -262,7 +273,12 @@ function StudentsPage() {
           <>
             {/* Add student */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('students.addStudent')}</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-700">{t('students.addStudent')}</h2>
+                <Link href="/teacher/students/bulk" className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors">
+                  {t('students.bulkEdit')} →
+                </Link>
+              </div>
               <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
                 <input type="text" placeholder={t('students.fullName')} required value={name} onChange={(e) => setName(e.target.value)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -278,13 +294,40 @@ function StudentsPage() {
               {formError && <p className="text-sm text-red-600 mt-2">{formError}</p>}
             </div>
 
+            {/* Filter pills */}
+            <div className="flex gap-2 flex-wrap">
+              {(['all', 'active', 'waiting'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setStudentFilter(f)}
+                  className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
+                    studentFilter === f
+                      ? f === 'waiting'
+                        ? 'bg-amber-100 border-amber-300 text-amber-700'
+                        : 'bg-blue-100 border-blue-300 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  {f === 'all' ? t('students.filterAll') : f === 'active' ? t('students.filterActive') : t('students.filterWaiting')}
+                </button>
+              ))}
+            </div>
+
             {/* Student list */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
               {loading ? (
                 <div className="px-5 py-8 text-center text-sm text-gray-400">{t('common.loading')}</div>
-              ) : students.length === 0 ? (
+              ) : students.filter((s) =>
+                  studentFilter === 'active' ? s.is_active :
+                  studentFilter === 'waiting' ? s.is_waitlisted :
+                  true
+                ).length === 0 ? (
                 <div className="px-5 py-8 text-center text-sm text-gray-400">{t('students.noStudents')}</div>
-              ) : students.map((student) => (
+              ) : students.filter((s) =>
+                  studentFilter === 'active' ? s.is_active :
+                  studentFilter === 'waiting' ? s.is_waitlisted :
+                  true
+                ).map((student) => (
                 <div key={student.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50">
                   {/* Info */}
                   <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
@@ -294,14 +337,19 @@ function StudentsPage() {
                     {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}</span>}
                   </div>
 
-                  {/* Active badge */}
+                  {/* Status badge — cycles active → waiting → inactive → active */}
                   <button
-                    onClick={() => toggleActive(student)}
+                    onClick={() => cycleStatus(student)}
+                    title={student.is_active ? t('students.filterWaiting') : student.is_waitlisted ? t('common.inactive') : t('common.active')}
                     className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
-                      student.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      student.is_active
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : student.is_waitlisted
+                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                     }`}
                   >
-                    {student.is_active ? t('common.active') : t('common.inactive')}
+                    {student.is_active ? t('common.active') : student.is_waitlisted ? t('common.waiting') : t('common.inactive')}
                   </button>
 
                   {/* 3-dot menu */}

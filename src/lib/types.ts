@@ -4,6 +4,7 @@ export interface SlotTemplate {
   start_time: string;
   duration_minutes: number;
   is_active: boolean;
+  end_date: string | null;
   created_at: string;
   title: string | null;
   max_participants: number;
@@ -98,6 +99,7 @@ export interface ComputedSlot {
   max_participants?: number;
   participant_count?: number;
   participants?: ParticipantInfo[];
+  template_end_date?: string | null;
 }
 
 export interface StudentGroup {

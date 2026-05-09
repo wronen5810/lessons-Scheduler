@@ -14,14 +14,14 @@ import type { PendingRequest } from '@/app/api/teacher/requests/route';
 import TeacherCalendar from '@/components/TeacherCalendar';
 import SlotPanel from '@/components/SlotPanel';
 import TeacherSettingsModal from '@/components/TeacherSettingsModal';
-import AddSlotModal from '@/components/AddSlotModal';
+import { AddSlotWizard } from '@/components/QuickActionsWizard';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type View = 'day' | 'month';
 
 const DAY_STYLE: Record<string, { bar: string; border: string; badge: string }> = {
-  available:              { bar: 'bg-slate-300',   border: 'border-gray-100',    badge: 'bg-slate-100 text-slate-600' },
+  available:              { bar: 'bg-sky-400',     border: 'border-sky-100',     badge: 'bg-sky-100 text-sky-700' },
   unavailable:            { bar: 'bg-gray-200',    border: 'border-gray-100',    badge: 'bg-gray-100 text-gray-400' },
   blocked:                { bar: 'bg-gray-400',    border: 'border-gray-200',    badge: 'bg-gray-200 text-gray-600' },
   pending:                { bar: 'bg-amber-400',   border: 'border-amber-100',   badge: 'bg-amber-50 text-amber-700 border border-amber-200' },
@@ -36,12 +36,14 @@ export default function SchedulePage() {
   const { t, lang } = useLanguage();
   const today = todayInIsrael();
 
-  const [view, setView] = useState<View>(() =>
-    typeof window !== 'undefined' && window.innerWidth >= 1024 ? 'month' : 'day'
-  );
+  const [view, setView] = useState<View>('day');
   const [selectedDate, setSelectedDate] = useState(today);
   const [month, setMonth] = useState(() => getMonthStr(today));
   const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    setView(window.innerWidth >= 1024 ? 'month' : 'day');
+  }, []);
   const [addSlotDate, setAddSlotDate] = useState<string | null>(null);
   const { settings, save: saveSettings } = useTeacherSettings();
 
@@ -51,6 +53,9 @@ export default function SchedulePage() {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pendingCollapsed, setPendingCollapsed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   function weekForDate(date: string) {
     return formatDate(getWeekStart(parseISO(date)));
@@ -65,9 +70,8 @@ export default function SchedulePage() {
 
   async function loadMonth(monthStr: string) {
     setLoading(true);
-    const weeks = getMonthWeekStarts(monthStr);
-    const results = await Promise.all(weeks.map((w) => fetch(`/api/teacher/slots?week=${w}`).then((r) => r.json())));
-    setSlots(results.flat());
+    const res = await fetch(`/api/teacher/slots/month?month=${monthStr}`);
+    setSlots(res.ok ? await res.json() : []);
     setLoading(false);
   }
 
@@ -87,6 +91,19 @@ export default function SchedulePage() {
 
   useEffect(() => { loadRequests(); }, []);
 
+  // Auto-dismiss toast after 3 s
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([loadRequests(), reload()]);
+    setRefreshing(false);
+  }
+
   async function handleAddStudent(req: PendingRequest) {
     setActionLoading(req.id);
     await fetch('/api/teacher/students', {
@@ -97,6 +114,7 @@ export default function SchedulePage() {
     await fetch(`/api/student-access-request/${req.id}`, { method: 'DELETE' });
     setActionLoading(null);
     loadRequests();
+    setToast(t('common.actionApproved'));
   }
 
   async function handleRequestAction(req: PendingRequest, action: 'approve' | 'reject' | 'approve-cancellation' | 'dismiss') {
@@ -109,6 +127,11 @@ export default function SchedulePage() {
     setActionLoading(null);
     loadRequests();
     reload();
+    const toastMsg =
+      action === 'approve' || action === 'approve-cancellation' ? t('common.actionApproved') :
+      action === 'reject' ? t('common.actionRejected') :
+      t('common.actionDismissed');
+    setToast(toastMsg);
   }
 
   function handleAction() {
@@ -185,24 +208,30 @@ export default function SchedulePage() {
                 {t('common.month')}
               </button>
             </div>
-            <button onClick={() => { loadRequests(); reload(); }}
+            <button onClick={handleRefresh}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              title={t('common.refresh')}>↺</button>
-            <button onClick={() => setShowSettings(true)}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              title={t('common.settings')}>⚙</button>
+              title={t('common.refresh')}>
+              <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} style={{ display: 'inline-block' }}>↺</span>
+            </button>
           </div>
         </div>
 
         {/* Pending requests panel */}
         {!requestsLoading && requests.length > 0 && (
           <div className="mb-4 bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-              <h2 className="text-sm font-semibold text-gray-900">
-                {t('teacher.pendingRequests')} <span className="ml-1.5 bg-red-100 text-red-700 text-xs font-medium px-1.5 py-0.5 rounded-full">{requests.length}</span>
+            <button
+              onClick={() => setPendingCollapsed(c => !c)}
+              className="w-full px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between hover:bg-gray-100 transition-colors"
+            >
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                {t('teacher.pendingRequests')}
+                <span className="bg-amber-100 text-amber-700 text-xs font-medium px-1.5 py-0.5 rounded-full">{requests.length}</span>
               </h2>
-            </div>
-            <div className="divide-y divide-gray-100">
+              <svg className={`w-4 h-4 text-gray-400 transition-transform ${pendingCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {!pendingCollapsed && <div className="divide-y divide-gray-100">
               {requests.map((req) => {
                 const isAccess = req.request_type === 'access_request';
                 const isCancel = req.request_type === 'cancellation_request';
@@ -265,7 +294,7 @@ export default function SchedulePage() {
                   </div>
                 );
               })}
-            </div>
+            </div>}
           </div>
         )}
 
@@ -280,25 +309,34 @@ export default function SchedulePage() {
                 const isT = date === today;
                 const hasSlots = slots.some((s) => s.date === date && s.state !== 'unavailable');
                 return (
-                  <button
+                  <div
                     key={date}
                     onClick={() => setSelectedDate(date)}
-                    className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl flex-shrink-0 transition-all ${
+                    className={`flex flex-col items-center gap-0.5 px-3 py-2.5 rounded-xl flex-shrink-0 transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-600 text-white shadow-md'
+                        ? 'bg-blue-600 text-white shadow-md' + (isT ? ' ring-2 ring-blue-300 ring-offset-1' : '')
                         : isT
-                        ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                        : 'bg-white text-gray-600 border border-gray-100 hover:border-gray-300'
+                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-500 font-semibold'
+                        : 'bg-white text-gray-600 border border-gray-100 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSelected ? 'text-blue-100' : isT ? 'text-blue-600' : 'text-gray-400'}`}>
                       {DAY_NAMES_SHORT[d.getDay()]}
                     </span>
-                    <span className="text-sm font-bold">{format(d, 'd')}</span>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <span className="text-sm font-bold">{format(d, 'd')}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAddSlotDate(date); }}
+                        className={`w-4 h-4 flex items-center justify-center text-sm leading-none transition-colors ${
+                          isSelected ? 'text-blue-300 hover:text-white' : 'text-gray-300 hover:text-blue-500'
+                        }`}
+                        title="Add slot"
+                      >+</button>
+                    </div>
                     {hasSlots && (
-                      <span className={`w-1 h-1 rounded-full ${isSelected ? 'bg-blue-200' : 'bg-blue-400'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-blue-200' : 'bg-blue-400'}`} />
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -377,7 +415,7 @@ export default function SchedulePage() {
             {/* Legend */}
             <div className="flex flex-wrap gap-2 pt-1">
               {([
-                { color: 'bg-slate-300',   key: 'slot.open' },
+                { color: 'bg-sky-400',     key: 'slot.open' },
                 { color: 'bg-gray-400',    key: 'slot.blocked' },
                 { color: 'bg-amber-400',   key: 'slot.pending' },
                 { color: 'bg-indigo-500',  key: 'slot.approved' },
@@ -397,25 +435,32 @@ export default function SchedulePage() {
         {/* ── MONTH VIEW ── */}
         {view === 'month' && (
           <>
-            {loading ? (
+            {slots.length === 0 && loading ? (
               <div className="mt-8 text-center text-gray-400">{t('common.loading')}</div>
             ) : (
-              <TeacherCalendar
-                slots={slots}
-                weekStarts={getMonthWeekStarts(month)}
-                today={today}
-                onSelectSlot={(slot) => {
-                  setSelected(slot);
-                  setSelectedDate(slot.date);
-                }}
-                onAddSlot={(date) => setAddSlotDate(date)}
-                timeFormat={settings.time_format}
-              />
+              <div className="relative">
+                <TeacherCalendar
+                  slots={slots}
+                  weekStarts={getMonthWeekStarts(month)}
+                  today={today}
+                  onSelectSlot={(slot) => {
+                    setSelected(slot);
+                    setSelectedDate(slot.date);
+                  }}
+                  onAddSlot={(date) => setAddSlotDate(date)}
+                  timeFormat={settings.time_format}
+                />
+                {loading && (
+                  <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-xl">
+                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
             )}
 
             <div className="mt-5 flex flex-wrap gap-3">
               {([
-                { color: 'bg-slate-400',   key: 'slot.open' },
+                { color: 'bg-sky-400',     key: 'slot.open' },
                 { color: 'bg-gray-400',    key: 'slot.blocked' },
                 { color: 'bg-amber-400',   key: 'slot.pending' },
                 { color: 'bg-indigo-500',  key: 'slot.approved' },
@@ -443,13 +488,19 @@ export default function SchedulePage() {
       )}
 
       {addSlotDate && (
-        <AddSlotModal
-          date={addSlotDate}
-          defaultDuration={settings.default_duration_minutes}
-          timeFormat={settings.time_format}
+        <AddSlotWizard
+          initialDate={addSlotDate}
           onClose={() => setAddSlotDate(null)}
-          onSaved={reload}
+          onDone={() => { setAddSlotDate(null); reload(); }}
         />
+      )}
+
+      {/* Action toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl">
+          <span>{toast}</span>
+          <button onClick={() => setToast(null)} className="text-gray-400 hover:text-white transition-colors text-base leading-none">×</button>
+        </div>
       )}
     </>
   );

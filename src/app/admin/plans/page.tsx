@@ -17,7 +17,7 @@ interface Plan {
 type PlanStatus = 'active' | 'inactive';
 type PlanType = 'new' | 'renewal' | 'both';
 type PlanForm = { name: string; description: string; plan_type: PlanType; free_months: string; paid_months: string; monthly_cost: string; status: PlanStatus };
-const emptyForm: PlanForm = { name: '', description: '', plan_type: 'new', free_months: '0', paid_months: '1', monthly_cost: '0', status: 'active' };
+const emptyForm: PlanForm = { name: '', description: '', plan_type: 'new', free_months: '0', paid_months: '0', monthly_cost: '0', status: 'active' };
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -51,7 +51,7 @@ export default function AdminPlansPage() {
         description: newPlan.description.trim() || null,
         plan_type: newPlan.plan_type,
         free_months: Number(newPlan.free_months) || 0,
-        paid_months: Number(newPlan.paid_months) || 1,
+        paid_months: Number(newPlan.paid_months),
         monthly_cost: Number(newPlan.monthly_cost) || 0,
         status: newPlan.status,
       }),
@@ -109,8 +109,8 @@ export default function AdminPlansPage() {
   function planSummary(p: { free_months: number; paid_months: number; monthly_cost: number }) {
     const parts = [];
     if (p.free_months > 0) parts.push(`${p.free_months} month${p.free_months !== 1 ? 's' : ''} free`);
-    parts.push(`then ₪${p.monthly_cost}/mo × ${p.paid_months} month${p.paid_months !== 1 ? 's' : ''}`);
-    return parts.join(' · ');
+    if (p.paid_months > 0) parts.push(`then ₪${p.monthly_cost}/mo × ${p.paid_months} month${p.paid_months !== 1 ? 's' : ''}`);
+    return parts.join(' · ') || 'Free only';
   }
 
   return (
@@ -181,7 +181,7 @@ export default function AdminPlansPage() {
               <label className="block text-xs text-gray-600 mb-1">Paid months</label>
               <input
                 type="number"
-                min={1}
+                min={0}
                 step={1}
                 value={newPlan.paid_months}
                 onChange={(e) => setNewPlan((p) => ({ ...p, paid_months: e.target.value }))}
@@ -264,7 +264,7 @@ export default function AdminPlansPage() {
                   </div>
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Paid months</label>
-                    <input type="number" min={1} step={1} value={editing.paid_months}
+                    <input type="number" min={0} step={1} value={editing.paid_months}
                       onChange={(e) => setEditing({ ...editing, paid_months: Number(e.target.value) })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>

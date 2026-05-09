@@ -3,6 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+interface InboxMessage {
+  id: string;
+  student_email: string;
+  student_name: string;
+  direction: string;
+  body: string;
+  sent_at: string;
+}
+
 interface Student {
   id: string;
   name: string;
@@ -28,9 +37,13 @@ interface SendResult {
 
 export default function MessagesPage() {
   const { t, isRTL } = useLanguage();
+  const [tab, setTab] = useState<'compose' | 'inbox'>('inbox');
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inbox, setInbox] = useState<InboxMessage[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(true);
+  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
@@ -52,6 +65,10 @@ export default function MessagesPage() {
       setGroups(g);
       setLoading(false);
     });
+
+    fetch('/api/teacher/messages/inbox')
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => { setInbox(d); setInboxLoading(false); });
   }, []);
 
   function toggleStudent(id: string) {
@@ -98,10 +115,95 @@ export default function MessagesPage() {
   return (
     <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
-        <h1 className="text-lg font-bold text-gray-900">{t('messages.title')}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-gray-900">{t('messages.title')}</h1>
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setTab('inbox')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${tab === 'inbox' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {t('messages.inbox')}
+              {inbox.length > 0 && <span className="ms-1.5 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5">{inbox.length}</span>}
+            </button>
+            <button
+              onClick={() => setTab('compose')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${tab === 'compose' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {t('messages.compose')}
+            </button>
+          </div>
+        </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {tab === 'inbox' && (() => {
+        // Group messages by student email
+        const studentEmails = [...new Set(inbox.map(m => m.student_email))];
+        const threadMessages = inbox.filter(m => m.student_email === selectedEmail);
+        const studentName = inbox.find(m => m.student_email === selectedEmail)?.student_name ?? selectedEmail ?? '';
+
+        return (
+          <main className="max-w-2xl mx-auto px-4 py-6">
+            {inboxLoading ? (
+              <p className="text-center text-sm text-gray-400 py-12">{t('common.loading')}</p>
+            ) : inbox.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-12">{t('messages.noInbox')}</p>
+            ) : selectedEmail ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => setSelectedEmail(null)}
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-1"
+                >
+                  ‹ {studentName}
+                </button>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+                  {threadMessages.map(msg => (
+                    <div key={msg.id} className={`px-4 py-3 ${msg.direction === 'to_student' ? 'bg-blue-50' : ''}`}>
+                      <p className="text-xs text-gray-400 mb-1">
+                        {msg.direction === 'to_student' ? t('common.you') : studentName}
+                        {' · '}{new Date(msg.sent_at).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {studentEmails.map(email => {
+                  const msgs = inbox.filter(m => m.student_email === email);
+                  const last = msgs[msgs.length - 1];
+                  const unread = msgs.filter(m => m.direction === 'to_teacher').length;
+                  return (
+                    <button
+                      key={email}
+                      onClick={() => setSelectedEmail(email)}
+                      className="w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 hover:border-blue-300 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="text-sm font-semibold text-gray-900">{last.student_name}</span>
+                          {last.student_name !== email && (
+                            <span className="text-xs text-gray-400 ms-2">{email}</span>
+                          )}
+                          <p className="text-xs text-gray-500 truncate mt-0.5">{last.body}</p>
+                        </div>
+                        <div className="flex-shrink-0 text-end">
+                          <p className="text-xs text-gray-400">{new Date(last.sent_at).toLocaleDateString()}</p>
+                          {unread > 0 && (
+                            <span className="inline-block mt-1 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5">{unread}</span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </main>
+        );
+      })()}
+
+      {tab === 'compose' && <main className="max-w-4xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
         {/* ── Recipients ── (shown second on mobile, first on desktop) */}
         <div className="space-y-4 order-2 lg:order-1">
@@ -281,7 +383,7 @@ export default function MessagesPage() {
             </div>
           )}
         </div>
-      </main>
+      </main>}
     </div>
   );
 }

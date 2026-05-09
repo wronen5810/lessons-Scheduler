@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  if (!group_id && (!student_name || !student_email)) {
+  if (!group_id && !student_name) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from('recurring_bookings').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    if (!group_id) {
+    if (!group_id && student_email) {
       emailStudentDirectBooking({
         studentName: student_name,
         studentEmail: student_email,
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (!group_id) {
+  if (!group_id && student_email) {
     emailStudentDirectBooking({
       studentName: student_name,
       studentEmail: student_email,

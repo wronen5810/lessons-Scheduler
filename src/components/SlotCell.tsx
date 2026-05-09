@@ -8,10 +8,11 @@ interface Props {
   onClick?: (slot: ComputedSlot) => void;
   isTeacher?: boolean;
   timeFormat?: '24h' | '12h';
+  compact?: boolean;
 }
 
 const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; dot: string; label?: string }> = {
-  available:              { bg: 'bg-slate-50',    border: 'border-slate-200',   text: 'text-slate-600',   dot: 'bg-slate-400' },
+  available:              { bg: 'bg-sky-50',      border: 'border-sky-200',     text: 'text-sky-700',     dot: 'bg-sky-400' },
   unavailable:            { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-400',    dot: 'bg-gray-300' },
   blocked:                { bg: 'bg-gray-200',    border: 'border-gray-300',    text: 'text-gray-600',    dot: 'bg-gray-500',    label: 'Blocked' },
   pending:                { bg: 'bg-amber-50',    border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-400',   label: 'Pending' },
@@ -21,9 +22,32 @@ const STATE_CONFIG: Record<string, { bg: string; border: string; text: string; d
   cancellation_requested: { bg: 'bg-rose-50',     border: 'border-rose-200',    text: 'text-rose-600',    dot: 'bg-rose-400',    label: 'Cancel req.' },
 };
 
-export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat = '24h' }: Props) {
+export default function SlotCell({ slot, onClick, isTeacher = false, timeFormat = '24h', compact = false }: Props) {
   const cfg = STATE_CONFIG[slot.state] ?? STATE_CONFIG.unavailable;
   const isClickable = !!onClick && slot.state !== 'unavailable';
+
+  // Compact single-line mode (used in month calendar)
+  if (compact) {
+    const name = slot.group_name || slot.student_name || slot.title ||
+      ((slot.max_participants ?? 1) > 1 ? `${slot.participant_count ?? 0}/${slot.max_participants}` : null) ||
+      cfg.label || '';
+    return (
+      <div
+        className={`flex items-center gap-1 rounded px-1 py-px mb-px leading-none select-none transition-all overflow-hidden
+          ${cfg.bg} ${cfg.text}
+          ${isClickable ? 'cursor-pointer hover:brightness-95 active:scale-95' : 'cursor-default'}`}
+        onClick={isClickable ? () => onClick!(slot) : undefined}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+        <span className="font-mono tabular-nums text-[9px] sm:text-[10px] flex-shrink-0 whitespace-nowrap">
+          {formatTimeDisplay(slot.start_time, timeFormat)}
+        </span>
+        {name && (
+          <span className="truncate text-[9px] sm:text-[10px] opacity-80 min-w-0">{name}</span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

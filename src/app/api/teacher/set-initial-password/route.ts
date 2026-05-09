@@ -1,10 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
 
+// GET /api/teacher/set-initial-password?token=... — validate token, return profile hints
+export async function GET(request: NextRequest) {
+  const token = request.nextUrl.searchParams.get('token');
+  if (!token) return NextResponse.json({ valid: false }, { status: 400 });
+
+  const supabase = createServiceSupabase();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('setup_token_expires_at, display_name, phone')
+    .eq('setup_token', token)
+    .single();
+
+  if (!profile) return NextResponse.json({ valid: false });
+
+  if (profile.setup_token_expires_at && new Date(profile.setup_token_expires_at) < new Date()) {
+    return NextResponse.json({ valid: false });
+  }
+
+  // Name needs update if it has no space (came from email prefix like "jane")
+  const needsName = !profile.display_name || !profile.display_name.trim().includes(' ');
+  const needsPhone = !profile.phone;
+
+  return NextResponse.json({ valid: true, needsName, needsPhone });
+}
+
 // POST /api/teacher/set-initial-password — public, token-gated
-// Body: { token: string, password: string }
+// Body: { token: string, password: string, name?: string, phone?: string }
 export async function POST(request: NextRequest) {
-  const { token, password } = await request.json();
+  const { token, password, name, phone } = await request.json();
 
   if (!token || typeof token !== 'string') {
     return NextResponse.json({ error: 'Missing token' }, { status: 400 });
@@ -47,11 +72,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  // Invalidate the token
-  await supabase
-    .from('profiles')
-    .update({ setup_token: null, setup_token_expires_at: null })
-    .eq('id', profile.id);
+  // Invalidate the token and optionally update name/phone
+  const profileUpdate: Record<string, unknown> = { setup_token: null, setup_token_expires_at: null };
+  if (name && typeof name === 'string' && name.trim()) profileUpdate.display_name = name.trim();
+  if (phone && typeof phone === 'string' && phone.trim()) profileUpdate.phone = phone.trim();
+
+  await supabase.from('profiles').update(profileUpdate).eq('id', profile.id);
 
   return NextResponse.json({ ok: true });
 }

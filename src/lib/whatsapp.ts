@@ -121,3 +121,16 @@ export async function whatsappTeacherAccessRequest(info: {
     { '1': info.studentName, '2': info.studentEmail, '3': phoneNote },
   );
 }
+
+export async function whatsappDirectMessage(
+  phone: string,
+  studentName: string,
+  teacherName: string,
+  message: string,
+): Promise<void> {
+  await sendTemplate(phone, process.env.TWILIO_TEMPLATE_DIRECT_MESSAGE!, {
+    '1': studentName,
+    '2': teacherName,
+    '3': message,
+  });
+}

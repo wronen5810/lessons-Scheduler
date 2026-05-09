@@ -1,16 +1,25 @@
 import admin from 'firebase-admin';
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+const hasCreds =
+  process.env.FIREBASE_PROJECT_ID &&
+  process.env.FIREBASE_CLIENT_EMAIL &&
+  process.env.FIREBASE_PRIVATE_KEY;
+
+if (!admin.apps.length && hasCreds) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (e) {
+    console.error('[firebase-admin] initializeApp failed:', e);
+  }
 }
 
-export const messaging = admin.messaging();
+export const messaging = admin.apps.length ? admin.messaging() : null;
 
 export async function sendPushToUser(
   supabase: any,
@@ -19,6 +28,11 @@ export async function sendPushToUser(
   body: string,
   data: Record<string, string> = {}
 ) {
+  if (!messaging) {
+    console.warn('[firebase-admin] messaging not initialized, skipping push');
+    return { sent: 0 };
+  }
+
   const { data: tokens } = await supabase
     .from('push_tokens')
     .select('token')
@@ -55,9 +69,15 @@ export async function sendPushToEmails(
   body: string,
   data: Record<string, string> = {}
 ): Promise<{ sent: number; noToken: string[] }> {
+  if (!messaging) {
+    console.warn('[firebase-admin] messaging not initialized, skipping push');
+    return { sent: 0, noToken: emails };
+  }
   if (emails.length === 0) return { sent: 0, noToken: [] };
 
-  const { data: rows } = await supabase.rpc('get_push_tokens_by_emails', { emails });
+  console.log('[firebase-admin] looking up tokens for emails:', emails);
+  const { data: rows, error: rpcError } = await supabase.rpc('get_push_tokens_by_emails', { emails });
+  console.log('[firebase-admin] RPC rows:', JSON.stringify(rows), 'error:', rpcError);
 
   const tokensByEmail = new Map<string, string[]>();
   for (const row of (rows ?? []) as { student_email: string; push_token: string }[]) {
@@ -68,12 +88,20 @@ export async function sendPushToEmails(
 
   const noToken = emails.filter((e) => !tokensByEmail.has(e.toLowerCase()));
   const allTokens = [...tokensByEmail.values()].flat();
+  console.log('[firebase-admin] allTokens count:', allTokens.length, 'noToken:', noToken);
   if (allTokens.length === 0) return { sent: 0, noToken: emails };
 
   const response = await messaging.sendEachForMulticast({
     tokens: allTokens,
     notification: { title, body },
     data,
+  });
+
+  // Log failures for debugging
+  response.responses.forEach((res, idx) => {
+    if (!res.success) {
+      console.error(`[firebase-admin] FCM failed for token[${idx}]: code=${res.error?.code} message=${res.error?.message}`);
+    }
   });
 
   // Clean up dead tokens

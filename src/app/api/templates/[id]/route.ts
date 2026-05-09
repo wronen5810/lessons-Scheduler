@@ -18,6 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (body.title !== undefined) updates.title = body.title;
   if (body.max_participants !== undefined) updates.max_participants = body.max_participants;
   if (body.day_of_week !== undefined) updates.day_of_week = body.day_of_week;
+  if (body.end_date !== undefined) updates.end_date = body.end_date || null;
 
   const { data, error } = await supabase
     .from('slot_templates')

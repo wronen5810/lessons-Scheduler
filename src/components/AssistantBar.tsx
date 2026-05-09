@@ -14,9 +14,20 @@ interface HelpStep {
   button?: ButtonVisual;
 }
 
+interface CreateSlotParams {
+  slot_type: 'one_time' | 'recurring';
+  date?: string;
+  day_of_week?: number;
+  start_time: string;
+  duration_minutes: number;
+  title?: string | null;
+  max_participants: number;
+}
+
 type AssistantResponse =
   | { type: 'navigate'; path: string; message: string }
-  | { type: 'help'; title: string; steps: HelpStep[] };
+  | { type: 'help'; title: string; steps: HelpStep[] }
+  | { type: 'action'; action: 'create_slot'; message: string; params: CreateSlotParams };
 
 const BUTTON_STYLES: Record<ButtonVisual['color'], string> = {
   blue:    'bg-blue-600 text-white',
@@ -29,6 +40,9 @@ const BUTTON_STYLES: Record<ButtonVisual['color'], string> = {
   ghost:   'bg-white border border-gray-200 text-gray-500',
 };
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
 function ButtonMock({ label, color }: ButtonVisual) {
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium mx-1 shadow-sm ${BUTTON_STYLES[color]}`}>
@@ -37,16 +51,79 @@ function ButtonMock({ label, color }: ButtonVisual) {
   );
 }
 
+function SlotConfirmCard({
+  params, onConfirm, onCancel, loading, isRTL,
+}: {
+  params: CreateSlotParams;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+  isRTL: boolean;
+}) {
+  const dayNames = isRTL ? DAY_NAMES_HE : DAY_NAMES;
+  const isRecurring = params.slot_type === 'recurring';
+  const slotLabel = isRecurring
+    ? `${isRTL ? 'כל יום' : 'Every'} ${dayNames[params.day_of_week ?? 0]}`
+    : params.date ?? '';
+
+  return (
+    <div className="space-y-2.5">
+      <p className="text-sm font-semibold text-gray-900">
+        {isRTL ? 'אישור יצירת חלון' : 'Confirm new slot'}
+      </p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-700">
+        <span className="text-gray-400">{isRTL ? 'סוג' : 'Type'}</span>
+        <span className="font-medium">{isRecurring ? (isRTL ? 'שבועי קבוע' : 'Weekly recurring') : (isRTL ? 'חד פעמי' : 'One-time')}</span>
+        <span className="text-gray-400">{isRTL ? (isRecurring ? 'יום' : 'תאריך') : (isRecurring ? 'Day' : 'Date')}</span>
+        <span className="font-medium">{slotLabel}</span>
+        <span className="text-gray-400">{isRTL ? 'שעה' : 'Time'}</span>
+        <span className="font-medium">{params.start_time}</span>
+        <span className="text-gray-400">{isRTL ? 'משך' : 'Duration'}</span>
+        <span className="font-medium">{params.duration_minutes} {isRTL ? 'דק׳' : 'min'}</span>
+        {params.max_participants > 1 && (
+          <>
+            <span className="text-gray-400">{isRTL ? 'מקס׳ תלמידים' : 'Max students'}</span>
+            <span className="font-medium">{params.max_participants}</span>
+          </>
+        )}
+        {params.title && (
+          <>
+            <span className="text-gray-400">{isRTL ? 'כותרת' : 'Title'}</span>
+            <span className="font-medium">{params.title}</span>
+          </>
+        )}
+      </div>
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          className="flex-1 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          {loading ? (isRTL ? 'יוצר...' : 'Creating...') : (isRTL ? 'אישור ✓' : 'Create ✓')}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={loading}
+          className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          {isRTL ? 'ביטול' : 'Cancel'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AssistantBar() {
-  const { t, isRTL } = useLanguage();
+  const { isRTL } = useLanguage();
   const router = useRouter();
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<AssistantResponse | null>(null);
   const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionDone, setActionDone] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-redirect for navigate type
   useEffect(() => {
     if (response?.type === 'navigate') {
       const timer = setTimeout(() => {
@@ -63,6 +140,7 @@ export default function AssistantBar() {
     setLoading(true);
     setResponse(null);
     setError('');
+    setActionDone('');
     try {
       const res = await fetch('/api/teacher/assistant', {
         method: 'POST',
@@ -83,19 +161,68 @@ export default function AssistantBar() {
     }
   }
 
+  async function handleCreateSlot() {
+    if (response?.type !== 'action' || response.action !== 'create_slot') return;
+    const { params } = response;
+    setActionLoading(true);
+    setError('');
+
+    try {
+      let res: Response;
+      if (params.slot_type === 'recurring') {
+        res = await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            day_of_week: params.day_of_week,
+            start_time: params.start_time,
+            duration_minutes: params.duration_minutes,
+            title: params.title ?? null,
+            max_participants: params.max_participants,
+          }),
+        });
+      } else {
+        res = await fetch('/api/teacher/one-time-slots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            specific_date: params.date,
+            start_time: params.start_time,
+            duration_minutes: params.duration_minutes,
+            title: params.title ?? null,
+            max_participants: params.max_participants,
+          }),
+        });
+      }
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        setError(d?.error || (isRTL ? 'שגיאה ביצירת החלון' : 'Failed to create slot'));
+      } else {
+        setActionDone(isRTL ? '✓ החלון נוצר בהצלחה' : '✓ Slot created successfully');
+        setResponse(null);
+        setTimeout(() => setActionDone(''), 4000);
+      }
+    } catch {
+      setError(isRTL ? 'שגיאת רשת' : 'Network error. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   function dismiss() {
     setResponse(null);
     setError('');
+    setActionDone('');
     inputRef.current?.focus();
   }
 
   const placeholder = isRTL
-    ? '...שאל כל שאלה — איך להוסיף חלון, לסמן שיעור כהושלם'
-    : 'Ask anything — how to add a slot, mark a lesson completed...';
+    ? '...שאל או בקש — "הוסף חלון ביום שני ב-15:00", "איך לאשר שיעור"'
+    : 'Ask or command — "add a slot Monday at 3pm", "how to approve a lesson"...';
 
   return (
     <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-2.5">
-      {/* Input row */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2 max-w-3xl mx-auto">
         <span className="text-base flex-shrink-0" aria-hidden>💬</span>
         <input
@@ -124,14 +251,18 @@ export default function AssistantBar() {
         </button>
       </form>
 
-      {/* Error */}
       {error && (
         <div className="mt-2 max-w-3xl mx-auto">
           <p className="text-xs text-red-600 px-1">{error}</p>
         </div>
       )}
 
-      {/* Response panel */}
+      {actionDone && (
+        <div className="mt-2 max-w-3xl mx-auto">
+          <p className="text-xs text-emerald-600 font-medium px-1">{actionDone}</p>
+        </div>
+      )}
+
       {response && (
         <div className="mt-2 max-w-3xl mx-auto bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm relative" dir={isRTL ? 'rtl' : 'ltr'}>
           <button
@@ -169,6 +300,18 @@ export default function AssistantBar() {
                 ))}
               </ol>
             </>
+          )}
+
+          {response.type === 'action' && response.action === 'create_slot' && (
+            <div className="pe-6">
+              <SlotConfirmCard
+                params={response.params}
+                onConfirm={handleCreateSlot}
+                onCancel={dismiss}
+                loading={actionLoading}
+                isRTL={isRTL}
+              />
+            </div>
           )}
         </div>
       )}

@@ -1,7 +1,9 @@
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 
-export async function registerPushNotifications() {
+async function requestAndRegister(
+  onRegistration: (fcmToken: string) => Promise<void>
+) {
   if (!Capacitor.isNativePlatform()) return;
 
   let perm = await PushNotifications.checkPermissions();
@@ -17,14 +19,7 @@ export async function registerPushNotifications() {
 
   PushNotifications.addListener('registration', async (token) => {
     try {
-      await fetch('/api/push/register-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: token.value,
-          platform: Capacitor.getPlatform(),
-        }),
-      });
+      await onRegistration(token.value);
     } catch (err) {
       console.error('Failed to send token to backend', err);
     }
@@ -40,8 +35,34 @@ export async function registerPushNotifications() {
 
   PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
     console.log('User tapped notification:', a.notification.data);
-    // Optional: navigate based on a.notification.data
   });
 
   await PushNotifications.register();
+}
+
+// For teachers (Supabase auth session)
+export async function registerPushNotifications() {
+  await requestAndRegister(async (fcmToken) => {
+    await fetch('/api/push/register-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: fcmToken, platform: Capacitor.getPlatform() }),
+    });
+  });
+}
+
+// For students (custom JWT auth)
+export async function registerStudentPushNotifications(
+  studentToken: string
+) {
+  await requestAndRegister(async (fcmToken) => {
+    await fetch('/api/push/register-student-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${studentToken}`,
+      },
+      body: JSON.stringify({ token: fcmToken, platform: Capacitor.getPlatform() }),
+    });
+  });
 }

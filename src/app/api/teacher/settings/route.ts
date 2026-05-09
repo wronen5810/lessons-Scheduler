@@ -9,6 +9,7 @@ export interface TeacherFeatures {
   groups: boolean;
   notebook: boolean;
   allow_cancellation: boolean;
+  auto_approve_students: boolean;
   policies_accepted_at?: string | null;
 }
 
@@ -18,17 +19,19 @@ const DEFAULT_FEATURES: TeacherFeatures = {
   groups: false,
   notebook: false,
   allow_cancellation: false,
+  auto_approve_students: true,
   policies_accepted_at: null,
 };
 
 function mergeFeatures(raw: unknown, preserveAccepted?: string | null): TeacherFeatures {
   const f = (raw && typeof raw === 'object' ? raw : {}) as Partial<TeacherFeatures>;
   return {
-    billing:             f.billing             ?? DEFAULT_FEATURES.billing,
-    messages:            f.messages            ?? DEFAULT_FEATURES.messages,
-    groups:              f.groups              ?? DEFAULT_FEATURES.groups,
-    notebook:            f.notebook            ?? DEFAULT_FEATURES.notebook,
-    allow_cancellation:  f.allow_cancellation  ?? DEFAULT_FEATURES.allow_cancellation,
+    billing:               f.billing               ?? DEFAULT_FEATURES.billing,
+    messages:              f.messages              ?? DEFAULT_FEATURES.messages,
+    groups:                f.groups                ?? DEFAULT_FEATURES.groups,
+    notebook:              f.notebook              ?? DEFAULT_FEATURES.notebook,
+    allow_cancellation:    f.allow_cancellation    ?? DEFAULT_FEATURES.allow_cancellation,
+    auto_approve_students: f.auto_approve_students ?? DEFAULT_FEATURES.auto_approve_students,
     policies_accepted_at: preserveAccepted !== undefined
       ? preserveAccepted
       : (f.policies_accepted_at ?? null),
@@ -60,12 +63,12 @@ export async function GET() {
     .eq('teacher_id', auth.user.id)
     .single();
 
-  if (!data) return NextResponse.json(DEFAULTS);
+  const payload = data
+    ? { ...data, notification_preferences: mergePrefs(data.notification_preferences), features: mergeFeatures(data.features) }
+    : DEFAULTS;
 
-  return NextResponse.json({
-    ...data,
-    notification_preferences: mergePrefs(data.notification_preferences),
-    features: mergeFeatures(data.features),
+  return NextResponse.json(payload, {
+    headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' },
   });
 }
 

@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import Groq from 'groq-sdk';
 
-const SYSTEM_PROMPT = `You are a help assistant for "saderOT", a web app for teachers to manage their lesson schedule, students, and bookings.
+function buildSystemPrompt(todayStr: string) {
+  return `You are a help assistant for "saderOT", a web app for teachers to manage their lesson schedule, students, and bookings.
+
+TODAY'S DATE: ${todayStr} (use this to resolve relative dates like "tomorrow", "next Monday", "in 3 days").
 
 You MUST respond with valid JSON only — no markdown, no code fences, no extra text. Match one of:
 
-Navigation (user wants to go somewhere or trigger an action):
+Navigation (user wants to go somewhere):
 {"type":"navigate","path":"/teacher/schedule","message":"Taking you to the Schedule page."}
+
+Action — create a slot (user asks to add/create a slot with specific details):
+{"type":"action","action":"create_slot","message":"Creating a weekly slot every Monday at 15:00 for 45 minutes.","params":{"slot_type":"recurring","day_of_week":1,"start_time":"15:00","duration_minutes":45,"title":null,"max_participants":1}}
+{"type":"action","action":"create_slot","message":"Creating a one-time slot on 2026-04-30 at 10:00 for 60 minutes.","params":{"slot_type":"one_time","date":"2026-04-30","start_time":"10:00","duration_minutes":60,"title":null,"max_participants":1}}
 
 Help/explanation:
 {"type":"help","title":"How to add a slot","steps":[{"text":"Go to the Schedule page"},{"text":"Click the + button on the day column header","button":{"label":"+","color":"ghost"}},{"text":"Fill in the details and click Add slot","button":{"label":"Add slot","color":"blue"}}]}
@@ -29,8 +36,19 @@ NAVIGATION INTENTS (type "navigate"):
 - billing/payments → /teacher/billing
 - send message/go to messages → /teacher/messages
 - dashboard/home → /teacher
-- add/create slot → /teacher/schedule
 - add/create student → /teacher/students
+
+ACTION RULES (type "action", action "create_slot"):
+- Use when user clearly asks to CREATE or ADD a slot and provides enough detail (at minimum a time and a day/date).
+- slot_type "recurring": user says "every week", "weekly", "every [day]", "שבועי" etc.
+- slot_type "one_time": user mentions a specific date, "tomorrow", "next Monday", a specific date etc.
+- day_of_week: 0=Sunday,1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday
+- start_time: 24-hour "HH:MM"
+- duration_minutes: default 45 if not specified
+- max_participants: default 1 if not specified
+- title: null if not specified
+- date: ISO format "YYYY-MM-DD" (resolve relative dates using TODAY'S DATE above)
+- If details are missing (no time, or no day/date), respond with type "help" asking for the missing info.
 
 HOW THINGS WORK:
 
@@ -102,14 +120,15 @@ SEND A MESSAGE:
 3. Click {"button":{"label":"Send","color":"blue"}}
 
 CHANGE SETTINGS:
-1. Click {"button":{"label":"Settings","color":"gray"}} card on Dashboard
-2. Or click the ⚙ icon on the Schedule page
+1. Click the ⚙ icon on any page header
+2. Modify and save
 
 SHARE BOOKING LINK:
-1. Click the {"button":{"label":"Share","color":"gray"}} card on Dashboard (cyan card)
-2. Copy the link and send to students. Students open the link, enter their email, and book lessons.
+1. Click the Share card on Dashboard
+2. Copy the link and send to students
 
 Answer in the same language as the question. Hebrew question → Hebrew answer. English → English.`;
+}
 
 export async function POST(request: NextRequest) {
   const auth = await requireTeacher();
@@ -124,6 +143,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Question is required' }, { status: 400 });
   }
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   let raw = '';
@@ -131,7 +151,7 @@ export async function POST(request: NextRequest) {
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: buildSystemPrompt(todayStr) },
         { role: 'user', content: question.trim() },
       ],
       temperature: 0.2,
@@ -142,7 +162,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `AI error: ${msg}` }, { status: 502 });
   }
 
-  // Strip markdown code fences if present
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
   try {

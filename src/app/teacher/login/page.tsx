@@ -44,8 +44,8 @@ export default function TeacherLogin() {
       setStep('totp');
     } else {
       fetch('/api/teacher/record-login', { method: 'POST' }).catch(() => {});
-      markSessionActive();
-      router.push('/teacher/schedule');
+      markSessionActive(true);
+      router.push('/teacher');
       router.refresh();
     }
   }
@@ -69,8 +69,8 @@ export default function TeacherLogin() {
     }
 
     fetch('/api/teacher/record-login', { method: 'POST' }).catch(() => {});
-    markSessionActive();
-    router.push('/teacher/schedule');
+    markSessionActive(true);
+    router.push('/teacher');
     router.refresh();
   }
 
@@ -131,6 +131,12 @@ export default function TeacherLogin() {
             >
               {loading ? t('auth.signingIn') : t('auth.signIn')}
             </button>
+
+            <div className="text-center pt-1">
+              <Link href="/subscribe" className="text-sm text-blue-600 hover:underline font-medium">
+                {t('auth.newSubscribe')}
+              </Link>
+            </div>
           </form>
         ) : (
           <form onSubmit={handleTotp} className="space-y-4">

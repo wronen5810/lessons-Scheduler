@@ -6,6 +6,9 @@ const MFA_SECRET = process.env.MFA_SECRET ?? 'dev-mfa-secret-change-in-productio
 export const MFA_COOKIE = 'mfa_v';
 export const MFA_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+export const ADMIN_MFA_COOKIE = 'admin_mfa_v';
+export const ADMIN_MFA_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
 export function signMfaCookie(userId: string): string {
   const sig = createHmac('sha256', MFA_SECRET).update(userId).digest('hex');
   return `${userId}.${sig}`;

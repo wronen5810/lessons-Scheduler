@@ -27,7 +27,7 @@ export async function POST(
   const { data: { user } } = await supabase.auth.admin.getUserById(id);
   if (!user?.email) return NextResponse.json({ error: 'Teacher email not found' }, { status: 404 });
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? '').trim();
 
   // Generate fresh token (48 h)
   const setupToken = randomBytes(32).toString('hex');

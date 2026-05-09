@@ -3,6 +3,11 @@ import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { todayInIsrael } from '@/lib/dates';
 
+function timeToMin(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
 // GET /api/teacher/one-time-slots?from=YYYY-MM-DD
 export async function GET(request: NextRequest) {
   const auth = await requireTeacher();
@@ -35,6 +40,37 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceSupabase();
+
+  // Overlap check: other one-time slots on the same date
+  const newStart = timeToMin(start_time);
+  const newDur = duration_minutes ?? 45;
+  const dayOfWeek = new Date(specific_date + 'T00:00:00').getDay();
+
+  const [{ data: existingOneTime }, { data: existingTemplates }] = await Promise.all([
+    supabase
+      .from('one_time_slots')
+      .select('start_time, duration_minutes')
+      .eq('teacher_id', auth.user.id)
+      .eq('specific_date', specific_date),
+    supabase
+      .from('slot_templates')
+      .select('start_time, duration_minutes')
+      .eq('teacher_id', auth.user.id)
+      .eq('day_of_week', dayOfWeek)
+      .or(`end_date.is.null,end_date.gte.${specific_date}`),
+  ]);
+
+  for (const s of [...(existingOneTime ?? []), ...(existingTemplates ?? [])]) {
+    const es = timeToMin(s.start_time);
+    const ed = s.duration_minutes ?? 45;
+    if (newStart < es + ed && es < newStart + newDur) {
+      return NextResponse.json(
+        { error: `Overlaps with an existing slot at ${s.start_time}` },
+        { status: 409 }
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from('one_time_slots')
     .insert({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
-import { emailTeacherAccessRequest } from '@/lib/email';
+import { emailTeacherAccessRequest, emailTeacherStudentAutoApproved } from '@/lib/email';
 import { mergePrefs, sendEmail, sendWhatsApp, sendPush } from '@/lib/notifications';
 import { sendPushToUser } from '@/lib/firebase-admin';
 import { whatsappTeacherAccessRequest } from '@/lib/whatsapp';
@@ -17,7 +17,49 @@ export async function POST(request: NextRequest) {
   const normalizedEmail = email.toLowerCase().trim();
   const supabase = createServiceSupabase();
 
-  // Store in DB so it appears on the teacher dashboard
+  const [{ data: { user } }, { data: settingsRow }, { data: profileRow }] = await Promise.all([
+    supabase.auth.admin.getUserById(teacherId),
+    supabase.from('teacher_settings').select('notification_preferences, features').eq('teacher_id', teacherId).single(),
+    supabase.from('profiles').select('phone').eq('id', teacherId).single(),
+  ]);
+  const teacherEmail = user?.email;
+  const teacherPhone = profileRow?.phone ?? null;
+  const prefs = mergePrefs(settingsRow?.notification_preferences);
+  const features = (settingsRow?.features ?? {}) as { auto_approve_students?: boolean };
+  const autoApprove = features.auto_approve_students ?? true;
+
+  if (autoApprove) {
+    // Add student directly to the students table
+    await supabase.from('students').insert({
+      teacher_id: teacherId,
+      name,
+      email: normalizedEmail,
+      phone: phone ?? null,
+      notes: note ?? null,
+      is_active: true,
+      is_waitlisted: false,
+    });
+
+    // Notify teacher that a new student joined automatically
+    await Promise.all([
+      teacherEmail && sendEmail(prefs, 'access_request')
+        ? emailTeacherStudentAutoApproved({
+            studentName: name,
+            studentEmail: normalizedEmail,
+            studentPhone: phone ?? null,
+            studentNote: note ?? null,
+            teacherEmail,
+          }).catch((e) => console.error('Auto-approve email failed:', e))
+        : null,
+      sendPush(prefs, 'access_request')
+        ? sendPushToUser(supabase, teacherId, 'New Student Joined', `${name} has been automatically added to your students.`).catch((e) => console.error('Auto-approve push failed:', e))
+        : null,
+    ]);
+
+    return NextResponse.json({ ok: true, auto_approved: true });
+  }
+
+  // Manual approval flow: store request so it appears on the teacher dashboard
   await supabase.from('student_access_requests').insert({
     teacher_id: teacherId,
     student_name: name,
@@ -25,15 +67,6 @@ export async function POST(request: NextRequest) {
     student_phone: phone ?? null,
     student_note: note ?? null,
   });
-
-  const [{ data: { user } }, { data: settingsRow }, { data: profileRow }] = await Promise.all([
-    supabase.auth.admin.getUserById(teacherId),
-    supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', teacherId).single(),
-    supabase.from('profiles').select('phone').eq('id', teacherId).single(),
-  ]);
-  const teacherEmail = user?.email;
-  const teacherPhone = profileRow?.phone ?? null;
-  const prefs = mergePrefs(settingsRow?.notification_preferences);
 
   await Promise.all([
     teacherEmail && sendEmail(prefs, 'access_request') ? emailTeacherAccessRequest({

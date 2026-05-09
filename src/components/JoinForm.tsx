@@ -123,7 +123,10 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
     }
 
     if (data.teachers.length === 1) {
-      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(studentEmail)}`);
+      const tid = data.teachers[0].id;
+      localStorage.setItem('last_teacher_id', tid);
+      localStorage.setItem('last_student_email', studentEmail);
+      router.push(`/t/${tid}?email=${encodeURIComponent(studentEmail)}`);
     } else {
       setTeachers(data.teachers);
       setStep('teachers');
@@ -142,7 +145,10 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
     setLoading(false);
 
     if (pendingTeachers.length === 1) {
-      router.push(`/t/${pendingTeachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
+      const tid = pendingTeachers[0].id;
+      localStorage.setItem('last_teacher_id', tid);
+      localStorage.setItem('last_student_email', resolvedEmail);
+      router.push(`/t/${tid}?email=${encodeURIComponent(resolvedEmail)}`);
     } else {
       setTeachers(pendingTeachers);
       setStep('teachers');

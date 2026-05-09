@@ -7,6 +7,8 @@ import TeacherNav from '@/components/TeacherNav';
 import AssistantBar from '@/components/AssistantBar';
 import PolicyGate from '@/components/PolicyGate';
 import PolicyFooter from '@/components/PolicyFooter';
+import PushRegistrar from '@/components/PushRegistrar';
+import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import { todayInIsrael, TZ } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
@@ -73,7 +75,7 @@ export default async function TeacherProtectedLayout({ children }: { children: R
 
   if (!policiesAccepted) {
     return (
-      <SessionGuard loginPath="/teacher/login">
+      <SessionGuard loginPath="/teacher/login" persistent>
         <PolicyGate />
       </SessionGuard>
     );
@@ -97,7 +99,9 @@ export default async function TeacherProtectedLayout({ children }: { children: R
   }
 
   return (
-    <SessionGuard loginPath="/teacher/login">
+    <SessionGuard loginPath="/teacher/login" persistent>
+      <PushRegistrar />
+      <EmailVerificationBanner />
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <TeacherNav nextLesson={nextLesson} />
         <AssistantBar />

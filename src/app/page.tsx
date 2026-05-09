@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import SaderotLogo from '@/components/SaderotLogo';
 
 function TeacherIllustration() {
   return (
@@ -30,21 +31,58 @@ function StudentIllustration() {
 export default function LandingPage() {
   const router = useRouter();
   const { t } = useLanguage();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
-    const params = new URLSearchParams(hash);
-    const access_token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
-    const type = params.get('type');
-    if (access_token && refresh_token && type === 'magiclink') {
-      const supabase = createBrowserSupabase();
-      supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
-        if (!error) router.replace('/teacher');
-      });
+    async function checkSession() {
+      // 1. Handle magic link token in URL hash (teacher impersonation / password reset)
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        const params = new URLSearchParams(hash);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        const type = params.get('type');
+        if (access_token && refresh_token && type === 'magiclink') {
+          const supabase = createBrowserSupabase();
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (!error) { router.replace('/teacher'); return; }
+        }
+      }
+
+      // 2. Restore teacher session — Supabase cookie + local session flag both present
+      if (localStorage.getItem('ls_site_session')) {
+        const supabase = createBrowserSupabase();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) { router.replace('/teacher'); return; }
+        // Cookie expired — clear the stale flag so they see the login page
+        localStorage.removeItem('ls_site_session');
+      }
+
+      // 3. Restore student session
+      const lastTeacherId = localStorage.getItem('last_teacher_id');
+      const lastEmail = localStorage.getItem('last_student_email');
+      if (lastTeacherId && localStorage.getItem(`st_${lastTeacherId}`)) {
+        const url = lastEmail
+          ? `/t/${lastTeacherId}?email=${encodeURIComponent(lastEmail)}`
+          : `/t/${lastTeacherId}`;
+        router.replace(url);
+        return;
+      }
+
+      // 4. No session found — show the landing page
+      setReady(true);
     }
+
+    checkSession();
   }, [router]);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center px-4 py-10">
@@ -54,6 +92,9 @@ export default function LandingPage() {
       </div>
 
       <div className="text-center mb-8">
+        <div className="flex justify-center mb-4">
+          <SaderotLogo size="lg" showText={false} />
+        </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">{t('landing.title')}</h1>
         <p className="text-base sm:text-lg text-gray-500">{t('landing.howJoining')}</p>
       </div>
@@ -89,6 +130,21 @@ export default function LandingPage() {
         </Link>
 
       </div>
+
+      <a
+        href="https://play.google.com/store/apps/details?id=com.saderOT.myapp"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-8 flex items-center gap-2 bg-black text-white rounded-xl px-5 py-3 hover:bg-gray-800 transition-colors"
+      >
+        <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3.18 23.76c.3.17.64.22.98.15l11.46-11.46-2.9-2.9L3.18 23.76zm15.6-13.2L16.2 9l-2.9 2.9 2.56 2.56 2.58-1.44c.74-.41.74-1.44-.26-2.46zM3 .24C2.67.41 2.4.76 2.4 1.2v21.6c0 .44.27.79.6.96l12.6-12.6L3 .24zm10.32 11.22L3.18.24c-.04-.02-.1-.04-.18-.04L13.32 11.46z"/>
+        </svg>
+        <div className="flex flex-col leading-tight">
+          <span className="text-[10px] text-gray-300">GET IT ON</span>
+          <span className="text-sm font-semibold">Google Play</span>
+        </div>
+      </a>
 
       <p className="mt-6 text-sm text-gray-500">
         {t('landing.newTeacher')}{' '}

@@ -10,17 +10,29 @@ export default function BillingPage() {
   const [individual, setIndividual] = useState<BillingRow[]>([]);
   const [groupBilling, setGroupBilling] = useState<GroupBillingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/teacher/billing')
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) throw new Error('auth');
+        if (!r.ok) throw new Error(`server:${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setIndividual(data.individual ?? []);
         setGroupBilling(data.groups ?? []);
-        setLoading(false);
-      });
+      })
+      .catch((err: Error) => {
+        if (err.message === 'auth') {
+          setFetchError('Session expired. Please sign out and sign back in.');
+        } else {
+          setFetchError('Failed to load billing data. Please refresh the page.');
+        }
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const totalIndividualBalance = individual.filter((r) => r.balance != null).reduce((sum, r) => sum + (r.balance ?? 0), 0);
@@ -40,6 +52,10 @@ export default function BillingPage() {
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
         {loading ? (
           <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
+        ) : fetchError ? (
+          <div className="bg-white rounded-xl border border-red-200 shadow-sm px-6 py-10 text-center space-y-2">
+            <p className="text-red-500 text-sm">{fetchError}</p>
+          </div>
         ) : !hasData ? (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-10 text-center text-gray-400">
             {t('billing.noLessons')}

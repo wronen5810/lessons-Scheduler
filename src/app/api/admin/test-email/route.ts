@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { emailTeacherWelcome } from '@/lib/email';
 
-const TEST_EMAIL = 'test@saderot.com';
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+const TEST_EMAIL = 'info@saderot.com';
+const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL ?? '').trim();
 
 // POST /api/admin/test-email — sends a test welcome email to test@saderot.com
 export async function POST() {

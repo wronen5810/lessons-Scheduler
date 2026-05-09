@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DAY_NAMES } from '@/lib/dates';
+import { parseISO } from 'date-fns';
 
 interface Props {
   date: string;
@@ -22,7 +23,8 @@ export default function AddSlotModal({ date, defaultDuration, timeFormat, onClos
   const [duration, setDuration] = useState(defaultDuration);
   const [title, setTitle] = useState('');
   const [maxParticipants, setMaxParticipants] = useState(1);
-  const [dayOfWeek, setDayOfWeek] = useState(0);
+  const [dayOfWeek, setDayOfWeek] = useState(() => parseISO(date).getDay());
+  const [endDate, setEndDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,7 +49,7 @@ export default function AddSlotModal({ date, defaultDuration, timeFormat, onClos
       res = await fetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day_of_week: dayOfWeek, start_time: startTime, duration_minutes: duration, title: title.trim() || null, max_participants: maxParticipants }),
+        body: JSON.stringify({ day_of_week: dayOfWeek, start_time: startTime, duration_minutes: duration, title: title.trim() || null, max_participants: maxParticipants, end_date: endDate || null }),
       });
     } else {
       res = await fetch('/api/teacher/one-time-slots', {
@@ -102,13 +104,20 @@ export default function AddSlotModal({ date, defaultDuration, timeFormat, onClos
           </div>
 
           {slotType === 'weekly' && (
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Day of week</label>
-              <select value={dayOfWeek} onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {DAY_OPTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Day of week</label>
+                <select value={dayOfWeek} onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {DAY_OPTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">End date (optional)</label>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </>
           )}
 
           <div>

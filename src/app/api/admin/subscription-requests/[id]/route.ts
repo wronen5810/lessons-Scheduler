@@ -134,7 +134,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? '').trim();
   const teacherName = display_name || req.name;
 
   // Generate a one-time setup token (valid 48 h) and store it on the profile

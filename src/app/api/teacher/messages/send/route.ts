@@ -3,12 +3,7 @@ import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { emailDirectMessage } from '@/lib/email';
 import { sendPushToEmails } from '@/lib/firebase-admin';
-
-function toWhatsAppUrl(phone: string, message: string): string {
-  const digits = phone.replace(/\D/g, '');
-  const e164 = digits.startsWith('0') ? `972${digits.slice(1)}` : digits.replace(/^\+/, '');
-  return `https://wa.me/${e164}?text=${encodeURIComponent(message)}`;
-}
+import { whatsappDirectMessage } from '@/lib/whatsapp';
 
 interface Recipient {
   id: string;
@@ -93,13 +88,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No valid recipients found' }, { status: 400 });
   }
 
-  // Get teacher email for reply-to
+  // Get teacher info for email reply-to and WhatsApp template
   const { data: { user: teacherUser } } = await supabase.auth.admin.getUserById(auth.user.id);
   const teacherEmail = teacherUser?.email ?? '';
+  const { data: teacherProfile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', auth.user.id)
+    .single();
+  const teacherName = teacherProfile?.display_name ?? '';
 
   const result: {
     email?: { sent: number; failed: Array<{ name: string; email: string }> };
-    whatsapp?: { links: Array<{ name: string; phone: string; url: string }>; noPhone: Array<{ name: string; email: string }> };
+    whatsapp?: { sent: number; failed: Array<{ name: string }>; noPhone: Array<{ name: string; email: string }> };
     notification?: { sent: number; noToken: Array<{ name: string; email: string }> };
   } = {};
 
@@ -126,38 +127,62 @@ export async function POST(request: NextRequest) {
     result.email = { sent: sent.length, failed };
   }
 
-  // ── WHATSAPP ───────────────────────────────────────────────────────
+  // ── WHATSAPP (Twilio) ──────────────────────────────────────────────
   if (channels.whatsapp) {
-    const links: Array<{ name: string; phone: string; url: string }> = [];
+    const sent: Array<{ name: string }> = [];
+    const failed: Array<{ name: string }> = [];
     const noPhone: Array<{ name: string; email: string }> = [];
 
-    for (const r of recipients) {
-      if (r.phone) {
-        links.push({
-          name: r.name,
-          phone: r.phone,
-          url: toWhatsAppUrl(r.phone, message.trim()),
-        });
-      } else {
-        noPhone.push({ name: r.name, email: r.email });
-      }
-    }
-    result.whatsapp = { links, noPhone };
+    await Promise.all(
+      recipients.map(async (r) => {
+        if (!r.phone) {
+          noPhone.push({ name: r.name, email: r.email });
+          return;
+        }
+        try {
+          await whatsappDirectMessage(r.phone, r.name, teacherName, message.trim());
+          sent.push({ name: r.name });
+        } catch (e) {
+          console.error(`WhatsApp send failed for ${r.name}:`, e);
+          failed.push({ name: r.name });
+        }
+      })
+    );
+    result.whatsapp = { sent: sent.length, failed, noPhone };
   }
 
   // ── PUSH NOTIFICATION ──────────────────────────────────────────────
   if (channels.notification) {
-    const emails = recipients.map((r) => r.email.toLowerCase());
-    const { sent, noToken: noTokenEmails } = await sendPushToEmails(
-      supabase,
-      emails,
-      'Message from your teacher',
-      message.trim()
+    try {
+      const emails = recipients.map((r) => r.email.toLowerCase());
+      const { sent, noToken: noTokenEmails } = await sendPushToEmails(
+        supabase,
+        emails,
+        'Message from your teacher',
+        message.trim()
+      );
+      const noToken = recipients
+        .filter((r) => noTokenEmails.includes(r.email.toLowerCase()))
+        .map((r) => ({ name: r.name, email: r.email }));
+      result.notification = { sent, noToken };
+    } catch (e) {
+      console.error('[push] sendPushToEmails failed:', e);
+      result.notification = { sent: 0, noToken: recipients.map((r) => ({ name: r.name, email: r.email })) };
+    }
+  }
+
+  // ── PERSIST TO DB (student inbox) ─────────────────────────────────
+  try {
+    await supabase.from('messages').insert(
+      recipients.map((r) => ({
+        teacher_id: auth.user.id,
+        student_email: r.email.toLowerCase(),
+        direction: 'to_student',
+        body: message.trim(),
+      }))
     );
-    const noToken = recipients
-      .filter((r) => noTokenEmails.includes(r.email.toLowerCase()))
-      .map((r) => ({ name: r.name, email: r.email }));
-    result.notification = { sent, noToken };
+  } catch (e) {
+    console.error('[messages] DB persist failed:', e);
   }
 
   return NextResponse.json({ recipients: recipients.length, result });

@@ -29,10 +29,18 @@ export async function GET() {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
 
-  const supabase = createServiceSupabase();
-  const teacherId = auth.user.id;
+  try {
+    return await getBillingData(auth.user.id);
+  } catch (err) {
+    console.error('Billing route error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 
-  const [{ data: students }, { data: otDone }, { data: recDone }, { data: groups }] = await Promise.all([
+async function getBillingData(teacherId: string) {
+  const supabase = createServiceSupabase();
+
+  const [{ data: students }, { data: otDone }, { data: recDone }, { data: groups }, { data: templates }] = await Promise.all([
     supabase.from('students').select('email, name, rate').eq('teacher_id', teacherId),
     supabase
       .from('one_time_bookings')
@@ -44,16 +52,10 @@ export async function GET() {
       .select('id, student_email, student_name, lesson_date, template_id, status, group_id')
       .eq('teacher_id', teacherId)
       .eq('status', 'completed'),
-    supabase
-      .from('student_groups')
-      .select('id, name, rate')
-      .eq('teacher_id', teacherId),
+    supabase.from('student_groups').select('id, name, rate').eq('teacher_id', teacherId),
+    supabase.from('slot_templates').select('id, start_time, duration_minutes').eq('teacher_id', teacherId),
   ]);
 
-  const templateIds = [...new Set((recDone ?? []).map((b) => b.template_id))];
-  const { data: templates } = templateIds.length
-    ? await supabase.from('slot_templates').select('id, start_time, duration_minutes').in('id', templateIds)
-    : { data: [] };
   const tplMap = new Map((templates ?? []).map((t) => [t.id, t]));
 
   // Fetch group members and payment records
@@ -91,7 +93,11 @@ export async function GET() {
   }
 
   const groupMap = new Map((groups ?? []).map((g) => [g.id, g]));
-  const studentMap = new Map((students ?? []).map((s) => [s.email.toLowerCase(), s]));
+  const studentMap = new Map(
+    (students ?? [])
+      .filter((s): s is typeof s & { email: string } => s.email != null)
+      .map((s) => [s.email.toLowerCase(), s])
+  );
 
   // ── Individual student billing ──────────────────────────────────
   const byStudent = new Map<string, BillingRow>();

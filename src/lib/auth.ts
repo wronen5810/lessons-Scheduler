@@ -2,7 +2,7 @@ import type { User } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAuthSupabase, createServiceSupabase } from './supabase-server';
-import { verifyMfaCookie, MFA_COOKIE } from './mfa';
+import { verifyMfaCookie, MFA_COOKIE, ADMIN_MFA_COOKIE } from './mfa';
 
 type TeacherSessionResult =
   | { error: NextResponse; user: null; totp_enabled?: never }
@@ -60,8 +60,13 @@ export async function requireTeacher(): Promise<{ error: NextResponse; user: nul
   return { error: null, user: auth.user };
 }
 
-/** Call at the top of admin-only API route handlers. */
-export async function requireAdmin(): Promise<{ error: NextResponse; user: null } | { error: null; user: User }> {
+type AdminSessionResult =
+  | { error: NextResponse; user: null; totp_enabled?: never }
+  | { error: null; user: User; totp_enabled: boolean };
+
+/** Checks admin session + profile — no MFA cookie check.
+ *  Used by admin 2FA endpoints themselves. */
+export async function requireAdminSession(): Promise<AdminSessionResult> {
   const supabase = await createAuthSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -69,11 +74,31 @@ export async function requireAdmin(): Promise<{ error: NextResponse; user: null 
   }
 
   const service = createServiceSupabase();
-  const { data: profile } = await service.from('profiles').select('role, is_active').eq('id', user.id).single();
+  const { data: profile } = await service
+    .from('profiles')
+    .select('role, is_active, totp_enabled')
+    .eq('id', user.id)
+    .single();
 
   if (!profile || profile.role !== 'admin' || !profile.is_active) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }), user: null };
   }
 
-  return { error: null, user };
+  return { error: null, user, totp_enabled: profile.totp_enabled ?? false };
+}
+
+/** Full admin auth: session + profile + admin MFA cookie when 2FA is enabled. */
+export async function requireAdmin(): Promise<{ error: NextResponse; user: null } | { error: null; user: User }> {
+  const auth = await requireAdminSession();
+  if (auth.error) return { error: auth.error, user: null };
+
+  if (auth.totp_enabled) {
+    const cookieStore = await cookies();
+    const mfaValue = cookieStore.get(ADMIN_MFA_COOKIE)?.value;
+    if (!verifyMfaCookie(mfaValue, auth.user.id)) {
+      return { error: NextResponse.json({ error: 'MFA verification required' }, { status: 401 }), user: null };
+    }
+  }
+
+  return { error: null, user: auth.user };
 }

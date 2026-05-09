@@ -21,7 +21,10 @@ function CallbackHandler() {
       const code = searchParams.get('code');
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) { router.replace(next); return; }
+        if (!error) {
+          await fetch('/api/self-register', { method: 'POST' }).catch(() => {});
+          router.replace(next); return;
+        }
       }
 
       // Case 2: Implicit flow — Supabase passes #access_token=xxx&refresh_token=yyy in the hash
@@ -32,7 +35,10 @@ function CallbackHandler() {
         const refresh_token = params.get('refresh_token');
         if (access_token && refresh_token) {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-          if (!error) { router.replace(next); return; }
+          if (!error) {
+            await fetch('/api/self-register', { method: 'POST' }).catch(() => {});
+            router.replace(next); return;
+          }
         }
       }
 

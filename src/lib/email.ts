@@ -4,7 +4,7 @@ import { DAY_NAMES, formatDisplayDateLong } from './dates';
 function getResend() { return new Resend(process.env.RESEND_API_KEY!); }
 function FROM() { return process.env.EMAIL_FROM!; }
 function TEACHER_EMAIL() { return process.env.TEACHER_EMAIL!; }
-function BASE_URL() { return process.env.NEXT_PUBLIC_BASE_URL!; }
+function BASE_URL() { return process.env.NEXT_PUBLIC_BASE_URL!.trim(); }
 
 interface LessonInfo {
   studentName: string;
@@ -120,6 +120,35 @@ export async function emailTeacherCancellation(info: LessonInfo & { reason: stri
   });
 }
 
+export async function emailTeacherStudentAutoApproved({
+  studentName,
+  studentEmail,
+  studentPhone,
+  studentNote,
+  teacherEmail,
+}: {
+  studentName: string;
+  studentEmail: string;
+  studentPhone?: string | null;
+  studentNote?: string | null;
+  teacherEmail: string;
+}) {
+  await getResend().emails.send({
+    from: FROM(),
+    to: teacherEmail,
+    subject: `New student joined: ${studentName}`,
+    html: `
+      <h2>New Student Joined</h2>
+      <p>A student has been automatically added to your student list.</p>
+      <p><strong>Name:</strong> ${studentName}</p>
+      <p><strong>Email:</strong> ${studentEmail}</p>
+      ${studentPhone ? `<p><strong>Phone:</strong> ${studentPhone}</p>` : ''}
+      ${studentNote ? `<p><strong>Note:</strong> ${studentNote}</p>` : ''}
+      <p><a href="${BASE_URL()}/teacher/students">View your students →</a></p>
+    `,
+  });
+}
+
 export async function emailTeacherAccessRequest({
   studentName,
   studentEmail,
@@ -227,7 +256,33 @@ export async function emailTeacherWelcome({
             Set my password →
           </a>
         </p>
+        <p>Once you're in, check out the <a href="https://saderot.com/guide" style="color:#2563EB;font-weight:600">User Guide</a> to get up to speed quickly.</p>
         <p style="font-size:13px;color:#888">This link expires in 24 hours. If you have any questions, reply to this email and we'll be happy to help.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:28px 0 16px"/>
+        <p style="font-size:12px;color:#aaa;margin:0">Saderot · Lesson Scheduling for Teachers · <a href="${BASE_URL()}" style="color:#aaa">${BASE_URL()}</a></p>
+      </div>
+    `,
+  });
+}
+
+export async function emailSubscribeInvite({ email }: { email: string }) {
+  const link = `${BASE_URL()}/subscribe?email=${encodeURIComponent(email)}`;
+  return getResend().emails.send({
+    from: FROM(),
+    to: email,
+    subject: 'Complete your Saderot registration',
+    html: `
+      <div style="font-family:sans-serif;max-width:540px;margin:0 auto">
+        <h2 style="color:#1e293b;margin-bottom:8px">You're almost there!</h2>
+        <p>Thanks for your interest in Saderot — lesson scheduling built for teachers.</p>
+        <p>Click the button below to choose your plan and complete your registration:</p>
+        <p style="margin:28px 0">
+          <a href="${link}"
+             style="background:#2563EB;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block">
+            Complete registration →
+          </a>
+        </p>
+        <p style="font-size:13px;color:#888">Or copy this link: <a href="${link}" style="color:#2563EB">${link}</a></p>
         <hr style="border:none;border-top:1px solid #eee;margin:28px 0 16px"/>
         <p style="font-size:12px;color:#aaa;margin:0">Saderot · Lesson Scheduling for Teachers · <a href="${BASE_URL()}" style="color:#aaa">${BASE_URL()}</a></p>
       </div>

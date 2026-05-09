@@ -66,6 +66,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
                   onClick={onSelectSlot}
                   isTeacher
                   timeFormat={timeFormat}
+                  compact
                 />
               ))
             )}

@@ -6,38 +6,44 @@ import { createBrowserSupabase } from '@/lib/supabase-browser';
 
 const SESSION_KEY = 'ls_site_session';
 
-/** Mark the session as active (call after successful login). */
-export function markSessionActive() {
-  sessionStorage.setItem(SESSION_KEY, '1');
+/** Mark the session as active (call after successful login).
+ *  Pass persistent=true for native app contexts (teacher/student) — uses localStorage.
+ *  Default (false) uses sessionStorage for web-only flows like admin. */
+export function markSessionActive(persistent = false) {
+  (persistent ? localStorage : sessionStorage).setItem(SESSION_KEY, '1');
 }
 
 /**
  * Wraps protected pages. On mount, checks whether the user arrived
- * from within this site (sessionStorage flag set). If not — they
- * navigated here from another domain — signs them out and redirects
- * to the login page.
+ * from within this site (storage flag set). If not — signs them out
+ * and redirects to the login page.
+ *
+ * persistent=true  → localStorage  (survives app restart — for Capacitor/mobile)
+ * persistent=false → sessionStorage (cleared on tab/window close — for admin)
  */
 export default function SessionGuard({
   children,
   loginPath,
+  persistent = false,
 }: {
   children: React.ReactNode;
   loginPath: string;
+  persistent?: boolean;
 }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const active = sessionStorage.getItem(SESSION_KEY);
+    const storage = persistent ? localStorage : sessionStorage;
+    const active = storage.getItem(SESSION_KEY);
     if (!active) {
-      // Came from outside this site — sign out and force login
       createBrowserSupabase()
         .auth.signOut()
         .finally(() => router.replace(loginPath));
     } else {
       setReady(true);
     }
-  }, [loginPath, router]);
+  }, [loginPath, persistent, router]);
 
   if (!ready) {
     return (
