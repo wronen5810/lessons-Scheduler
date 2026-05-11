@@ -128,13 +128,13 @@ export default function TeacherDashboard() {
 
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <Link href="/teacher/schedule" className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center transition-colors hover:border-blue-300">
             {todayCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className="text-2xl font-bold text-blue-600">{todayCount}</p>
             }
             <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.todayLessons')}</p>
-          </div>
+          </Link>
           <Link href="/teacher/schedule" className={`bg-white rounded-xl border shadow-sm p-3 text-center transition-colors hover:border-amber-300 ${pendingCount ? 'border-amber-200' : 'border-gray-100'}`}>
             {pendingCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />

@@ -105,7 +105,7 @@ export default async function TeacherProtectedLayout({ children }: { children: R
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <TeacherNav nextLesson={nextLesson} />
         <AssistantBar />
-        <div className="flex-1">{children}</div>
+        <div className="flex-1 pb-14 sm:pb-0">{children}</div>
         <PolicyFooter />
       </div>
     </SessionGuard>

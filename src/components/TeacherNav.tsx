@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
@@ -13,7 +13,7 @@ import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import SaderotLogo from '@/components/SaderotLogo';
 import {
   Calendar, Users, Users2, CreditCard, MessageSquare, Share2,
-  Settings, LogOut, Clock, UserCircle, HelpCircle,
+  Settings, LogOut, Clock, UserCircle, HelpCircle, Home,
 } from 'lucide-react';
 
 export default function TeacherNav({ title, nextLesson }: { title?: string; nextLesson?: { hours: number; minutes: number } | null }) {
@@ -220,6 +220,36 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
       {showSettings && (
         <TeacherSettingsModal settings={settings} onSave={saveSettings} onClose={() => setShowSettings(false)} initialTab={settingsTab} />
       )}
+
+      {/* ── Bottom tab bar — mobile only ── */}
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 h-14 bg-white border-t border-gray-200 z-40 flex">
+        {([
+          { href: '/teacher',          Icon: Home,     label: t('teacher.dashboard') },
+          { href: '/teacher/schedule', Icon: Calendar, label: t('teacher.schedule'), badge: pendingCount > 0 },
+          { href: '/teacher/students', Icon: Users,    label: t('common.students') },
+        ] as { href: string; Icon: React.ElementType; label: string; badge?: boolean }[]).map(({ href, Icon, label, badge }) => {
+          const active = href === '/teacher' ? pathname === '/teacher' : pathname.startsWith(href);
+          return (
+            <Link key={href} href={href}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors
+                ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <div className="relative">
+                <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.5} />
+                {badge && <span className="absolute -top-0.5 -right-1.5 w-2 h-2 bg-amber-500 rounded-full" />}
+              </div>
+              <span className="truncate max-w-[56px]">{label}</span>
+            </Link>
+          );
+        })}
+        <button
+          onClick={() => { setSettingsTab('general'); setShowSettings(true); }}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors text-gray-400 hover:text-gray-600`}
+        >
+          <Settings className="w-5 h-5" strokeWidth={1.5} />
+          <span>{t('common.settings')}</span>
+        </button>
+      </nav>
     </>
   );
 }

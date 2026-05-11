@@ -99,32 +99,32 @@ export default function LandingPage() {
         <p className="text-base sm:text-lg text-gray-500">{t('landing.howJoining')}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-6 w-full max-w-2xl">
+      <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
 
         <Link
           href="/student"
-          className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-300 px-3 py-5 sm:p-8 flex flex-col items-center text-center transition-all duration-200 cursor-pointer"
+          className="group bg-white rounded-2xl shadow-sm hover:shadow-md border-2 border-transparent hover:border-purple-300 p-5 sm:p-8 flex flex-col items-center text-center transition-all duration-200"
         >
-          <div className="w-20 h-24 sm:w-40 sm:h-44 mb-3 sm:mb-6 transition-transform duration-200 group-hover:scale-105">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 mb-4 transition-transform duration-200 group-hover:scale-105">
             <StudentIllustration />
           </div>
-          <h2 className="text-sm sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">{t('landing.student')}</h2>
-          <p className="hidden sm:block text-sm text-gray-500 mb-6">{t('landing.studentDesc')}</p>
-          <span className="inline-block bg-blue-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-6 sm:py-2.5 rounded-xl group-hover:bg-blue-700 transition-colors">
+          <h2 className="text-base sm:text-xl font-semibold text-gray-900 mb-1">{t('landing.student')}</h2>
+          <p className="text-xs sm:text-sm text-gray-500 mb-4 leading-snug">{t('landing.studentDesc')}</p>
+          <span className="inline-block bg-purple-600 text-white text-xs sm:text-sm font-medium px-4 py-2 rounded-xl group-hover:bg-purple-700 transition-colors">
             {t('landing.bookLesson')}
           </span>
         </Link>
 
         <Link
           href="/teacher/login"
-          className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-transparent hover:border-indigo-300 px-3 py-5 sm:p-8 flex flex-col items-center text-center transition-all duration-200 cursor-pointer"
+          className="group bg-white rounded-2xl shadow-sm hover:shadow-md border-2 border-transparent hover:border-blue-300 p-5 sm:p-8 flex flex-col items-center text-center transition-all duration-200"
         >
-          <div className="w-20 h-24 sm:w-40 sm:h-44 mb-3 sm:mb-6 transition-transform duration-200 group-hover:scale-105">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 mb-4 transition-transform duration-200 group-hover:scale-105">
             <TeacherIllustration />
           </div>
-          <h2 className="text-sm sm:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">{t('landing.teacher')}</h2>
-          <p className="hidden sm:block text-sm text-gray-500 mb-6">{t('landing.teacherDesc')}</p>
-          <span className="inline-block bg-indigo-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-6 sm:py-2.5 rounded-xl group-hover:bg-indigo-700 transition-colors">
+          <h2 className="text-base sm:text-xl font-semibold text-gray-900 mb-1">{t('landing.teacher')}</h2>
+          <p className="text-xs sm:text-sm text-gray-500 mb-4 leading-snug">{t('landing.teacherDesc')}</p>
+          <span className="inline-block bg-blue-600 text-white text-xs sm:text-sm font-medium px-4 py-2 rounded-xl group-hover:bg-blue-700 transition-colors">
             {t('landing.dashboard')}
           </span>
         </Link>
