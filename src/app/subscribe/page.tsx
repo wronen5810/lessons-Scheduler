@@ -74,15 +74,26 @@ function SignupForm() {
       return;
     }
 
+    const accessToken = data.session?.access_token;
+
+    if (!accessToken) {
+      // Email confirmation is required — profile will be created after the user
+      // clicks the confirmation link (handled in /auth/callback).
+      setSubmitting(false);
+      setError('');
+      // Reuse the error slot to show a success/info message
+      router.push('/subscribe/check-email?email=' + encodeURIComponent(email.trim()));
+      return;
+    }
+
     // Create profile + subscription.
     // Pass the access token directly — cookie propagation after signUp is not
     // reliable enough for the immediately-following server request.
-    const accessToken = data.session?.access_token;
     const registerRes = await fetch('/api/self-register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ name: name.trim() }),
     });

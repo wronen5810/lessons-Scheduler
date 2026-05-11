@@ -20,9 +20,13 @@ function CallbackHandler() {
       // Case 1: PKCE flow — Supabase passes ?code=xxx
       const code = searchParams.get('code');
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
-          await fetch('/api/self-register', { method: 'POST' }).catch(() => {});
+          const token = sessionData.session?.access_token;
+          await fetch('/api/self-register', {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }).catch(() => {});
           router.replace(next); return;
         }
       }
@@ -36,7 +40,10 @@ function CallbackHandler() {
         if (access_token && refresh_token) {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token });
           if (!error) {
-            await fetch('/api/self-register', { method: 'POST' }).catch(() => {});
+            await fetch('/api/self-register', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${access_token}` },
+            }).catch(() => {});
             router.replace(next); return;
           }
         }
