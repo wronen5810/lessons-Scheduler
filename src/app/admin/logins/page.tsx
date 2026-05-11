@@ -8,6 +8,7 @@ interface LoginEntry {
   email: string;
   phone: string | null;
   logged_in_at: string;
+  is_test: boolean;
 }
 
 export default function AdminLoginsPage() {
@@ -15,6 +16,7 @@ export default function AdminLoginsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'student' | 'teacher'>('all');
   const [search, setSearch] = useState('');
+  const [hideTest, setHideTest] = useState(true);
 
   useEffect(() => {
     fetch('/api/admin/login-report?limit=500')
@@ -24,6 +26,7 @@ export default function AdminLoginsPage() {
   }, []);
 
   const filtered = entries.filter((e) => {
+    if (hideTest && e.is_test) return false;
     if (filter !== 'all' && e.type !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -64,6 +67,14 @@ export default function AdminLoginsPage() {
               {f}
             </button>
           ))}
+          <button
+            onClick={() => setHideTest((v) => !v)}
+            className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
+              hideTest ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {hideTest ? 'Hide test' : 'Show test'}
+          </button>
         </div>
       </div>
 
@@ -87,13 +98,20 @@ export default function AdminLoginsPage() {
               {filtered.map((e, i) => (
                 <tr key={i} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      e.type === 'teacher'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {e.type}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        e.type === 'teacher'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {e.type}
+                      </span>
+                      {e.is_test && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          test
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{e.name || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{e.email}</td>

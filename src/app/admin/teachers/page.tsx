@@ -8,6 +8,7 @@ interface Teacher {
   display_name: string;
   phone: string | null;
   is_active: boolean;
+  is_test: boolean;
   created_at: string;
 }
 
@@ -228,6 +229,16 @@ export default function AdminTeachersPage() {
     load();
   }
 
+  async function toggleTest(teacher: Teacher) {
+    setOpenMenuId(null);
+    await fetch(`/api/admin/teachers/${teacher.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_test: !teacher.is_test }),
+    });
+    load();
+  }
+
   async function handleDelete(teacher: Teacher) {
     if (!confirm(`Delete teacher ${teacher.display_name} (${teacher.email})? This will remove all their slots, bookings, and students.`)) return;
     setOpenMenuId(null);
@@ -316,6 +327,11 @@ export default function AdminTeachersPage() {
                 }`}>
                   {teacher.is_active ? 'Active' : 'Inactive'}
                 </span>
+                {teacher.is_test && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    TEST
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500">{teacher.email}</p>
               {teacher.phone && <p className="text-xs text-gray-400">{teacher.phone}</p>}
@@ -366,6 +382,12 @@ export default function AdminTeachersPage() {
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors text-start"
                   >
                     {resending === teacher.id ? 'Sending…' : 'Resend welcome email'}
+                  </button>
+                  <button
+                    onClick={() => toggleTest(teacher)}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-start"
+                  >
+                    {teacher.is_test ? 'Unmark as test' : 'Mark as test'}
                   </button>
                   <div className="border-t border-gray-100 my-1" />
                   <button

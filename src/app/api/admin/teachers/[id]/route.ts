@@ -14,6 +14,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const allowed: Record<string, unknown> = {};
   if (body.display_name !== undefined) allowed.display_name = body.display_name;
   if (body.is_active !== undefined) allowed.is_active = body.is_active;
+  if (body.is_test !== undefined) allowed.is_test = body.is_test;
   if (body.phone !== undefined) allowed.phone = body.phone || null;
 
   const { data, error } = await supabase
