@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAuthSupabase, createServiceSupabase } from '@/lib/supabase-server';
+import type { User } from '@supabase/supabase-js';
 
 // POST /api/self-register
 // Idempotent: creates profiles + teacher_subscriptions for the current auth user.
 // Called after signUp (password) or after OAuth callback.
 // Safe to call multiple times — does nothing if profile already exists.
+//
+// Auth: accepts either a Bearer token (fresh signup, cookies not yet propagated)
+// or the standard cookie session (OAuth callback / subsequent calls).
 export async function POST(request: NextRequest) {
-  const supabase = await createAuthSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const service = createServiceSupabase();
+  let user: User | null = null;
+
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const { data } = await service.auth.getUser(token);
+    user = data.user ?? null;
+  } else {
+    const supabase = await createAuthSupabase();
+    const { data } = await supabase.auth.getUser();
+    user = data.user ?? null;
+  }
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const service = createServiceSupabase();
 
   // Check if profile already exists
   const { data: existing } = await service

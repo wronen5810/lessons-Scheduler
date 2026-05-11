@@ -74,12 +74,25 @@ function SignupForm() {
       return;
     }
 
-    // Create profile + subscription
-    await fetch('/api/self-register', {
+    // Create profile + subscription.
+    // Pass the access token directly — cookie propagation after signUp is not
+    // reliable enough for the immediately-following server request.
+    const accessToken = data.session?.access_token;
+    const registerRes = await fetch('/api/self-register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       body: JSON.stringify({ name: name.trim() }),
-    }).catch(() => {});
+    });
+
+    if (!registerRes.ok) {
+      const body = await registerRes.json().catch(() => ({}));
+      setError(body.error ?? 'Registration failed. Please try again.');
+      setSubmitting(false);
+      return;
+    }
 
     router.push('/teacher');
   }
