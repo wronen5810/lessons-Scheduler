@@ -224,7 +224,7 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
       {/* ── Bottom tab bar — mobile only ── */}
       <nav className="sm:hidden fixed bottom-0 inset-x-0 h-14 bg-white border-t border-gray-200 z-40 flex">
         {([
-          { href: '/teacher',          Icon: Home,     label: t('teacher.dashboard') },
+          { href: '/teacher',          Icon: Home,     label: t('common.home') },
           { href: '/teacher/schedule', Icon: Calendar, label: t('teacher.schedule'), badge: pendingCount > 0 },
           { href: '/teacher/students', Icon: Users,    label: t('common.students') },
         ] as { href: string; Icon: React.ElementType; label: string; badge?: boolean }[]).map(({ href, Icon, label, badge }) => {

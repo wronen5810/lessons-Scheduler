@@ -1,14 +1,13 @@
 'use client';
 
 import { addDays, format, parseISO, subDays } from 'date-fns';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  DAY_NAMES, DAY_NAMES_SHORT,
+  DAY_NAMES_SHORT,
   formatDate, formatMonthDisplay, formatTimeDisplay,
   getMonthStr, getMonthWeekStarts, getWeekStart,
   nextMonth, prevMonth, todayInIsrael,
 } from '@/lib/dates';
-import { DAY_NAMES_HE } from '@/lib/i18n';
 import type { ComputedSlot } from '@/lib/types';
 import type { PendingRequest } from '@/app/api/teacher/requests/route';
 import TeacherCalendar from '@/components/TeacherCalendar';
@@ -18,7 +17,7 @@ import { AddSlotWizard } from '@/components/QuickActionsWizard';
 import { useTeacherSettings } from '@/lib/useTeacherSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-type View = 'day' | 'month';
+type View = 'week' | 'month';
 
 const DAY_STYLE: Record<string, { bar: string; border: string; badge: string }> = {
   available:              { bar: 'bg-sky-400',     border: 'border-sky-100',     badge: 'bg-sky-100 text-sky-700' },
@@ -33,17 +32,18 @@ const DAY_STYLE: Record<string, { bar: string; border: string; badge: string }> 
 const DAY_STYLE_DEFAULT = { bar: 'bg-gray-200', border: 'border-gray-100', badge: 'bg-gray-100 text-gray-400' };
 
 export default function SchedulePage() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const today = todayInIsrael();
 
-  const [view, setView] = useState<View>('day');
+  const [view, setView] = useState<View>('week');
   const [selectedDate, setSelectedDate] = useState(today);
   const [month, setMonth] = useState(() => getMonthStr(today));
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    setView(window.innerWidth >= 1024 ? 'month' : 'day');
+    setView(window.innerWidth >= 1024 ? 'month' : 'week');
   }, []);
+
   const [addSlotDate, setAddSlotDate] = useState<string | null>(null);
   const { settings, save: saveSettings } = useTeacherSettings();
 
@@ -57,8 +57,34 @@ export default function SchedulePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Touch swipe support
+  const touchStartXRef = useRef<number | null>(null);
+
   function weekForDate(date: string) {
     return formatDate(getWeekStart(parseISO(date)));
+  }
+
+  // Week navigation helpers
+  const weekStartDate = parseISO(weekForDate(selectedDate));
+  const weekEndDate = addDays(weekStartDate, 6);
+  const isCurrentWeek = weekForDate(selectedDate) === weekForDate(today);
+  const weekLabel = weekStartDate.getMonth() === weekEndDate.getMonth()
+    ? `${format(weekStartDate, 'MMM d')} – ${format(weekEndDate, 'd')}`
+    : `${format(weekStartDate, 'MMM d')} – ${format(weekEndDate, 'MMM d')}`;
+
+  function prevWeek() { setSelectedDate(formatDate(subDays(weekStartDate, 7))); }
+  function nextWeek() { setSelectedDate(formatDate(addDays(weekStartDate, 7))); }
+  function goToToday() { setSelectedDate(today); }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartXRef.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartXRef.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (Math.abs(dx) < 60) return;
+    dx < 0 ? nextWeek() : prevWeek();
   }
 
   async function loadWeek(week: string) {
@@ -76,7 +102,7 @@ export default function SchedulePage() {
   }
 
   function reload() {
-    if (view === 'day') loadWeek(weekForDate(selectedDate));
+    if (view === 'week') loadWeek(weekForDate(selectedDate));
     else loadMonth(month);
   }
 
@@ -140,10 +166,9 @@ export default function SchedulePage() {
     reload();
   }
 
-  // ── Day view helpers ────────────────────────────────────────────────
-  const dayNames = lang === 'he' ? DAY_NAMES_HE : DAY_NAMES;
+  // ── Week view helpers ────────────────────────────────────────────────
   const dayStripDates = Array.from({ length: 7 }, (_, i) =>
-    formatDate(addDays(parseISO(weekForDate(selectedDate)), i))
+    formatDate(addDays(weekStartDate, i))
   );
   const daySlots = slots
     .filter((s) => s.date === selectedDate && s.state !== 'unavailable')
@@ -166,52 +191,67 @@ export default function SchedulePage() {
     return map[state] ?? state;
   }
 
-  const selectedDateObj = parseISO(selectedDate);
-  const dayHeader = `${dayNames[selectedDateObj.getDay()]}, ${format(selectedDateObj, 'MMM d')}`;
-  const isToday = selectedDate === today;
-
   return (
     <>
       <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 pb-5">
 
         {/* Navigation row */}
         <div className="flex items-center justify-between gap-2 mb-4">
-          {/* Left: date/month navigation */}
-          {view === 'day' ? (
+          {/* Left: week or month navigation */}
+          {view === 'week' ? (
             <div className="flex items-center gap-1">
-              <button onClick={() => setSelectedDate(formatDate(subDays(selectedDateObj, 1)))}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
               <button
-                onClick={() => setSelectedDate(today)}
-                className={`text-sm font-semibold px-3 py-1 rounded-lg transition-colors ${isToday ? 'text-indigo-600' : 'text-gray-800 hover:bg-white hover:shadow-sm'}`}
-              >
-                {isToday ? `${dayHeader} ·` : dayHeader} {isToday && <span className="text-xs font-medium">{t('common.home').toLowerCase()}</span>}
-              </button>
-              <button onClick={() => setSelectedDate(formatDate(addDays(selectedDateObj, 1)))}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
+                onClick={prevWeek}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all"
+              >&#8592;</button>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold text-gray-800 tabular-nums min-w-[120px] text-center">
+                  {weekLabel}
+                </span>
+                {!isCurrentWeek && (
+                  <button
+                    onClick={goToToday}
+                    className="text-xs px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium transition-colors"
+                  >
+                    {t('common.home')}
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={nextWeek}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all"
+              >&#8594;</button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              <button onClick={() => setMonth(prevMonth(month))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
-              <span className="text-sm font-semibold text-gray-800 w-28 text-center">{formatMonthDisplay(month)}</span>
-              <button onClick={() => setMonth(nextMonth(month))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
+              <button onClick={() => setMonth(prevMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8592;</button>
+              <span className="text-sm font-semibold text-gray-800 w-32 text-center">{formatMonthDisplay(month)}</span>
+              <button onClick={() => setMonth(nextMonth(month))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-gray-500 transition-all">&#8594;</button>
             </div>
           )}
 
-          {/* Right: view toggle + refresh + settings */}
+          {/* Right: view toggle + refresh */}
           <div className="flex items-center gap-1.5">
             <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden text-sm">
-              <button onClick={() => setView('day')} className={`px-3 py-1.5 font-medium transition-colors ${view === 'day' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
-                {t('common.day')}
+              <button
+                onClick={() => setView('week')}
+                className={`px-3 py-1.5 font-medium transition-colors ${view === 'week' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                {t('common.week')}
               </button>
-              <button onClick={() => setView('month')} className={`px-3 py-1.5 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+              <button
+                onClick={() => setView('month')}
+                className={`px-3 py-1.5 font-medium transition-colors ${view === 'month' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
                 {t('common.month')}
               </button>
             </div>
-            <button onClick={handleRefresh}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              title={t('common.refresh')}>
-              <span className={`inline-block ${refreshing ? 'animate-spin' : ''}`} style={{ display: 'inline-block' }}>↺</span>
+            <button
+              onClick={handleRefresh}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title={t('common.refresh')}
+            >
+              <span className={`inline-block text-base ${refreshing ? 'animate-spin' : ''}`}>↺</span>
             </button>
           </div>
         </div>
@@ -231,186 +271,264 @@ export default function SchedulePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {!pendingCollapsed && <div className="divide-y divide-gray-100">
-              {requests.map((req) => {
-                const isAccess = req.request_type === 'access_request';
-                const isCancel = req.request_type === 'cancellation_request';
-                const isRecurring = req.booking_type === 'recurring';
-                const busy = actionLoading === req.id;
-                return (
-                  <div key={req.id} className="px-4 py-3 flex items-start gap-4">
-                    <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${isAccess ? 'bg-violet-400' : isCancel ? 'bg-orange-400' : 'bg-amber-400'}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-gray-900">{req.student_name}</span>
-                        <span className="text-xs text-gray-500">{req.student_email}</span>
-                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${isAccess ? 'bg-violet-100 text-violet-700' : isCancel ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {isAccess ? t('teacher.accessRequest') : isCancel ? t('teacher.cancelRequest') : t('teacher.lessonRequest')}
-                        </span>
-                      </div>
-                      {isAccess ? (
-                        <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
-                          {req.student_phone && <div>📞 {req.student_phone}</div>}
-                          {req.student_note && <div className="italic">&ldquo;{req.student_note}&rdquo;</div>}
-                          {!req.student_phone && !req.student_note && <div>{t('teacher.notInList')}</div>}
+            {!pendingCollapsed && (
+              <div className="divide-y divide-gray-100">
+                {requests.map((req) => {
+                  const isAccess = req.request_type === 'access_request';
+                  const isCancel = req.request_type === 'cancellation_request';
+                  const isRecurring = req.booking_type === 'recurring';
+                  const busy = actionLoading === req.id;
+                  return (
+                    <div key={req.id} className="px-4 py-3 flex items-start gap-4">
+                      <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${isAccess ? 'bg-violet-400' : isCancel ? 'bg-orange-400' : 'bg-amber-400'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-gray-900">{req.student_name}</span>
+                          <span className="text-xs text-gray-500">{req.student_email}</span>
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${isAccess ? 'bg-violet-100 text-violet-700' : isCancel ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {isAccess ? t('teacher.accessRequest') : isCancel ? t('teacher.cancelRequest') : t('teacher.lessonRequest')}
+                          </span>
                         </div>
-                      ) : (
-                        <>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {req.date} &middot; {req.start_time}–{req.end_time}
-                            {isRecurring && !isCancel && (req.series_id ? ` · ${t('teacher.recurringSeries')}` : ` · ${t('teacher.recurring')}`)}
+                        {isAccess ? (
+                          <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
+                            {req.student_phone && <div>📞 {req.student_phone}</div>}
+                            {req.student_note && <div className="italic">&ldquo;{req.student_note}&rdquo;</div>}
+                            {!req.student_phone && !req.student_note && <div>{t('teacher.notInList')}</div>}
                           </div>
-                          {isCancel && req.cancellation_reason && (
-                            <div className="text-xs text-gray-500 mt-0.5 italic">&ldquo;{req.cancellation_reason}&rdquo;</div>
-                          )}
-                        </>
-                      )}
+                        ) : (
+                          <>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {req.date} &middot; {req.start_time}–{req.end_time}
+                              {isRecurring && !isCancel && (req.series_id ? ` · ${t('teacher.recurringSeries')}` : ` · ${t('teacher.recurring')}`)}
+                            </div>
+                            {isCancel && req.cancellation_reason && (
+                              <div className="text-xs text-gray-500 mt-0.5 italic">&ldquo;{req.cancellation_reason}&rdquo;</div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        {isAccess ? (
+                          <>
+                            <button onClick={() => handleAddStudent(req)} disabled={busy}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 text-white font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors">
+                              {t('teacher.addStudent')}
+                            </button>
+                            <button onClick={() => handleRequestAction(req, 'dismiss')} disabled={busy}
+                              className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                              {t('common.dismiss')}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => handleRequestAction(req, isCancel ? 'approve-cancellation' : 'approve')} disabled={busy}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
+                              {t('common.approve')}
+                            </button>
+                            <button onClick={() => handleRequestAction(req, isCancel ? 'approve' : 'reject')} disabled={busy}
+                              className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                              {isCancel ? t('common.deny') : t('common.reject')}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      {isAccess ? (
-                        <>
-                          <button onClick={() => handleAddStudent(req)} disabled={busy}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-violet-600 text-white font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors">
-                            {t('teacher.addStudent')}
-                          </button>
-                          <button onClick={() => handleRequestAction(req, 'dismiss')} disabled={busy}
-                            className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors">
-                            {t('common.dismiss')}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => handleRequestAction(req, isCancel ? 'approve-cancellation' : 'approve')} disabled={busy}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
-                            {t('common.approve')}
-                          </button>
-                          <button onClick={() => handleRequestAction(req, isCancel ? 'approve' : 'reject')} disabled={busy}
-                            className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors">
-                            {isCancel ? t('common.deny') : t('common.reject')}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── DAY VIEW ── */}
-        {view === 'day' && (
-          <div className="space-y-3">
-            {/* Day strip */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-              {dayStripDates.map((date) => {
-                const d = parseISO(date);
-                const isSelected = date === selectedDate;
-                const isT = date === today;
-                const hasSlots = slots.some((s) => s.date === date && s.state !== 'unavailable');
-                return (
-                  <div
-                    key={date}
-                    onClick={() => setSelectedDate(date)}
-                    className={`flex flex-col items-center gap-0.5 px-3 py-2.5 rounded-xl flex-shrink-0 transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-600 text-white shadow-md' + (isT ? ' ring-2 ring-blue-300 ring-offset-1' : '')
-                        : isT
-                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-500 font-semibold'
-                        : 'bg-white text-gray-600 border border-gray-100 hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSelected ? 'text-blue-100' : isT ? 'text-blue-600' : 'text-gray-400'}`}>
-                      {DAY_NAMES_SHORT[d.getDay()]}
-                    </span>
-                    <div className="flex items-center justify-center gap-0.5">
-                      <span className="text-sm font-bold">{format(d, 'd')}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setAddSlotDate(date); }}
-                        className={`w-4 h-4 flex items-center justify-center text-sm leading-none transition-colors ${
-                          isSelected ? 'text-blue-300 hover:text-white' : 'text-gray-300 hover:text-blue-500'
-                        }`}
-                        title="Add slot"
-                      >+</button>
-                    </div>
-                    {hasSlots && (
-                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-blue-200' : 'bg-blue-400'}`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+        {/* ── WEEK VIEW ── */}
+        {view === 'week' && (
+          <div
+            className="space-y-3"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* ── Desktop: 7-column week grid (sm+) ── */}
+            <div className="hidden sm:block">
+              <div className="relative">
+                <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                  {dayStripDates.map((date) => {
+                    const d = parseISO(date);
+                    const isT = date === today;
+                    const colSlots = slots
+                      .filter((s) => s.date === date && s.state !== 'unavailable')
+                      .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-            {/* Slot list */}
-            {loading ? (
-              <div className="text-center py-10 text-gray-400">{t('common.loading')}</div>
-            ) : daySlots.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-3">
-                <span className="text-4xl">📭</span>
-                <p className="text-sm text-gray-400">{t('teacher.noLessonsDay')}</p>
-                <button
-                  onClick={() => setAddSlotDate(selectedDate)}
-                  className="mt-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors"
-                >
-                  + {t('common.add')} slot
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {daySlots.map((slot) => {
-                  const style = DAY_STYLE[slot.state] ?? DAY_STYLE_DEFAULT;
-                  const isClickable = slot.state !== 'unavailable';
-                  const name = slotLabel(slot);
-                  const isGroup = !!slot.group_name;
-                  return (
-                    <div
-                      key={`${slot.date}-${slot.start_time}`}
-                      onClick={isClickable ? () => setSelected(slot) : undefined}
-                      className={`bg-white rounded-2xl border ${style.border} shadow-sm px-4 py-3 flex items-center gap-3 transition-all ${
-                        isClickable ? 'cursor-pointer hover:shadow-md active:scale-[0.99]' : 'cursor-default'
-                      }`}
-                    >
-                      <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${style.bar}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-gray-400 font-medium">
-                          {formatTimeDisplay(slot.start_time, settings.time_format)}–{formatTimeDisplay(slot.end_time, settings.time_format)}
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{name}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${style.badge}`}>
-                            {statusLabel(slot.state)}
-                          </span>
-                          {slot.booking_type && (
-                            <span className="text-[10px] text-gray-400">
-                              {slot.booking_type === 'one_time' ? '1×' : '↺'}
-                            </span>
-                          )}
-                          {isGroup && slot.group_member_count != null && (
-                            <span className="text-[10px] text-gray-400">{slot.group_member_count} students</span>
-                          )}
-                          {!isGroup && slot.max_participants != null && slot.max_participants > 1 && (
-                            <span className="text-[10px] text-gray-400">{slot.participant_count ?? 0}/{slot.max_participants}</span>
+                    return (
+                      <div
+                        key={date}
+                        className={`flex flex-col bg-white min-h-[200px] ${isT ? '' : ''}`}
+                      >
+                        {/* Column header */}
+                        <div className={`text-center px-1 pt-2.5 pb-2 border-b border-gray-100 ${isT ? 'bg-blue-50' : 'bg-gray-50/50'}`}>
+                          <div className={`text-[10px] font-semibold uppercase tracking-wider ${isT ? 'text-blue-600' : 'text-gray-400'}`}>
+                            {DAY_NAMES_SHORT[d.getDay()]}
+                          </div>
+                          <div className={`w-7 h-7 mx-auto mt-0.5 flex items-center justify-center rounded-full text-sm font-bold
+                            ${isT ? 'bg-blue-600 text-white' : 'text-gray-800'}`}>
+                            {format(d, 'd')}
+                          </div>
+                          <button
+                            onClick={() => setAddSlotDate(date)}
+                            className="mt-1.5 text-xs text-gray-300 hover:text-blue-500 transition-colors leading-none w-full"
+                            title="Add slot"
+                          >+</button>
+                        </div>
+
+                        {/* Slots */}
+                        <div className="flex-1 p-1 space-y-1 overflow-y-auto max-h-72">
+                          {colSlots.map((slot) => {
+                            const style = DAY_STYLE[slot.state] ?? DAY_STYLE_DEFAULT;
+                            return (
+                              <button
+                                key={`${slot.date}-${slot.start_time}`}
+                                onClick={() => { setSelected(slot); setSelectedDate(date); }}
+                                className={`w-full text-left rounded-lg border ${style.border} bg-white px-1.5 py-1.5 hover:shadow-sm hover:scale-[1.02] active:scale-[0.99] transition-all`}
+                              >
+                                <div className="flex items-start gap-1">
+                                  <div className={`w-0.5 self-stretch rounded-full flex-shrink-0 ${style.bar} mt-0.5`} />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[10px] font-semibold text-gray-500 tabular-nums">
+                                      {formatTimeDisplay(slot.start_time, settings.time_format)}
+                                    </div>
+                                    <div className="text-[11px] font-medium text-gray-800 truncate leading-tight mt-0.5">
+                                      {slotLabel(slot)}
+                                    </div>
+                                    <span className={`text-[9px] px-1 py-0.5 rounded-full font-medium ${style.badge} inline-block mt-0.5`}>
+                                      {statusLabel(slot.state)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                          {colSlots.length === 0 && (
+                            <button
+                              onClick={() => setAddSlotDate(date)}
+                              className="w-full py-6 flex items-center justify-center text-gray-200 hover:text-blue-300 transition-colors text-2xl"
+                              title="Add slot"
+                            >+</button>
                           )}
                         </div>
                       </div>
-                      {isClickable && (
-                        <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
+                    );
+                  })}
+                </div>
+
+                {/* Loading overlay */}
+                {loading && (
+                  <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-2xl">
+                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Mobile: day strip + selected day slots ── */}
+            <div className="sm:hidden">
+              {/* Day strip */}
+              <div className="flex gap-1 pb-1">
+                {dayStripDates.map((date) => {
+                  const d = parseISO(date);
+                  const isSelected = date === selectedDate;
+                  const isT = date === today;
+                  const hasSlots = slots.some((s) => s.date === date && s.state !== 'unavailable');
+                  return (
+                    <div
+                      key={date}
+                      onClick={() => setSelectedDate(date)}
+                      className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : isT
+                          ? 'bg-blue-50 text-blue-700 border-2 border-blue-500'
+                          : 'bg-white text-gray-600 border border-gray-100 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className={`text-[9px] font-semibold uppercase tracking-wide ${isSelected ? 'text-blue-100' : isT ? 'text-blue-600' : 'text-gray-400'}`}>
+                        {DAY_NAMES_SHORT[d.getDay()]}
+                      </span>
+                      <span className="text-sm font-bold">{format(d, 'd')}</span>
+                      {hasSlots ? (
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-blue-200' : 'bg-blue-400'}`} />
+                      ) : (
+                        <span className="w-1.5 h-1.5" />
                       )}
                     </div>
                   );
                 })}
-
-                {/* Add slot button */}
-                <button
-                  onClick={() => setAddSlotDate(selectedDate)}
-                  className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-sm font-medium hover:border-blue-300 hover:text-blue-500 transition-colors"
-                >
-                  + {t('common.add')} slot
-                </button>
               </div>
-            )}
+
+              {/* Slot list for selected day */}
+              {loading ? (
+                <div className="text-center py-10 text-gray-400">{t('common.loading')}</div>
+              ) : daySlots.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <span className="text-4xl">📭</span>
+                  <p className="text-sm text-gray-400">{t('teacher.noLessonsDay')}</p>
+                  <button
+                    onClick={() => setAddSlotDate(selectedDate)}
+                    className="mt-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors"
+                  >
+                    + {t('common.add')} slot
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 mt-2">
+                  {daySlots.map((slot) => {
+                    const style = DAY_STYLE[slot.state] ?? DAY_STYLE_DEFAULT;
+                    const name = slotLabel(slot);
+                    const isGroup = !!slot.group_name;
+                    return (
+                      <div
+                        key={`${slot.date}-${slot.start_time}`}
+                        onClick={() => setSelected(slot)}
+                        className={`bg-white rounded-2xl border ${style.border} shadow-sm px-4 py-3 flex items-center gap-3 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all`}
+                      >
+                        <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${style.bar}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-400 font-medium">
+                            {formatTimeDisplay(slot.start_time, settings.time_format)}–{formatTimeDisplay(slot.end_time, settings.time_format)}
+                          </p>
+                          <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${style.badge}`}>
+                              {statusLabel(slot.state)}
+                            </span>
+                            {slot.booking_type && (
+                              <span className="text-[10px] text-gray-400">
+                                {slot.booking_type === 'one_time' ? '1×' : '↺'}
+                              </span>
+                            )}
+                            {isGroup && slot.group_member_count != null && (
+                              <span className="text-[10px] text-gray-400">{slot.group_member_count} students</span>
+                            )}
+                            {!isGroup && slot.max_participants != null && slot.max_participants > 1 && (
+                              <span className="text-[10px] text-gray-400">{slot.participant_count ?? 0}/{slot.max_participants}</span>
+                            )}
+                          </div>
+                        </div>
+                        <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    );
+                  })}
+
+                  {/* Add slot button */}
+                  <button
+                    onClick={() => setAddSlotDate(selectedDate)}
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-sm font-medium hover:border-blue-300 hover:text-blue-500 transition-colors"
+                  >
+                    + {t('common.add')} slot
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Legend */}
             <div className="flex flex-wrap gap-2 pt-1">
