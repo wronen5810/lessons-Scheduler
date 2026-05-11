@@ -142,13 +142,13 @@ export default function TeacherDashboard() {
             }
             <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.pendingRequests')}</p>
           </Link>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <Link href="/teacher/students" className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center transition-colors hover:border-blue-300">
             {studentCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className="text-2xl font-bold text-gray-800">{studentCount}</p>
             }
             <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('common.students')}</p>
-          </div>
+          </Link>
         </div>
 
         {/* Quick action wizards */}
