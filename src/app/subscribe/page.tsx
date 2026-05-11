@@ -44,63 +44,33 @@ function SignupForm() {
     setEmailTaken(false);
     setSubmitting(true);
 
-    const supabase = createBrowserSupabase();
-
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { data: { full_name: name.trim() } },
-    });
-
-    if (signUpError) {
-      setSubmitting(false);
-      if (
-        signUpError.message.toLowerCase().includes('already registered') ||
-        signUpError.message.toLowerCase().includes('already been registered') ||
-        signUpError.message.toLowerCase().includes('email address is already')
-      ) {
-        setEmailTaken(true);
-      } else {
-        setError(signUpError.message);
-      }
-      return;
-    }
-
-    // signUp succeeded — if identities array is empty the email was already taken
-    // (Supabase returns 200 but no session in this case)
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
-      setSubmitting(false);
-      setEmailTaken(true);
-      return;
-    }
-
-    const accessToken = data.session?.access_token;
-
-    if (!accessToken) {
-      // Email confirmation is required — profile will be created after the user
-      // clicks the confirmation link (handled in /auth/callback).
-      setSubmitting(false);
-      setError('');
-      // Reuse the error slot to show a success/info message
-      router.push('/subscribe/check-email?email=' + encodeURIComponent(email.trim()));
-      return;
-    }
-
-    // Create profile + subscription.
-    // Pass the access token directly — cookie propagation after signUp is not
-    // reliable enough for the immediately-following server request.
-    const registerRes = await fetch('/api/self-register', {
+    // Step 1: server-side registration (admin API — no confirmation email sent)
+    const registerRes = await fetch('/api/auth/register', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ name: name.trim() }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
     });
 
     if (!registerRes.ok) {
       const body = await registerRes.json().catch(() => ({}));
-      setError(body.error ?? 'Registration failed. Please try again.');
+      setSubmitting(false);
+      if (body.error === 'email_taken') {
+        setEmailTaken(true);
+      } else {
+        setError(body.error ?? 'Registration failed. Please try again.');
+      }
+      return;
+    }
+
+    // Step 2: sign in client-side to establish the session
+    const supabase = createBrowserSupabase();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (signInError) {
+      setError(signInError.message);
       setSubmitting(false);
       return;
     }
