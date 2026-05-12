@@ -276,7 +276,7 @@ export default function StudentEntryPage() {
               ))}
             </div>
             <button
-              onClick={() => { setStep('email'); setIdentifier(''); }}
+              onClick={() => router.push('/')}
               className="mt-4 text-xs text-gray-400 hover:text-gray-600"
             >
               {t('common.back')}

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireTeacher } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { emailStudentDirectBooking } from '@/lib/email';
+import { whatsappStudentApproved } from '@/lib/whatsapp';
 import { getEndTime } from '@/lib/dates';
+import { mergePrefs, sendEmail, sendWhatsApp, sendPush } from '@/lib/notifications';
+import { sendPushToEmails } from '@/lib/firebase-admin';
 import { randomUUID } from 'crypto';
 
 // POST /api/teacher/book — teacher books a slot directly for a student or group (skips pending)
@@ -55,6 +58,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Recurring bookings require a template slot' }, { status: 400 });
   }
 
+  // Notify student via all channels enabled for lesson_approved
+  async function notifyStudent(cancelToken: string) {
+    if (group_id || !student_email) return;
+    const [{ data: settingsRow }, { data: studentRow }] = await Promise.all([
+      supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', auth.user.id).single(),
+      supabase.from('students').select('phone').ilike('email', student_email).eq('teacher_id', auth.user.id).single(),
+    ]);
+    const prefs = mergePrefs(settingsRow?.notification_preferences);
+    const info = {
+      studentName: student_name,
+      studentEmail: student_email,
+      bookingType: booking_type as 'recurring' | 'one_time',
+      date,
+      dayOfWeek: template?.day_of_week,
+      startTime: start_time,
+      endTime,
+      cancelToken,
+    };
+    await Promise.all([
+      sendEmail(prefs, 'lesson_approved')
+        ? emailStudentDirectBooking(info).catch((e) => console.error('Email failed:', e))
+        : null,
+      sendWhatsApp(prefs, 'lesson_approved') && studentRow?.phone
+        ? whatsappStudentApproved({ ...info, phone: studentRow.phone }).catch((e) => console.error('WhatsApp failed:', e))
+        : null,
+      sendPush(prefs, 'lesson_approved')
+        ? sendPushToEmails(supabase, [student_email], 'Lesson Confirmed', `Your lesson on ${start_time} has been confirmed.`).catch((e) => console.error('Push failed:', e))
+        : null,
+    ]);
+  }
+
   if (booking_type === 'recurring') {
     // Create one row per weekly occurrence between date and end_date
     const seriesId = randomUUID();
@@ -81,18 +115,7 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from('recurring_bookings').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    if (!group_id && student_email) {
-      emailStudentDirectBooking({
-        studentName: student_name,
-        studentEmail: student_email,
-        bookingType: 'recurring',
-        date,
-        dayOfWeek: template?.day_of_week,
-        startTime: start_time,
-        endTime,
-        cancelToken: seriesId,
-      }).catch((e) => console.error('Email failed:', e));
-    }
+    notifyStudent(seriesId).catch((e) => console.error('Notify failed:', e));
 
     return NextResponse.json({ series_id: seriesId, count: rows.length }, { status: 201 });
   }
@@ -117,18 +140,7 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (!group_id && student_email) {
-    emailStudentDirectBooking({
-      studentName: student_name,
-      studentEmail: student_email,
-      bookingType: 'one_time',
-      date,
-      dayOfWeek: template?.day_of_week,
-      startTime: start_time,
-      endTime,
-      cancelToken: booking.cancel_token as string,
-    }).catch((e) => console.error('Email failed:', e));
-  }
+  notifyStudent(booking.cancel_token as string).catch((e) => console.error('Notify failed:', e));
 
   return NextResponse.json(booking, { status: 201 });
 }
