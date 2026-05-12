@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceSupabase();
+  const teacherId = auth.user!.id;
   const endTime = getEndTime(start_time);
 
   // If booking for a group, resolve group info
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       .from('student_groups')
       .select('id, name')
       .eq('id', group_id)
-      .eq('teacher_id', auth.user.id)
+      .eq('teacher_id', teacherId)
       .single();
     if (!group) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     student_name = group.name;
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       .from('slot_templates')
       .select('day_of_week')
       .eq('id', template_id)
-      .eq('teacher_id', auth.user.id)
+      .eq('teacher_id', teacherId)
       .single();
     template = data;
     if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
@@ -62,8 +63,8 @@ export async function POST(request: NextRequest) {
   async function notifyStudent(cancelToken: string) {
     if (group_id || !student_email) return;
     const [{ data: settingsRow }, { data: studentRow }] = await Promise.all([
-      supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', auth.user.id).single(),
-      supabase.from('students').select('phone').ilike('email', student_email).eq('teacher_id', auth.user.id).single(),
+      supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', teacherId).single(),
+      supabase.from('students').select('phone').ilike('email', student_email).eq('teacher_id', teacherId).single(),
     ]);
     const prefs = mergePrefs(settingsRow?.notification_preferences);
     const info = {
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
         series_id: seriesId,
         status: 'approved',
         booked_by: 'teacher',
-        teacher_id: auth.user.id,
+        teacher_id: teacherId,
         group_id: group_id ?? null,
       });
       cur.setDate(cur.getDate() + 7);
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
       student_email,
       status: 'approved',
       booked_by: 'teacher',
-      teacher_id: auth.user.id,
+      teacher_id: teacherId,
       group_id: group_id ?? null,
     })
     .select()
