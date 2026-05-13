@@ -26,6 +26,68 @@ interface TeacherPublicProfile {
 
 const DEFAULT_COLOR = '#4A9E8A';
 
+// ── Sub-components defined OUTSIDE JoinForm so their identity is stable across
+// re-renders. Defining them inside would cause React to unmount/remount on every
+// state change, which re-triggers autoFocus and steals focus from other inputs.
+
+function Shell({ children, isRTL }: { children: React.ReactNode; isRTL: boolean }) {
+  return (
+    <div className="min-h-screen bg-stone-100 flex items-center justify-center px-4 py-10" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="bg-white rounded-2xl shadow-sm w-full max-w-sm overflow-hidden">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+interface AvatarProps {
+  teacherProfile: TeacherPublicProfile | null;
+  avatarBg: string;
+  accent: string;
+}
+function Avatar({ teacherProfile, avatarBg, accent }: AvatarProps) {
+  if (teacherProfile?.photo_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={teacherProfile.photo_url}
+        alt={teacherProfile.display_name}
+        className="w-16 h-16 rounded-full mx-auto object-cover"
+      />
+    );
+  }
+  return (
+    <div
+      className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-xl font-semibold"
+      style={{ backgroundColor: avatarBg, color: accent }}
+    >
+      {getInitials(teacherProfile?.display_name ?? '')}
+    </div>
+  );
+}
+
+interface AccentButtonProps {
+  onClick?: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  type?: 'button' | 'submit';
+  accent: string;
+  btnTextColor: string;
+}
+function AccentButton({ onClick, disabled, children, type = 'button', accent, btnTextColor }: AccentButtonProps) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ backgroundColor: accent, color: btnTextColor }}
+      className="w-full rounded-lg py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+    >
+      {children}
+    </button>
+  );
+}
+
 function getInitials(name: string): string {
   return name
     .split(' ')
@@ -181,68 +243,10 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
     setNotified(true);
   }
 
-  // ── Shared page shell ─────────────────────────────────────────────────────
-  function Shell({ children }: { children: React.ReactNode }) {
-    return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center px-4 py-10" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="bg-white rounded-2xl shadow-sm w-full max-w-sm overflow-hidden">
-          {children}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Avatar ────────────────────────────────────────────────────────────────
-  function Avatar() {
-    if (teacherProfile?.photo_url) {
-      return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={teacherProfile.photo_url}
-          alt={teacherProfile.display_name}
-          className="w-16 h-16 rounded-full mx-auto object-cover"
-        />
-      );
-    }
-    return (
-      <div
-        className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-xl font-semibold"
-        style={{ backgroundColor: avatarBg, color: accent }}
-      >
-        {getInitials(teacherProfile?.display_name ?? '')}
-      </div>
-    );
-  }
-
-  // ── Styled button using accent color ──────────────────────────────────────
-  function AccentButton({
-    onClick,
-    disabled,
-    children,
-    type = 'button',
-  }: {
-    onClick?: () => void;
-    disabled?: boolean;
-    children: React.ReactNode;
-    type?: 'button' | 'submit';
-  }) {
-    return (
-      <button
-        type={type}
-        onClick={onClick}
-        disabled={disabled}
-        style={{ backgroundColor: accent, color: btnTextColor }}
-        className="w-full rounded-lg py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-      >
-        {children}
-      </button>
-    );
-  }
-
   // ── Success state ─────────────────────────────────────────────────────────
   if (notified) {
     return (
-      <Shell>
+      <Shell isRTL={isRTL}>
         <div className="px-6 py-10 text-center">
           <div
             className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center"
@@ -264,7 +268,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
   // ── Privacy step ──────────────────────────────────────────────────────────
   if (step === 'privacy') {
     return (
-      <Shell>
+      <Shell isRTL={isRTL}>
         <div className="flex items-center justify-between px-6 pt-5">
           <SaderotLogo size="sm" />
           <LanguageToggle />
@@ -287,7 +291,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
             />
             <span className="text-sm text-gray-700">{t('join.agreePrivacy')}</span>
           </label>
-          <AccentButton onClick={handlePrivacyAccept} disabled={!privacyChecked || loading}>
+          <AccentButton accent={accent} btnTextColor={btnTextColor} onClick={handlePrivacyAccept} disabled={!privacyChecked || loading}>
             {loading ? t('common.continuing') : t('common.continue')}
           </AccentButton>
           <button
@@ -305,7 +309,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
   // ── Not found — access request ────────────────────────────────────────────
   if (step === 'not_found') {
     return (
-      <Shell>
+      <Shell isRTL={isRTL}>
         <div className="px-6 py-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">{t('join.notRegistered')}</h2>
           <p className="text-sm text-gray-500">
@@ -373,6 +377,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
             </label>
             {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
             <AccentButton
+              accent={accent} btnTextColor={btnTextColor}
               type="submit"
               disabled={loading || !name.trim() || !privacyChecked || (!isEmailIdentifier && !emailForRequest.trim())}
             >
@@ -394,7 +399,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
   // ── Multiple teachers ─────────────────────────────────────────────────────
   if (step === 'teachers') {
     return (
-      <Shell>
+      <Shell isRTL={isRTL}>
         <div className="px-6 py-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">{t('join.chooseTeacher')}</h2>
           <div className="space-y-2">
@@ -432,7 +437,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
 
         {/* Teacher card */}
         <div className="text-center px-6 pt-6 pb-5">
-          <Avatar />
+          <Avatar teacherProfile={teacherProfile} avatarBg={avatarBg} accent={accent} />
 
           <h1 className="text-xl font-bold text-gray-900 mt-3">
             {teacherProfile?.display_name ?? ''}
@@ -480,7 +485,7 @@ export default function JoinForm({ teacherId }: { teacherId: string }) {
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gray-300 transition-colors"
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <AccentButton type="submit" disabled={loading}>
+            <AccentButton accent={accent} btnTextColor={btnTextColor} type="submit" disabled={loading}>
               {loading ? t('join.lookingUp') : t('common.continue')}
             </AccentButton>
           </form>
