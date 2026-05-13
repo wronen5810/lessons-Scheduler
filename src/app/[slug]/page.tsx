@@ -7,7 +7,9 @@ import JoinForm from '@/components/JoinForm';
 import { Suspense } from 'react';
 
 export default async function TeacherSlugPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  // Decode percent-encoded slugs (e.g. Hebrew names encoded by messengers/browsers)
+  const slug = (() => { try { return decodeURIComponent(rawSlug); } catch { return rawSlug; } })();
 
   const supabase = createServiceSupabase();
   const { data: teachers } = await supabase

@@ -17,9 +17,12 @@ export default function ShareLinkModal({ teacherId, teacherName, onClose }: Prop
   const [copied, setCopied] = useState(false);
   const { t } = useLanguage();
 
+  // Encode non-ASCII chars (e.g. Hebrew) so the copied URL works on all platforms
+  const encodedLink = encodeURI(link);
+
   function copy() {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(link).then(() => {
+      navigator.clipboard.writeText(encodedLink).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }).catch(() => fallbackCopy());
@@ -30,7 +33,7 @@ export default function ShareLinkModal({ teacherId, teacherName, onClose }: Prop
 
   function fallbackCopy() {
     const el = document.createElement('textarea');
-    el.value = link;
+    el.value = encodedLink;
     el.style.position = 'fixed';
     el.style.opacity = '0';
     document.body.appendChild(el);
