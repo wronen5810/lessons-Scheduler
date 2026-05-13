@@ -82,44 +82,36 @@ export default function TrialFormPage() {
   return (
     <div className="min-h-screen bg-[#f7f5f3]" dir="rtl">
       {/* Orange promo strip */}
-      <div className="w-full text-center py-3 px-4" style={{ backgroundColor: ORANGE }}>
-        <p className="text-white font-semibold text-sm">🎁 3 חודשים חינם — ההצעה שלך פעילה</p>
-        <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.8)' }}>ללא כרטיס אשראי. ביטול בכל עת.</p>
+      <div className="w-full text-center py-2 px-4" style={{ backgroundColor: ORANGE }}>
+        <p className="text-white font-semibold text-sm">🎁 3 חודשים חינם — ללא כרטיס אשראי · ביטול בכל עת</p>
       </div>
 
-      <div className="max-w-[420px] mx-auto px-4 py-8">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <SaderotLogo size="lg" lang="he" />
-        </div>
-
-        {/* Headline */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold leading-snug" style={{ color: '#1a1a1a' }}>
-            ניהול שיעורים פרטיים —<br />פשוט וחכם
+      <div className="max-w-[420px] mx-auto px-4 py-4">
+        {/* Logo + Headline */}
+        <div className="flex items-center justify-between mb-3">
+          <SaderotLogo size="md" lang="he" />
+          <h1 className="text-lg font-bold" style={{ color: '#1a1a1a' }}>
+            ניהול שיעורים — פשוט וחכם
           </h1>
-          <p className="text-sm text-gray-500 mt-2">
-            תזמן שיעורים, שלח תזכורות ועקוב אחר תשלומים — הכול במקום אחד
-          </p>
         </div>
 
         {/* Value bullets */}
-        <div className="space-y-2.5 mb-6">
+        <div className="space-y-1.5 mb-4">
           {BULLETS.map((item) => (
             <div
               key={item.icon}
-              className="flex items-start gap-3 bg-white rounded-xl px-4 py-3 shadow-sm"
+              className="flex items-center gap-2.5 bg-white rounded-lg px-3 py-2 shadow-sm"
               style={{ border: '1px solid #e8e8e8' }}
             >
-              <span className="text-xl leading-none mt-0.5 flex-shrink-0">{item.icon}</span>
-              <span className="text-sm" style={{ color: '#1a1a1a' }}>{item.text}</span>
+              <span className="text-base leading-none flex-shrink-0">{item.icon}</span>
+              <span className="text-xs" style={{ color: '#1a1a1a' }}>{item.text}</span>
             </div>
           ))}
         </div>
 
         {/* Signup card */}
         <div
-          className="bg-white rounded-2xl shadow-sm p-6 space-y-4"
+          className="bg-white rounded-2xl shadow-sm p-4 space-y-3"
           style={{ border: '1px solid #e8e8e8' }}
         >
           {/* Google button */}
@@ -127,7 +119,7 @@ export default function TrialFormPage() {
             type="button"
             onClick={handleGoogleSignup}
             disabled={googleLoading || submitting}
-            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-xl py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-xl py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
             {googleLoading ? (
               <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
@@ -150,10 +142,10 @@ export default function TrialFormPage() {
           </div>
 
           {/* Email / password form */}
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-2.5">
             {/* Full name */}
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>שם מלא</label>
+              <label className="block text-xs font-medium mb-0.5" style={{ color: '#1a1a1a' }}>שם מלא</label>
               <input
                 type="text"
                 required
@@ -161,13 +153,13 @@ export default function TrialFormPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="השם המלא שלך"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#b5472f] text-right"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#b5472f] text-right"
               />
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>אימייל</label>
+              <label className="block text-xs font-medium mb-0.5" style={{ color: '#1a1a1a' }}>אימייל</label>
               <input
                 type="email"
                 required
@@ -176,7 +168,7 @@ export default function TrialFormPage() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setEmailTaken(false); }}
                 placeholder="you@example.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#b5472f] text-left"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#b5472f] text-left"
               />
               {emailTaken && (
                 <p className="text-sm text-amber-600 mt-1">
@@ -190,7 +182,7 @@ export default function TrialFormPage() {
 
             {/* Password with show/hide */}
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: '#1a1a1a' }}>סיסמה</label>
+              <label className="block text-xs font-medium mb-0.5" style={{ color: '#1a1a1a' }}>סיסמה</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -200,7 +192,7 @@ export default function TrialFormPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="לפחות 6 תווים"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#b5472f]"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#b5472f]"
                 />
                 <button
                   type="button"
@@ -233,7 +225,7 @@ export default function TrialFormPage() {
             <button
               type="submit"
               disabled={submitting || googleLoading || !name.trim() || !email.trim() || !password}
-              className="w-full text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50 transition-opacity"
+              className="w-full text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50 transition-opacity"
               style={{ backgroundColor: ORANGE }}
             >
               {submitting ? 'רגע...' : 'התחל/י 3 חודשים חינם'}
@@ -246,7 +238,7 @@ export default function TrialFormPage() {
         </div>
 
         {/* Sign-in link */}
-        <p className="text-center text-sm text-gray-500 mt-5">
+        <p className="text-center text-sm text-gray-500 mt-3">
           כבר יש לך חשבון?{' '}
           <Link href="/teacher/login" className="font-medium underline" style={{ color: ORANGE }}>
             התחברות
