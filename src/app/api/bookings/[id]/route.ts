@@ -13,7 +13,7 @@ import {
 } from '@/lib/whatsapp';
 import { getEndTime } from '@/lib/dates';
 import { mergePrefs, sendEmail, sendWhatsApp, sendPush, type NotificationKey } from '@/lib/notifications';
-import { sendPushToUser } from '@/lib/firebase-admin';
+import { sendPushToUser, sendPushToEmails } from '@/lib/firebase-admin';
 
 // PATCH /api/bookings/[id]?type=recurring|one_time&action=approve|reject|cancel|complete|pay|approve-cancellation
 // For recurring with a series_id, approve/reject/cancel acts on all rows in the series.
@@ -105,41 +105,103 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     cancelToken: booking.cancel_token,
   };
 
-  // Load teacher notification preferences and student phone in parallel
-  const [{ data: settingsRow }, { data: studentRow }] = await Promise.all([
-    supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', auth.user.id).single(),
-    supabase.from('students').select('phone').ilike('email', booking.student_email).eq('teacher_id', auth.user.id).single(),
-  ]);
+  // Load teacher notification preferences
+  const { data: settingsRow } = await supabase
+    .from('teacher_settings')
+    .select('notification_preferences')
+    .eq('teacher_id', auth.user.id)
+    .single();
 
   const prefs = mergePrefs(settingsRow?.notification_preferences);
   const notifKey: NotificationKey =
     action === 'approve' ? 'lesson_approved' :
     action === 'reject'  ? 'lesson_rejected' : 'lesson_cancelled';
 
-  const pushTitle =
-    action === 'approve' ? 'Lesson Confirmed' :
-    action === 'reject'  ? 'Lesson Request Declined' : 'Lesson Cancelled';
-  const pushBody =
-    action === 'approve' ? `Your lesson on ${emailInfo.startTime} has been confirmed.` :
-    action === 'reject'  ? `Your lesson request for ${emailInfo.startTime} was declined.` :
-                           `Your lesson on ${emailInfo.startTime} has been cancelled.`;
+  const groupId = (booking.student_email as string)?.startsWith('grp:')
+    ? (booking.student_email as string).slice(4)
+    : null;
 
-  await Promise.all([
-    sendEmail(prefs, notifKey) ? (
-      action === 'approve' ? emailStudentApproved(emailInfo) :
-      action === 'reject'  ? emailStudentRejected(emailInfo) :
-                             emailStudentCancelledByTeacher(emailInfo)
-    ).catch((e) => console.error('Email failed:', e)) : null,
-    sendWhatsApp(prefs, notifKey) && studentRow?.phone ? (async () => {
-      const waInfo = { ...emailInfo, phone: studentRow.phone };
-      return (
-        action === 'approve' ? whatsappStudentApproved(waInfo) :
-        action === 'reject'  ? whatsappStudentRejected(waInfo) :
-                               whatsappStudentCancelledByTeacher(waInfo)
-      ).catch((e) => console.error('WhatsApp failed:', e));
-    })() : null,
-    sendPush(prefs, notifKey) ? sendPushToUser(supabase, auth.user.id, pushTitle, pushBody).catch((e) => console.error('Push failed:', e)) : null,
-  ]);
+  if (groupId) {
+    // Group booking — notify every member
+    const { data: members } = await supabase
+      .from('student_group_members')
+      .select('students!inner(email, phone, name)')
+      .eq('group_id', groupId);
+    const memberList = (members ?? [])
+      .map((m) => {
+        const s = (Array.isArray(m.students) ? m.students[0] : m.students) as { email: string; phone: string | null; name: string } | null;
+        return { email: s?.email ?? '', phone: s?.phone ?? null, name: s?.name ?? '' };
+      })
+      .filter((m) => m.email);
+
+    const groupPushTitle =
+      action === 'approve' ? 'Group Lesson Confirmed' :
+      action === 'reject'  ? 'Group Lesson Declined' : 'Group Lesson Cancelled';
+    const groupPushBody =
+      action === 'approve' ? `Your group lesson on ${emailInfo.startTime} has been confirmed.` :
+      action === 'reject'  ? `Your group lesson on ${emailInfo.startTime} was declined.` :
+                             `Your group lesson on ${emailInfo.startTime} has been cancelled.`;
+
+    await Promise.all([
+      ...memberList.map((member) =>
+        sendEmail(prefs, notifKey)
+          ? (action === 'approve'
+              ? emailStudentApproved({ ...emailInfo, studentName: member.name, studentEmail: member.email })
+              : action === 'reject'
+              ? emailStudentRejected({ ...emailInfo, studentName: member.name, studentEmail: member.email })
+              : emailStudentCancelledByTeacher({ ...emailInfo, studentName: member.name, studentEmail: member.email })
+            ).catch((e) => console.error('Email failed:', e))
+          : null
+      ),
+      ...memberList.filter((m) => m.phone).map((member) =>
+        sendWhatsApp(prefs, notifKey)
+          ? (action === 'approve'
+              ? whatsappStudentApproved({ ...emailInfo, studentName: member.name, phone: member.phone! })
+              : action === 'reject'
+              ? whatsappStudentRejected({ ...emailInfo, studentName: member.name, phone: member.phone! })
+              : whatsappStudentCancelledByTeacher({ ...emailInfo, studentName: member.name, phone: member.phone! })
+            ).catch((e) => console.error('WhatsApp failed:', e))
+          : null
+      ),
+      sendPush(prefs, notifKey) && memberList.length > 0
+        ? sendPushToEmails(supabase, memberList.map((m) => m.email), groupPushTitle, groupPushBody)
+            .catch((e) => console.error('Push failed:', e))
+        : null,
+    ]);
+  } else {
+    // Individual booking — notify the student directly
+    const { data: studentRow } = await supabase
+      .from('students')
+      .select('phone')
+      .ilike('email', booking.student_email)
+      .eq('teacher_id', auth.user.id)
+      .single();
+
+    const pushTitle =
+      action === 'approve' ? 'Lesson Confirmed' :
+      action === 'reject'  ? 'Lesson Request Declined' : 'Lesson Cancelled';
+    const pushBody =
+      action === 'approve' ? `Your lesson on ${emailInfo.startTime} has been confirmed.` :
+      action === 'reject'  ? `Your lesson request for ${emailInfo.startTime} was declined.` :
+                             `Your lesson on ${emailInfo.startTime} has been cancelled.`;
+
+    await Promise.all([
+      sendEmail(prefs, notifKey) ? (
+        action === 'approve' ? emailStudentApproved(emailInfo) :
+        action === 'reject'  ? emailStudentRejected(emailInfo) :
+                               emailStudentCancelledByTeacher(emailInfo)
+      ).catch((e) => console.error('Email failed:', e)) : null,
+      sendWhatsApp(prefs, notifKey) && studentRow?.phone ? (async () => {
+        const waInfo = { ...emailInfo, phone: studentRow.phone };
+        return (
+          action === 'approve' ? whatsappStudentApproved(waInfo) :
+          action === 'reject'  ? whatsappStudentRejected(waInfo) :
+                                 whatsappStudentCancelledByTeacher(waInfo)
+        ).catch((e) => console.error('WhatsApp failed:', e));
+      })() : null,
+      sendPush(prefs, notifKey) ? sendPushToUser(supabase, auth.user.id, pushTitle, pushBody).catch((e) => console.error('Push failed:', e)) : null,
+    ]);
+  }
 
   return NextResponse.json({ success: true });
 }

@@ -59,17 +59,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Recurring bookings require a template slot' }, { status: 400 });
   }
 
-  // Notify student via all channels enabled for lesson_approved
+  // Notify student(s) via all channels enabled for lesson_approved
   async function notifyStudent(cancelToken: string) {
-    if (group_id || !student_email) return;
-    const [{ data: settingsRow }, { data: studentRow }] = await Promise.all([
-      supabase.from('teacher_settings').select('notification_preferences').eq('teacher_id', teacherId).single(),
-      supabase.from('students').select('phone').ilike('email', student_email).eq('teacher_id', teacherId).single(),
-    ]);
+    const { data: settingsRow } = await supabase
+      .from('teacher_settings')
+      .select('notification_preferences')
+      .eq('teacher_id', teacherId)
+      .single();
     const prefs = mergePrefs(settingsRow?.notification_preferences);
-    const info = {
-      studentName: student_name,
-      studentEmail: student_email,
+    const baseInfo = {
       bookingType: booking_type as 'recurring' | 'one_time',
       date,
       dayOfWeek: template?.day_of_week,
@@ -77,15 +75,59 @@ export async function POST(request: NextRequest) {
       endTime,
       cancelToken,
     };
+
+    if (group_id) {
+      const { data: members } = await supabase
+        .from('student_group_members')
+        .select('students!inner(email, phone, name)')
+        .eq('group_id', group_id);
+      const memberList = (members ?? [])
+        .map((m) => {
+          const s = (Array.isArray(m.students) ? m.students[0] : m.students) as { email: string; phone: string | null; name: string } | null;
+          return { email: s?.email ?? '', phone: s?.phone ?? null, name: s?.name ?? '' };
+        })
+        .filter((m) => m.email);
+      if (!memberList.length) return;
+      await Promise.all([
+        ...memberList.map((member) =>
+          sendEmail(prefs, 'lesson_approved')
+            ? emailStudentDirectBooking({ ...baseInfo, studentName: member.name, studentEmail: member.email })
+                .catch((e) => console.error('Email failed:', e))
+            : null
+        ),
+        ...memberList.filter((m) => m.phone).map((member) =>
+          sendWhatsApp(prefs, 'lesson_approved')
+            ? whatsappStudentApproved({ ...baseInfo, studentName: member.name, phone: member.phone! })
+                .catch((e) => console.error('WhatsApp failed:', e))
+            : null
+        ),
+        sendPush(prefs, 'lesson_approved')
+          ? sendPushToEmails(supabase, memberList.map((m) => m.email), 'Lesson Confirmed', `Your group lesson on ${start_time} has been confirmed.`)
+              .catch((e) => console.error('Push failed:', e))
+          : null,
+      ]);
+      return;
+    }
+
+    if (!student_email) return;
+    const { data: studentRow } = await supabase
+      .from('students')
+      .select('phone')
+      .ilike('email', student_email)
+      .eq('teacher_id', teacherId)
+      .single();
     await Promise.all([
       sendEmail(prefs, 'lesson_approved')
-        ? emailStudentDirectBooking(info).catch((e) => console.error('Email failed:', e))
+        ? emailStudentDirectBooking({ ...baseInfo, studentName: student_name, studentEmail: student_email })
+            .catch((e) => console.error('Email failed:', e))
         : null,
       sendWhatsApp(prefs, 'lesson_approved') && studentRow?.phone
-        ? whatsappStudentApproved({ ...info, phone: studentRow.phone }).catch((e) => console.error('WhatsApp failed:', e))
+        ? whatsappStudentApproved({ ...baseInfo, studentName: student_name, phone: studentRow.phone })
+            .catch((e) => console.error('WhatsApp failed:', e))
         : null,
       sendPush(prefs, 'lesson_approved')
-        ? sendPushToEmails(supabase, [student_email], 'Lesson Confirmed', `Your lesson on ${start_time} has been confirmed.`).catch((e) => console.error('Push failed:', e))
+        ? sendPushToEmails(supabase, [student_email], 'Lesson Confirmed', `Your lesson on ${start_time} has been confirmed.`)
+            .catch((e) => console.error('Push failed:', e))
         : null,
     ]);
   }
