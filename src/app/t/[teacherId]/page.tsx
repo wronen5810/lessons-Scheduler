@@ -88,6 +88,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const [bookingType, setBookingType] = useState<'one_time' | 'recurring'>('one_time');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
+  const [myGroups, setMyGroups] = useState<{ id: string; name: string }[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   // Cancel flow
   const [cancelTarget, setCancelTarget] = useState<StudentBooking | ComputedSlot | null>(null);
@@ -119,7 +121,11 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     if (tok) headers['Authorization'] = `Bearer ${tok}`;
     const res = await fetch(`/api/student/bookings?email=${encodeURIComponent(email)}&teacherId=${teacherId}`, { headers });
     if (res.status === 401) { router.push('/student'); return; }
-    if (res.ok) setBookings(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      setBookings(Array.isArray(data) ? data : (data.bookings ?? []));
+      setMyGroups(Array.isArray(data) ? [] : (data.groups ?? []));
+    }
   }
 
   async function loadMessages() {
@@ -235,6 +241,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     setSelectedSlot(slot);
     setBookingType(slot.one_time_slot_id ? 'one_time' : 'one_time');
     setBookingError('');
+    setSelectedGroupId(null);
     setStep('book');
   }
 
@@ -254,6 +261,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
         start_time: selectedSlot.start_time,
         student_email: email,
         teacher_id: teacherId,
+        ...(selectedGroupId ? { group_id: selectedGroupId } : {}),
       }),
     });
     setBookingLoading(false);
@@ -628,6 +636,23 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     <p className="text-sm text-gray-500 text-center py-4">Please sign in to book a lesson.</p>
                   ) : (
                     <>
+                      {/* Group selector — shown when student belongs to one or more groups */}
+                      {myGroups.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-gray-700">{lang === 'he' ? 'הזמן/י עבור:' : 'Book for:'}</p>
+                          <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${selectedGroupId === null ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                            <input type="radio" name="groupId" value="" checked={selectedGroupId === null} onChange={() => setSelectedGroupId(null)} className="accent-blue-500" />
+                            <span className="text-sm font-medium text-gray-900">{lang === 'he' ? 'עבורי' : 'For myself'}</span>
+                          </label>
+                          {myGroups.map((group) => (
+                            <label key={group.id} className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${selectedGroupId === group.id ? 'border-purple-400 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                              <input type="radio" name="groupId" value={group.id} checked={selectedGroupId === group.id} onChange={() => setSelectedGroupId(group.id)} className="accent-purple-500" />
+                              <span className="text-sm font-medium text-gray-900">{lang === 'he' ? `עבור הקבוצה: ${group.name}` : `For group: ${group.name}`}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Booking type (only for template slots) */}
                       {!selectedSlot.one_time_slot_id && selectedSlot.template_id && (
                         <div className="space-y-2">

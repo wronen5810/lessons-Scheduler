@@ -155,5 +155,6 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  return NextResponse.json([...recurringOut, ...oneTimeOut, ...groupRecurringOut, ...groupOneTimeOut]);
+  const groups = (groupRows ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name }));
+  return NextResponse.json({ bookings: [...recurringOut, ...oneTimeOut, ...groupRecurringOut, ...groupOneTimeOut], groups });
 }

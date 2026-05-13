@@ -10,7 +10,7 @@ import { sendPushToUser } from '@/lib/firebase-admin';
 // POST /api/bookings — student submits a lesson request
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, student_email: rawEmail, teacher_id } = body;
+  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, student_email: rawEmail, teacher_id, group_id } = body;
   const student_email = rawEmail?.toLowerCase().trim();
 
   if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time || !student_email || !teacher_id) {
@@ -36,6 +36,20 @@ export async function POST(request: NextRequest) {
   }
 
   const student_name = student.name;
+
+  // Resolve booking identity — individual student or group
+  let bookingEmail = student_email;
+  let bookingName = student_name;
+  if (group_id) {
+    const [{ data: group }, { data: membership }] = await Promise.all([
+      supabase.from('student_groups').select('id, name').eq('id', group_id).eq('teacher_id', teacher_id).single(),
+      supabase.from('student_group_members').select('id').eq('group_id', group_id).eq('student_id', student.id).single(),
+    ]);
+    if (!group) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    if (!membership) return NextResponse.json({ error: 'You are not a member of this group' }, { status: 403 });
+    bookingEmail = `grp:${group_id}`;
+    bookingName = group.name;
+  }
 
   const [{ data: { user: teacherUser } }, { data: settingsRow }, { data: profileRow }] = await Promise.all([
     supabase.auth.admin.getUserById(teacher_id),
@@ -74,8 +88,8 @@ export async function POST(request: NextRequest) {
       if (maxParticipants <= 1) {
         return NextResponse.json({ error: 'One or more dates in that range are no longer available' }, { status: 409 });
       }
-      // Multi-participant: check student isn't already booked and no date is full
-      if (existing.some((b) => b.student_email?.toLowerCase() === student_email)) {
+      // Multi-participant: check this identity isn't already booked and no date is full
+      if (existing.some((b) => b.student_email?.toLowerCase() === bookingEmail)) {
         return NextResponse.json({ error: 'You already have a booking for this slot in the selected range' }, { status: 409 });
       }
       const countByDate = new Map<string, number>();
@@ -97,13 +111,14 @@ export async function POST(request: NextRequest) {
     while (cur <= stop) {
       rows.push({
         template_id,
-        student_name,
-        student_email,
+        student_name: bookingName,
+        student_email: bookingEmail,
         lesson_date: cur.toISOString().slice(0, 10),
         started_date: date,
         series_id: seriesId,
         booked_by: 'student',
         teacher_id,
+        group_id: group_id ?? null,
       });
       cur.setDate(cur.getDate() + 7);
     }
@@ -111,9 +126,9 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from('recurring_bookings').insert(rows);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const reqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'recurring' as const, date, dayOfWeek: template.day_of_week, startTime: start_time, endTime };
+    const reqInfo = { studentName: bookingName, studentEmail: bookingEmail, bookingType: 'recurring' as const, date, dayOfWeek: template.day_of_week, startTime: start_time, endTime };
     const pushTitle = 'New Lesson Request';
-    const pushBody = `${student_name} requested a lesson on ${reqInfo.startTime}`;
+    const pushBody = `${bookingName} requested a lesson on ${reqInfo.startTime}`;
     await Promise.all([
       sendEmail(prefs, 'lesson_request') ? emailTeacherNewRequest({ ...reqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e)) : null,
       sendWhatsApp(prefs, 'lesson_request') && teacherPhone ? whatsappTeacherNewRequest({ ...reqInfo, teacherPhone }).catch((e) => console.error('WhatsApp failed:', e)) : null,
@@ -148,7 +163,7 @@ export async function POST(request: NextRequest) {
     .in('status', ['pending', 'approved']);
 
   if (existingOt && existingOt.length > 0) {
-    if (existingOt.some((b) => (b.student_email as string)?.toLowerCase() === student_email)) {
+    if (existingOt.some((b) => (b.student_email as string)?.toLowerCase() === bookingEmail)) {
       return NextResponse.json({ error: 'You already have a booking for this slot' }, { status: 409 });
     }
     if (existingOt.length >= maxParticipantsOt) {
@@ -163,19 +178,20 @@ export async function POST(request: NextRequest) {
       one_time_slot_id: one_time_slot_id || null,
       specific_date: date,
       start_time,
-      student_name,
-      student_email,
+      student_name: bookingName,
+      student_email: bookingEmail,
       booked_by: 'student',
       teacher_id,
+      group_id: group_id ?? null,
     })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const otReqInfo = { studentName: student_name, studentEmail: student_email, bookingType: 'one_time' as const, date, startTime: start_time, endTime };
+  const otReqInfo = { studentName: bookingName, studentEmail: bookingEmail, bookingType: 'one_time' as const, date, startTime: start_time, endTime };
   const pushTitle = 'New Lesson Request';
-  const pushBody = `${student_name} requested a lesson on ${start_time}`;
+  const pushBody = `${bookingName} requested a lesson on ${start_time}`;
   await Promise.all([
     sendEmail(prefs, 'lesson_request') ? emailTeacherNewRequest({ ...otReqInfo, teacherEmail }).catch((e) => console.error('Email failed:', e)) : null,
     sendWhatsApp(prefs, 'lesson_request') && teacherPhone ? whatsappTeacherNewRequest({ ...otReqInfo, teacherPhone }).catch((e) => console.error('WhatsApp failed:', e)) : null,
