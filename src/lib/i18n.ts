@@ -238,6 +238,9 @@ const en = {
   'wizard.whatsappDesc': 'Message via WhatsApp',
   'wizard.messageSent': 'Message sent!',
   'wizard.studentsCountLabel': '{count} students',
+  'wizard.addAndSelect': 'Add & select',
+  'wizard.newStudentLabel': 'New student',
+  'wizard.addNewStudentHeader': 'Add new student',
   // ── Voice commands ───────────────────────────────────────
   'voice.command': 'Voice command',
   'voice.listening': 'Listening...',
@@ -659,6 +662,9 @@ const he: typeof en = {
   'wizard.whatsappDesc': 'הודעה דרך וואטסאפ',
   'wizard.messageSent': 'ההודעה נשלחה!',
   'wizard.studentsCountLabel': '{count} תלמידים',
+  'wizard.addAndSelect': 'הוסף ובחר',
+  'wizard.newStudentLabel': 'תלמיד/ה חדש/ה',
+  'wizard.addNewStudentHeader': 'הוסף תלמיד/ה חדש/ה',
   // ── Voice commands ───────────────────────────────────────
   'voice.command': 'פקודה קולית',
   'voice.listening': '...מקשיב',

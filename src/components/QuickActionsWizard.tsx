@@ -278,7 +278,7 @@ const MINUTE_OPTIONS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) =>
 
 export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () => void; onDone: () => void; initialDate?: string }) {
   type SlotType = 'one-time' | 'weekly';
-  type Step = 'type' | 'when' | 'time' | 'duration' | 'enddate' | 'assign' | 'pickStudent' | 'done';
+  type Step = 'type' | 'when' | 'time' | 'enddate' | 'assign' | 'pickStudent' | 'done';
 
   const { t, lang } = useLanguage();
   const today = new Date().toISOString().slice(0, 10);
@@ -330,11 +330,12 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
     setSelectedStudent(created);
     setShowNewStudent(false);
     setNewName(''); setNewEmail(''); setNewPhone('');
+    await assignStudent(created);
   }
 
   const isWeekly = slotType === 'weekly';
-  // When initialDate provided: time(1)→duration(2)→assign(3) = 3 steps
-  const totalSteps = initialDate ? 3 : (isWeekly ? 5 : 4);
+  // When initialDate provided: time(1)→assign(2) = 2 steps
+  const totalSteps = initialDate ? 2 : (isWeekly ? 4 : 3);
   const title = t('wizard.addSlot');
 
   // Day names via translation
@@ -345,15 +346,15 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
 
   function getStepNum(): number {
     if (initialDate) {
-      // Compressed flow: time(1), duration(2), assign/pickStudent(3)
+      // Compressed flow: time(1), assign/pickStudent(2)
       const map: Partial<Record<Step, number>> = {
-        time: 1, duration: 2, assign: 3, pickStudent: 3,
+        time: 1, assign: 2, pickStudent: 2,
       };
       return map[step] ?? 1;
     }
     const map: Partial<Record<Step, number>> = {
-      type: 1, when: 2, time: 3, duration: 4,
-      enddate: 5, assign: isWeekly ? 5 : 4, pickStudent: isWeekly ? 5 : 4,
+      type: 1, when: 2, time: 3,
+      enddate: 4, assign: isWeekly ? 4 : 3, pickStudent: isWeekly ? 4 : 3,
     };
     return map[step] ?? 1;
   }
@@ -362,9 +363,8 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
     const prev: Partial<Record<Step, Step>> = {
       when: 'type',
       time: initialDate ? undefined : 'when',
-      duration: 'time',
-      enddate: 'duration',
-      assign: isWeekly ? 'enddate' : 'duration',
+      enddate: 'time',
+      assign: isWeekly ? 'enddate' : 'time',
       pickStudent: 'assign',
     } as Partial<Record<Step, Step>>;
     const p = prev[step];
@@ -408,8 +408,9 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
     setStep('assign');
   }
 
-  async function assignStudent() {
-    if (!createdSlot || !selectedStudent) return;
+  async function assignStudent(studentOverride?: Student) {
+    const student = studentOverride ?? selectedStudent;
+    if (!createdSlot || !student) return;
     setLoading(true);
     setError('');
     const startTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -422,8 +423,8 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
         date: isWeekly ? date : createdSlot.specific_date,
         end_date: endDate || null,
         start_time: startTime,
-        student_name: selectedStudent.name,
-        student_email: selectedStudent.email,
+        student_name: student.name,
+        student_email: student.email,
       }),
     });
     setLoading(false);
@@ -529,15 +530,8 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
               {MINUTE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          <WizardActions onNext={() => setStep('duration')} />
-        </>
-      )}
-
-      {step === 'duration' && (
-        <>
-          <label className="block text-sm font-medium text-gray-700 mb-2">{t('wizard.durationMin')}</label>
+          <label className="block text-sm font-medium text-gray-700 mt-4 mb-2">{t('wizard.durationMin')}</label>
           <input
-            autoFocus
             type="number"
             min={15}
             max={180}
@@ -599,14 +593,14 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
                 className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
               >
                 <UserPlus2 className="w-3.5 h-3.5" />
-                New student
+                {t('wizard.newStudentLabel')}
               </button>
             )}
           </div>
 
           {showNewStudent ? (
             <div className="border border-blue-200 rounded-xl p-3 space-y-2 bg-blue-50 mb-3">
-              <p className="text-xs font-medium text-blue-800">Add new student</p>
+              <p className="text-xs font-medium text-blue-800">{t('wizard.addNewStudentHeader')}</p>
               <input
                 ref={newStudentNameRef}
                 type="text"
@@ -637,14 +631,14 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
                   disabled={addingStudent || !newName.trim()}
                   className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {addingStudent ? 'Adding…' : 'Add & select'}
+                  {addingStudent ? t('common.loading') : t('wizard.addAndSelect')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowNewStudent(false); setNewName(''); setNewEmail(''); setNewPhone(''); setAddStudentError(''); }}
                   className="flex-1 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
