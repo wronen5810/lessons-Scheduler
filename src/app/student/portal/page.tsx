@@ -231,6 +231,14 @@ export default function StudentPortalPage() {
   function signOut() {
     if (typeof window !== 'undefined') {
       sessions.forEach(s => localStorage.removeItem(`st_${s.teacherId}`));
+      // On web, forget the saved login so the next visit starts fresh.
+      // On the native app, keep it so the app can auto-restore the session.
+      const isNative = typeof (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform === 'function'
+        && (window as unknown as { Capacitor: { isNativePlatform: () => boolean } }).Capacitor.isNativePlatform();
+      if (!isNative) {
+        localStorage.removeItem('last_student_email');
+        localStorage.removeItem('last_teacher_id');
+      }
     }
     router.replace('/student');
   }
