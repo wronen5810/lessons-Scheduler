@@ -40,8 +40,9 @@ export async function POST(request: NextRequest) {
       .eq('id', bodyStudentId)
       .eq('teacher_id', teacherId)
       .single();
-    if (s?.name) {
-      student_name = s.name;
+    if (s) {
+      // Use name if available, fall back to email, then a placeholder
+      student_name = s.name || s.email || `Student`;
       if (!student_email) student_email = s.email?.toLowerCase() ?? '';
     }
   }
