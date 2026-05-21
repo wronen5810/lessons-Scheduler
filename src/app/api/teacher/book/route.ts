@@ -19,11 +19,17 @@ export async function POST(request: NextRequest) {
   let student_email: string = body.student_email?.toLowerCase().trim() ?? '';
 
   if (!booking_type || (!template_id && !one_time_slot_id) || !date || !start_time) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const missing = [
+      !booking_type && 'booking_type',
+      (!template_id && !one_time_slot_id) && 'template_id/one_time_slot_id',
+      !date && 'date',
+      !start_time && 'start_time',
+    ].filter(Boolean).join(', ');
+    return NextResponse.json({ error: `Missing required fields: ${missing}` }, { status: 400 });
   }
 
   if (!group_id && !student_name) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing required fields: student_name or group_id' }, { status: 400 });
   }
 
   const supabase = createServiceSupabase();
