@@ -98,14 +98,14 @@ function WizardActions({
   return (
     <div className="flex gap-3 mt-5">
       <button
-        onClick={onNext}
+        onClick={() => onNext()}
         disabled={disabled || loading}
         className="flex-1 bg-blue-600 text-white rounded-xl py-3 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
         {loading ? t('common.loading') : label}
       </button>
       {onSkip && (
-        <button onClick={onSkip} className="px-4 text-sm text-gray-400 hover:text-gray-600">
+        <button onClick={() => onSkip()} className="px-4 text-sm text-gray-400 hover:text-gray-600">
           {t('common.skip')}
         </button>
       )}
