@@ -49,8 +49,7 @@ export async function POST(request: NextRequest) {
 
   if (!group_id && !student_name) {
     return NextResponse.json({
-      error: 'Missing required fields: student_name or group_id',
-      debug: { student_name, student_id: bodyStudentId, group_id, booking_type, template_id, one_time_slot_id, date },
+      error: `student_name missing [id=${bodyStudentId ?? 'none'}, name=${String(student_name)}, grp=${group_id ?? 'none'}, type=${booking_type}]`,
     }, { status: 400 });
   }
 
