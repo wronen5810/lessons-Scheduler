@@ -423,6 +423,7 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
         date: isWeekly ? date : createdSlot.specific_date,
         end_date: endDate || null,
         start_time: startTime,
+        student_id: student.id,
         student_name: student.name,
         student_email: student.email,
       }),

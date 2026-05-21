@@ -28,13 +28,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Missing required fields: ${missing}` }, { status: 400 });
   }
 
-  if (!group_id && !student_name) {
-    return NextResponse.json({ error: 'Missing required fields: student_name or group_id' }, { status: 400 });
-  }
-
   const supabase = createServiceSupabase();
   const teacherId = auth.user!.id;
   const endTime = getEndTime(start_time);
+
+  // If student_name is missing but student_id was provided, look it up from the DB
+  if (!group_id && !student_name && bodyStudentId) {
+    const { data: s } = await supabase
+      .from('students')
+      .select('name, email')
+      .eq('id', bodyStudentId)
+      .eq('teacher_id', teacherId)
+      .single();
+    if (s?.name) {
+      student_name = s.name;
+      if (!student_email) student_email = s.email?.toLowerCase() ?? '';
+    }
+  }
+
+  if (!group_id && !student_name) {
+    return NextResponse.json({ error: 'Missing required fields: student_name or group_id' }, { status: 400 });
+  }
 
   // If booking for a group, resolve group info
   if (group_id) {
