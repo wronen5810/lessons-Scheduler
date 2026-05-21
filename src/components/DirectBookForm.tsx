@@ -9,6 +9,7 @@ interface Student {
   name: string;
   email: string | null;
   phone?: string | null;
+  rate?: number | null;
 }
 
 interface Props {
@@ -30,6 +31,7 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
   const [endDate, setEndDate] = useState('');
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [prepaid, setPrepaid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -115,7 +117,7 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
       const res = await fetch('/api/teacher/book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...basePayload, group_id: selectedGroupId }),
+        body: JSON.stringify({ ...basePayload, group_id: selectedGroupId, prepaid: false }),
       });
       setLoading(false);
       if (!res.ok) {
@@ -135,6 +137,7 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
             ...basePayload,
             student_name: student.name,
             student_email: student.email,
+            prepaid,
           }),
         });
         if (!res.ok) {
@@ -336,6 +339,18 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
             onChange={(e) => setEndDate(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
+      )}
+
+      {bookFor === 'student' && (
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={prepaid}
+            onChange={(e) => setPrepaid(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 accent-blue-600"
+          />
+          <span>Prepaid <span className="text-gray-400 font-normal text-xs">(student already paid)</span></span>
+        </label>
       )}
 
       {error && <p className="text-xs text-red-600">{error}</p>}

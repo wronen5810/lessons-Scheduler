@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, group_id } = body;
+  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, group_id, prepaid } = body;
   let { student_name } = body;
   let student_email: string = body.student_email?.toLowerCase().trim() ?? '';
 
@@ -155,8 +155,28 @@ export async function POST(request: NextRequest) {
       cur.setDate(cur.getDate() + 7);
     }
 
-    const { error } = await supabase.from('recurring_bookings').insert(rows);
+    const { data: insertedRows, error } = await supabase.from('recurring_bookings').insert(rows).select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Create prepaid payments for each lesson in the series
+    if (prepaid && !group_id && student_email) {
+      const { data: student } = await supabase
+        .from('students')
+        .select('id, rate')
+        .ilike('email', student_email)
+        .eq('teacher_id', teacherId)
+        .single();
+      if (student?.rate && student.rate > 0 && insertedRows?.length) {
+        const paymentRows = insertedRows.map((row) => ({
+          teacher_id: teacherId,
+          student_id: student.id,
+          amount: student.rate,
+          booking_type: 'recurring',
+          booking_id: row.id,
+        }));
+        await supabase.from('student_payments').insert(paymentRows);
+      }
+    }
 
     notifyStudent(seriesId).catch((e) => console.error('Notify failed:', e));
 
@@ -182,6 +202,25 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Create prepaid payment for this lesson
+  if (prepaid && !group_id && student_email) {
+    const { data: student } = await supabase
+      .from('students')
+      .select('id, rate')
+      .ilike('email', student_email)
+      .eq('teacher_id', teacherId)
+      .single();
+    if (student?.rate && student.rate > 0) {
+      await supabase.from('student_payments').insert({
+        teacher_id: teacherId,
+        student_id: student.id,
+        amount: student.rate,
+        booking_type: 'one_time',
+        booking_id: booking.id,
+      });
+    }
+  }
 
   notifyStudent(booking.cancel_token as string).catch((e) => console.error('Notify failed:', e));
 

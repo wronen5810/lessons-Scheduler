@@ -68,40 +68,53 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .single();
 
     if (student) {
-      if (action === 'complete' && student.rate && student.rate > 0) {
-        // Check if there are sufficient unallocated funds to auto-pay this lesson
-        const { data: unallocated } = await supabase
+      if (action === 'complete') {
+        // Check if there's already a prepaid payment allocated to this specific booking
+        const { data: prepaidPayment } = await supabase
           .from('student_payments')
-          .select('id, amount')
+          .select('id')
           .eq('teacher_id', auth.user.id)
-          .eq('student_id', student.id)
-          .is('booking_id', null)
-          .order('paid_at');
+          .eq('booking_id', id)
+          .maybeSingle();
 
-        const totalUnallocated = (unallocated ?? []).reduce((s, p) => s + Number(p.amount), 0);
-
-        if (totalUnallocated >= student.rate) {
-          // Auto-allocate: record payment for this lesson and mark as paid
+        if (prepaidPayment) {
+          // Prepaid lesson — mark as paid immediately
           updatePayload.status = 'paid';
-          await supabase.from('student_payments').insert({
-            teacher_id: auth.user.id,
-            student_id: student.id,
-            amount: student.rate,
-            booking_type: type,
-            booking_id: id,
-          });
+        } else if (student.rate && student.rate > 0) {
+          // Check if there are sufficient unallocated funds to auto-pay this lesson
+          const { data: unallocated } = await supabase
+            .from('student_payments')
+            .select('id, amount')
+            .eq('teacher_id', auth.user.id)
+            .eq('student_id', student.id)
+            .is('booking_id', null)
+            .order('paid_at');
 
-          // Deduct from unallocated payments FIFO
-          let remaining = student.rate;
-          for (const p of (unallocated ?? [])) {
-            if (remaining <= 0) break;
-            const pAmount = Number(p.amount);
-            if (pAmount <= remaining) {
-              await supabase.from('student_payments').delete().eq('id', p.id);
-              remaining -= pAmount;
-            } else {
-              await supabase.from('student_payments').update({ amount: pAmount - remaining }).eq('id', p.id);
-              remaining = 0;
+          const totalUnallocated = (unallocated ?? []).reduce((s, p) => s + Number(p.amount), 0);
+
+          if (totalUnallocated >= student.rate) {
+            // Auto-allocate: record payment for this lesson and mark as paid
+            updatePayload.status = 'paid';
+            await supabase.from('student_payments').insert({
+              teacher_id: auth.user.id,
+              student_id: student.id,
+              amount: student.rate,
+              booking_type: type,
+              booking_id: id,
+            });
+
+            // Deduct from unallocated payments FIFO
+            let remaining = student.rate;
+            for (const p of (unallocated ?? [])) {
+              if (remaining <= 0) break;
+              const pAmount = Number(p.amount);
+              if (pAmount <= remaining) {
+                await supabase.from('student_payments').delete().eq('id', p.id);
+                remaining -= pAmount;
+              } else {
+                await supabase.from('student_payments').update({ amount: pAmount - remaining }).eq('id', p.id);
+                remaining = 0;
+              }
             }
           }
         }
