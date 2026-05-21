@@ -61,6 +61,7 @@ export default function BillingPage() {
         return r.json();
       })
       .then((data) => {
+        if (data.error) { setFetchError(data.error); return; }
         setIndividual(data.individual ?? []);
         setGroupBilling(data.groups ?? []);
       })

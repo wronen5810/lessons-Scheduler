@@ -45,7 +45,14 @@ export async function GET() {
 async function getBillingData(teacherId: string) {
   const supabase = createServiceSupabase();
 
-  const [{ data: students }, { data: otDone }, { data: recDone }, { data: groups }, { data: templates }, { data: allStudentPayments }] = await Promise.all([
+  const [
+    { data: students },
+    { data: otDone },
+    { data: recDone },
+    { data: groups },
+    { data: templates },
+    { data: allStudentPayments, error: paymentsError },
+  ] = await Promise.all([
     supabase.from('students').select('id, email, name, rate').eq('teacher_id', teacherId),
     supabase
       .from('one_time_bookings')
@@ -66,6 +73,12 @@ async function getBillingData(teacherId: string) {
       .is('booking_id', null)
       .order('paid_at', { ascending: false }),
   ]);
+
+  if (paymentsError) {
+    console.error('student_payments query error:', paymentsError.message);
+    // Surface the error so UI can detect missing migration
+    return NextResponse.json({ error: `student_payments: ${paymentsError.message}`, individual: [], groups: [] }, { status: 200 });
+  }
 
   const tplMap = new Map((templates ?? []).map((t) => [t.id, t]));
 
