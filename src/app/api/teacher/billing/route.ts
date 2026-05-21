@@ -283,13 +283,5 @@ async function getBillingData(teacherId: string) {
 
   groupBilling.sort((a, b) => a.group_name.localeCompare(b.group_name));
 
-  return NextResponse.json({
-    individual: individualBilling,
-    groups: groupBilling,
-    _debug: {
-      paymentsFound: (allStudentPayments ?? []).length,
-      unallocatedStudentIds: [...unallocatedByStudentId.keys()],
-      studentsInMap: students?.length ?? 0,
-    },
-  });
+  return NextResponse.json({ individual: individualBilling, groups: groupBilling });
 }
