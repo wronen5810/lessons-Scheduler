@@ -57,6 +57,13 @@ function StudentsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [studentFilter, setStudentFilter] = useState<'all' | 'active' | 'waiting'>('all');
 
+  // Payment modal state
+  const [paymentTarget, setPaymentTarget] = useState<{ studentId: string; studentName: string } | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+
   // ── Groups state ─────────────────────────────────────────────────
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
@@ -176,6 +183,29 @@ function StudentsPage() {
     setEditSaving(false);
     setEditing(null);
     load();
+  }
+
+  async function recordPayment() {
+    if (!paymentTarget) return;
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) { setPaymentError(isRTL ? 'הכנס סכום תקין' : 'Enter a valid amount'); return; }
+    setPaymentSaving(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/teacher/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: paymentTarget.studentId, amount, note: paymentNote || undefined }),
+      });
+      if (!res.ok) throw new Error('failed');
+      setPaymentTarget(null);
+      setPaymentAmount('');
+      setPaymentNote('');
+    } catch {
+      setPaymentError(isRTL ? 'שגיאה בשמירת התשלום' : 'Failed to record payment. Please try again.');
+    } finally {
+      setPaymentSaving(false);
+    }
   }
 
   // ── Group handlers ───────────────────────────────────────────────
@@ -383,6 +413,10 @@ function StudentsPage() {
                           className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
                           🕐 {t('students.logins')}
                         </button>
+                        <button onClick={() => { setOpenMenuId(null); setPaymentTarget({ studentId: student.id, studentName: student.name }); setPaymentAmount(''); setPaymentNote(''); setPaymentError(''); }}
+                          className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                          💰 {isRTL ? 'רשום תשלום' : 'Record payment'}
+                        </button>
                         <div className="border-t border-gray-100 my-0.5" />
                         <button onClick={() => { setOpenMenuId(null); handleDelete(student); }}
                           className="w-full text-start px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
@@ -552,6 +586,57 @@ function StudentsPage() {
         )}
 
       </main>
+
+      {/* Record Payment modal */}
+      {paymentTarget && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => setPaymentTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{isRTL ? 'רשום תשלום' : 'Record payment'}</p>
+              <p className="text-base font-bold text-gray-900 mt-0.5">{paymentTarget.studentName}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{isRTL ? 'תשלום שלא מוקצה לשיעור ספציפי' : 'Payment not allocated to a specific lesson'}</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{isRTL ? 'סכום (₪)' : 'Amount (₪)'}</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{isRTL ? 'הערה (אופציונלי)' : 'Note (optional)'}</label>
+                <input
+                  type="text"
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  placeholder={isRTL ? 'מזומן, העברה...' : 'Cash, bank transfer...'}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            {paymentError && <p className="text-xs text-red-500">{paymentError}</p>}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setPaymentTarget(null)} className="flex-1 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={recordPayment}
+                disabled={paymentSaving || !paymentAmount}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+              >
+                {paymentSaving ? (isRTL ? 'שומר...' : 'Saving...') : (isRTL ? 'שמור תשלום' : 'Save payment')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit student modal */}
       {editing && (
