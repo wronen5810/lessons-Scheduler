@@ -55,6 +55,7 @@ function StudentsPage() {
   const [loginHistory, setLoginHistory] = useState<{ id: string; student_name: string; student_email: string; logged_in_at: string }[]>([]);
   const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
   const [studentFilter, setStudentFilter] = useState<'all' | 'active' | 'waiting'>('all');
 
   // Payment modal state
@@ -76,13 +77,13 @@ function StudentsPage() {
   const [managingGroup, setManagingGroup] = useState<StudentGroup | null>(null);
   const [notebookGroup, setNotebookGroup] = useState<StudentGroup | null>(null);
 
-  // Close 3-dot menu on outside click
+  // Close menus on outside click
   useEffect(() => {
-    if (!openMenuId) return;
-    const close = () => setOpenMenuId(null);
+    if (!openMenuId && !statusMenuId) return;
+    const close = () => { setOpenMenuId(null); setStatusMenuId(null); };
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
-  }, [openMenuId]);
+  }, [openMenuId, statusMenuId]);
 
   async function load() {
     setLoading(true);
@@ -125,15 +126,12 @@ function StudentsPage() {
     setAdding(false);
   }
 
-  async function cycleStatus(student: Student) {
-    let next: { is_active: boolean; is_waitlisted: boolean };
-    if (student.is_active) {
-      next = { is_active: false, is_waitlisted: true };
-    } else if (student.is_waitlisted) {
-      next = { is_active: false, is_waitlisted: false };
-    } else {
-      next = { is_active: true, is_waitlisted: false };
-    }
+  async function setStatus(student: Student, status: 'active' | 'waiting' | 'inactive') {
+    const next = {
+      is_active: status === 'active',
+      is_waitlisted: status === 'waiting',
+    };
+    setStatusMenuId(null);
     await fetch(`/api/teacher/students/${student.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -197,12 +195,15 @@ function StudentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: paymentTarget.studentId, amount, note: paymentNote || undefined }),
       });
-      if (!res.ok) throw new Error('failed');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
       setPaymentTarget(null);
       setPaymentAmount('');
       setPaymentNote('');
-    } catch {
-      setPaymentError(isRTL ? 'שגיאה בשמירת התשלום' : 'Failed to record payment. Please try again.');
+    } catch (err) {
+      setPaymentError((err instanceof Error ? err.message : '') || (isRTL ? 'שגיאה בשמירת התשלום' : 'Failed to record payment.'));
     } finally {
       setPaymentSaving(false);
     }
@@ -367,20 +368,40 @@ function StudentsPage() {
                     {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}</span>}
                   </div>
 
-                  {/* Status badge — cycles active → waiting → inactive → active */}
-                  <button
-                    onClick={() => cycleStatus(student)}
-                    title={student.is_active ? t('students.filterWaiting') : student.is_waitlisted ? t('common.inactive') : t('common.active')}
-                    className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
-                      student.is_active
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : student.is_waitlisted
-                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                  >
-                    {student.is_active ? t('common.active') : student.is_waitlisted ? t('common.waiting') : t('common.inactive')}
-                  </button>
+                  {/* Status badge — click to open selection menu */}
+                  <div className="relative flex-shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStatusMenuId(statusMenuId === student.id ? null : student.id); }}
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
+                        student.is_active
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : student.is_waitlisted
+                          ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {student.is_active ? t('common.active') : student.is_waitlisted ? t('common.waiting') : t('common.inactive')} ▾
+                    </button>
+                    {statusMenuId === student.id && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute end-0 top-7 w-28 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden"
+                      >
+                        <button onClick={() => setStatus(student, 'active')}
+                          className={`w-full text-start px-3 py-2 text-xs font-medium transition-colors ${student.is_active ? 'text-green-700 bg-green-50' : 'text-gray-700 hover:bg-green-50 hover:text-green-700'}`}>
+                          ● {t('common.active')}
+                        </button>
+                        <button onClick={() => setStatus(student, 'waiting')}
+                          className={`w-full text-start px-3 py-2 text-xs font-medium transition-colors ${student.is_waitlisted ? 'text-amber-700 bg-amber-50' : 'text-gray-700 hover:bg-amber-50 hover:text-amber-700'}`}>
+                          ● {t('common.waiting')}
+                        </button>
+                        <button onClick={() => setStatus(student, 'inactive')}
+                          className={`w-full text-start px-3 py-2 text-xs font-medium transition-colors ${!student.is_active && !student.is_waitlisted ? 'text-gray-600 bg-gray-100' : 'text-gray-700 hover:bg-gray-100'}`}>
+                          ● {t('common.inactive')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   {/* 3-dot menu */}
                   <div className="relative flex-shrink-0">
