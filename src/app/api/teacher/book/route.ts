@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const body = await request.json();
-  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, group_id, prepaid } = body;
+  const { booking_type, template_id, one_time_slot_id, date, end_date, start_time, group_id, prepaid, student_id: bodyStudentId } = body;
   let { student_name } = body;
   let student_email: string = body.student_email?.toLowerCase().trim() ?? '';
 
@@ -159,17 +159,17 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     // Create prepaid payments for each lesson in the series
-    if (prepaid && !group_id && student_email) {
+    if (prepaid && !group_id && bodyStudentId && insertedRows?.length) {
       const { data: student } = await supabase
         .from('students')
-        .select('id, rate')
-        .ilike('email', student_email)
+        .select('rate')
+        .eq('id', bodyStudentId)
         .eq('teacher_id', teacherId)
         .single();
-      if (student?.rate && student.rate > 0 && insertedRows?.length) {
+      if (student?.rate && student.rate > 0) {
         const paymentRows = insertedRows.map((row) => ({
           teacher_id: teacherId,
-          student_id: student.id,
+          student_id: bodyStudentId,
           amount: student.rate,
           booking_type: 'recurring',
           booking_id: row.id,
@@ -204,17 +204,17 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Create prepaid payment for this lesson
-  if (prepaid && !group_id && student_email) {
+  if (prepaid && !group_id && bodyStudentId) {
     const { data: student } = await supabase
       .from('students')
-      .select('id, rate')
-      .ilike('email', student_email)
+      .select('rate')
+      .eq('id', bodyStudentId)
       .eq('teacher_id', teacherId)
       .single();
     if (student?.rate && student.rate > 0) {
       await supabase.from('student_payments').insert({
         teacher_id: teacherId,
-        student_id: student.id,
+        student_id: bodyStudentId,
         amount: student.rate,
         booking_type: 'one_time',
         booking_id: booking.id,

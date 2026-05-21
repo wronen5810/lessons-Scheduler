@@ -135,6 +135,7 @@ export default function DirectBookForm({ slot, onCancel, onDone }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...basePayload,
+            student_id: student.id,
             student_name: student.name,
             student_email: student.email,
             prepaid,
