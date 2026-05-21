@@ -188,19 +188,19 @@ async function getBillingData(teacherId: string) {
   // Ensure students with unallocated payments appear even if they have no completed lessons
   for (const [studentId, credits] of unallocatedByStudentId.entries()) {
     const s = studentById.get(studentId);
-    if (!s?.email) continue;
-    const key = s.email.toLowerCase();
+    // Use email as key if available, else fall back to student_id so no-email students still appear
+    const key = s?.email ? s.email.toLowerCase() : `sid:${studentId}`;
     if (!byStudent.has(key)) {
       byStudent.set(key, {
-        student_id: s.id,
-        student_email: key,
-        student_name: s.name,
-        rate: s.rate ?? null,
+        student_id: studentId,
+        student_email: s?.email?.toLowerCase() ?? '',
+        student_name: s?.name ?? '',
+        rate: s?.rate ?? null,
         completed_lessons: 0,
         balance: null,
         unallocated_credits: credits.reduce((sum, p) => sum + p.amount, 0),
         net_balance: null,
-        last_reminder_at: lastReminderMap.get(key) ?? null,
+        last_reminder_at: s?.email ? (lastReminderMap.get(s.email.toLowerCase()) ?? null) : null,
         lessons: [],
         payments: credits,
       });
@@ -283,5 +283,13 @@ async function getBillingData(teacherId: string) {
 
   groupBilling.sort((a, b) => a.group_name.localeCompare(b.group_name));
 
-  return NextResponse.json({ individual: individualBilling, groups: groupBilling });
+  return NextResponse.json({
+    individual: individualBilling,
+    groups: groupBilling,
+    _debug: {
+      paymentsFound: (allStudentPayments ?? []).length,
+      unallocatedStudentIds: [...unallocatedByStudentId.keys()],
+      studentsInMap: students?.length ?? 0,
+    },
+  });
 }
