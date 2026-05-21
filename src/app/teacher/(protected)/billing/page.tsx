@@ -5,6 +5,30 @@ import Link from 'next/link';
 import type { BillingRow, GroupBillingRow } from '@/app/api/teacher/billing/route';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+type ReminderTarget = { studentId: string; studentName: string; balance: number | null };
+type PaymentTarget = { studentId: string; studentName: string };
+
+function formatReminderDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function BellIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+}
+
 export default function BillingPage() {
   const { t, isRTL } = useLanguage();
   const [individual, setIndividual] = useState<BillingRow[]>([]);
@@ -13,6 +37,21 @@ export default function BillingPage() {
   const [fetchError, setFetchError] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+
+  // Payment modal state
+  const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+
+  // Reminder modal state
+  const [reminderTarget, setReminderTarget] = useState<ReminderTarget | null>(null);
+  const [reminderChannels, setReminderChannels] = useState({ email: true, whatsapp: false, notification: false });
+  const [reminderMsg, setReminderMsg] = useState('');
+  const [reminderSending, setReminderSending] = useState(false);
+  const [reminderSent, setReminderSent] = useState(false);
+  const [reminderError, setReminderError] = useState('');
 
   useEffect(() => {
     fetch('/api/teacher/billing')
@@ -35,13 +74,97 @@ export default function BillingPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalIndividualBalance = individual.filter((r) => r.balance != null).reduce((sum, r) => sum + (r.balance ?? 0), 0);
+  async function recordPayment() {
+    if (!paymentTarget) return;
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) { setPaymentError('Enter a valid amount'); return; }
+    setPaymentSaving(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/teacher/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: paymentTarget.studentId, amount, note: paymentNote || undefined }),
+      });
+      if (!res.ok) throw new Error('failed');
+      const payment = await res.json();
+      setIndividual((prev) => prev.map((r) => {
+        if (r.student_id !== paymentTarget.studentId) return r;
+        const newCredits = r.unallocated_credits + amount;
+        return {
+          ...r,
+          unallocated_credits: newCredits,
+          net_balance: r.balance != null ? Math.max(0, r.balance - newCredits) : null,
+          payments: [{ id: payment.id, amount, note: paymentNote || null, paid_at: payment.paid_at, booking_id: null }, ...r.payments],
+        };
+      }));
+      setPaymentTarget(null);
+      setPaymentAmount('');
+      setPaymentNote('');
+    } catch {
+      setPaymentError('Failed to record payment. Please try again.');
+    } finally {
+      setPaymentSaving(false);
+    }
+  }
+
+  const totalIndividualBalance = individual.filter((r) => r.net_balance != null).reduce((sum, r) => sum + (r.net_balance ?? 0), 0);
   const totalGroupBalance = groupBilling.filter((r) => r.total_balance != null).reduce((sum, r) => sum + (r.total_balance ?? 0), 0);
   const totalBalance = totalIndividualBalance + totalGroupBalance;
   const totalLessons = individual.reduce((sum, r) => sum + r.completed_lessons, 0)
     + groupBilling.reduce((sum, r) => sum + r.completed_lessons, 0);
 
   const hasData = individual.length > 0 || groupBilling.length > 0;
+
+  function openReminder(studentId: string, studentName: string, balance: number | null) {
+    const amount = balance != null && balance > 0 ? `₪${balance.toLocaleString()}` : null;
+    const msg = amount
+      ? `שלום ${studentName}, תזכורת ידידותית שיש לך יתרת חוב פתוחה בסך ${amount}. אשמח שתסדר את התשלום בהקדם האפשרי.`
+      : `שלום ${studentName}, תזכורת ידידותית בנוגע ליתרת החוב הפתוחה שלך. אנא צור/י קשר לפרטי תשלום.`;
+    setReminderTarget({ studentId, studentName, balance });
+    setReminderChannels({ email: true, whatsapp: false, notification: false });
+    setReminderMsg(msg);
+    setReminderSent(false);
+    setReminderError('');
+  }
+
+  async function sendReminder() {
+    if (!reminderTarget) return;
+    if (!reminderChannels.email && !reminderChannels.whatsapp && !reminderChannels.notification) {
+      setReminderError('Select at least one channel.');
+      return;
+    }
+    setReminderSending(true);
+    setReminderError('');
+    try {
+      const res = await fetch('/api/teacher/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentIds: [reminderTarget.studentId],
+          message: reminderMsg,
+          channels: reminderChannels,
+        }),
+      });
+      if (!res.ok) throw new Error('send failed');
+      const now = new Date().toISOString();
+      setIndividual((prev) =>
+        prev.map((r) => r.student_id === reminderTarget.studentId ? { ...r, last_reminder_at: now } : r)
+      );
+      setGroupBilling((prev) =>
+        prev.map((g) => ({
+          ...g,
+          members: g.members.map((m) => m.student_id === reminderTarget.studentId ? { ...m, last_reminder_at: now } : m),
+        }))
+      );
+      setReminderSent(true);
+      setTimeout(() => setReminderTarget(null), 1500);
+    } catch {
+      setReminderError('Failed to send. Please try again.');
+    } finally {
+      setReminderSending(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -96,9 +219,9 @@ export default function BillingPage() {
                   const isExpanded = expanded === row.student_email;
                   return (
                     <div key={row.student_email} className="divide-y divide-gray-50">
-                      <button
+                      <div
                         onClick={() => setExpanded(isExpanded ? null : row.student_email)}
-                        className="w-full grid grid-cols-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors text-start"
+                        className="w-full grid grid-cols-4 items-center px-5 py-3.5 hover:bg-slate-50 transition-colors cursor-pointer"
                       >
                         <div className="col-span-2 min-w-0">
                           <p className="text-sm font-semibold text-gray-900 truncate">{row.student_name}</p>
@@ -109,15 +232,42 @@ export default function BillingPage() {
                           {row.rate != null && <p className="text-xs text-gray-400">× ₪{row.rate}</p>}
                         </div>
                         <div className="text-end flex items-center justify-end gap-2">
-                          <div>
-                            {row.balance != null
-                              ? <span className="text-sm font-bold text-gray-900">₪{row.balance.toLocaleString()}</span>
-                              : <span className="text-xs text-amber-600 font-medium">{t('billing.noRate')}</span>
-                            }
+                          <div className="text-end">
+                            {row.net_balance != null ? (
+                              <span className="text-sm font-bold text-gray-900">₪{row.net_balance.toLocaleString()}</span>
+                            ) : row.balance != null ? (
+                              <span className="text-sm font-bold text-gray-900">₪{row.balance.toLocaleString()}</span>
+                            ) : (
+                              <span className="text-xs text-amber-600 font-medium">{t('billing.noRate')}</span>
+                            )}
+                            {row.unallocated_credits > 0 && (
+                              <p className="text-xs text-emerald-600 mt-0.5">₪{row.unallocated_credits.toLocaleString()} {isRTL ? 'קרדיט' : 'credit'}</p>
+                            )}
+                            {row.last_reminder_at && (
+                              <p className="text-xs text-blue-400 mt-0.5">{t('billing.reminderSentOn').replace('{date}', formatReminderDate(row.last_reminder_at))}</p>
+                            )}
                           </div>
+                          {row.student_id && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setPaymentTarget({ studentId: row.student_id!, studentName: row.student_name }); setPaymentAmount(''); setPaymentNote(''); setPaymentError(''); }}
+                              title={isRTL ? 'רשום תשלום' : 'Record payment'}
+                              className="text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 p-1 rounded transition-colors flex-shrink-0"
+                            >
+                              <PlusIcon />
+                            </button>
+                          )}
+                          {row.student_id && row.net_balance != null && row.net_balance > 0 && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openReminder(row.student_id!, row.student_name, row.net_balance); }}
+                              title={t('billing.sendReminder')}
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors flex-shrink-0"
+                            >
+                              <BellIcon />
+                            </button>
+                          )}
                           <span className="text-gray-300 text-xs">{isExpanded ? '▲' : '▼'}</span>
                         </div>
-                      </button>
+                      </div>
 
                       {isExpanded && (
                         <div className="px-5 pb-4 bg-slate-50 border-t border-gray-100">
@@ -143,6 +293,21 @@ export default function BillingPage() {
                               ))}
                             </tbody>
                           </table>
+                          {row.payments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                                {isRTL ? 'תשלומים לא מוקצים' : 'Unallocated payments'}
+                              </p>
+                              <div className="space-y-1">
+                                {row.payments.map((p) => (
+                                  <div key={p.id} className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500">{new Date(p.paid_at).toLocaleDateString()}{p.note ? ` · ${p.note}` : ''}</span>
+                                    <span className="font-semibold text-emerald-700">+₪{Number(p.amount).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           {row.rate == null && (
                             <p className="text-xs text-amber-600 mt-3">
                               {t('billing.noRate')}. <Link href="/teacher/students" className="underline">{t('billing.setRate')} →</Link>
@@ -215,19 +380,35 @@ export default function BillingPage() {
                                       <span className="font-medium text-gray-700">{m.student_name}</span>
                                       <span className="text-gray-400 ms-2">{m.student_email}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                      {m.unpaid_lessons < row.completed_lessons && (
-                                        <span className="text-emerald-600 font-medium">
-                                          {row.completed_lessons - m.unpaid_lessons} {t('billing.paid')}
-                                        </span>
-                                      )}
-                                      {m.unpaid_lessons > 0 ? (
-                                        <span className="font-semibold text-gray-900">
-                                          ₪{m.unpaid_balance != null ? m.unpaid_balance.toFixed(0) : '—'} {t('billing.owed')}
-                                        </span>
-                                      ) : (
-                                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full font-medium">
-                                          {t('billing.allPaid')}
+                                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                      <div className="flex items-center gap-2">
+                                        {m.unpaid_lessons < row.completed_lessons && (
+                                          <span className="text-emerald-600 font-medium">
+                                            {row.completed_lessons - m.unpaid_lessons} {t('billing.paid')}
+                                          </span>
+                                        )}
+                                        {m.unpaid_lessons > 0 ? (
+                                          <>
+                                            <span className="font-semibold text-gray-900">
+                                              ₪{m.unpaid_balance != null ? m.unpaid_balance.toFixed(0) : '—'} {t('billing.owed')}
+                                            </span>
+                                            <button
+                                              onClick={() => openReminder(m.student_id, m.student_name, m.unpaid_balance)}
+                                              title={t('billing.sendReminder')}
+                                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors flex-shrink-0"
+                                            >
+                                              <BellIcon />
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full font-medium">
+                                            {t('billing.allPaid')}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {m.last_reminder_at && (
+                                        <span className="text-blue-400" style={{ fontSize: '10px' }}>
+                                          {t('billing.reminderSentOn').replace('{date}', formatReminderDate(m.last_reminder_at))}
                                         </span>
                                       )}
                                     </div>
@@ -278,6 +459,124 @@ export default function BillingPage() {
           </>
         )}
       </main>
+
+      {/* ── Record Payment modal ── */}
+      {paymentTarget && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => setPaymentTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{isRTL ? 'רשום תשלום' : 'Record payment'}</p>
+              <p className="text-base font-bold text-gray-900 mt-0.5">{paymentTarget.studentName}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{isRTL ? 'תשלום שלא מוקצה לשיעור ספציפי' : 'Payment not allocated to a specific lesson'}</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{isRTL ? 'סכום (₪)' : 'Amount (₪)'}</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{isRTL ? 'הערה (אופציונלי)' : 'Note (optional)'}</label>
+                <input
+                  type="text"
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  placeholder={isRTL ? 'מזומן, העברה...' : 'Cash, bank transfer...'}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            {paymentError && <p className="text-xs text-red-500">{paymentError}</p>}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setPaymentTarget(null)} className="flex-1 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={recordPayment}
+                disabled={paymentSaving || !paymentAmount}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+              >
+                {paymentSaving ? (isRTL ? 'שומר...' : 'Saving...') : (isRTL ? 'שמור תשלום' : 'Save payment')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reminder modal ── */}
+      {reminderTarget && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => setReminderTarget(null)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('billing.reminderTitle')}</p>
+              <p className="text-base font-bold text-gray-900 mt-0.5">{reminderTarget.studentName}</p>
+              {reminderTarget.balance != null && reminderTarget.balance > 0 && (
+                <p className="text-sm text-gray-500">₪{reminderTarget.balance.toLocaleString()} {t('billing.owed')}</p>
+              )}
+            </div>
+
+            {/* Channel selection */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('wizard.sendVia')}</p>
+              {[
+                { key: 'email' as const, label: 'Email' },
+                { key: 'whatsapp' as const, label: 'WhatsApp' },
+                { key: 'notification' as const, label: t('messages.notification') },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={reminderChannels[key]}
+                    onChange={(e) => setReminderChannels((c) => ({ ...c, [key]: e.target.checked }))}
+                    className="w-4 h-4 rounded accent-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">{label}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Message */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{t('wizard.messageLabel')}</p>
+              <textarea
+                rows={4}
+                value={reminderMsg}
+                onChange={(e) => setReminderMsg(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {reminderError && <p className="text-xs text-red-500">{reminderError}</p>}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setReminderTarget(null)}
+                className="flex-1 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={sendReminder}
+                disabled={reminderSending || reminderSent}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-colors"
+              >
+                {reminderSent ? '✓ Sent' : reminderSending ? t('common.sending') : t('billing.sendReminder')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

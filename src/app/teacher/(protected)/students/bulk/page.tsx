@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import NativeContactsPickerModal from '@/components/NativeContactsPickerModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,11 +53,108 @@ export default function BulkStudentsPage() {
   const [rows, setRows] = useState<Row[]>(() => Array.from({ length: 5 }, newRow));
   const [rowErrors, setRowErrors] = useState<Map<string, RowErrors>>(new Map());
   const [saving, setSaving] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
+  const [contactsSupported, setContactsSupported] = useState(false);
+  const [showNativePicker, setShowNativePicker] = useState(false);
+  const [importError, setImportError] = useState('');
   const [result, setResult] = useState<{
     created: number;
     updated: number;
     apiErrors: { index: number; error: string }[];
   } | null>(null);
+
+  // ── Contacts API detection ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    // Dynamic import to avoid SSR issues
+    import('@capacitor/core').then(({ Capacitor }) => {
+      const native = Capacitor.isNativePlatform();
+      setIsNativeApp(native);
+      if (native) {
+        setContactsSupported(true);
+      } else {
+        setContactsSupported(
+          typeof navigator !== 'undefined' &&
+          'contacts' in navigator &&
+          typeof (navigator as unknown as { contacts?: { select?: unknown } }).contacts?.select === 'function'
+        );
+      }
+    }).catch(() => {
+      setContactsSupported(
+        typeof navigator !== 'undefined' &&
+        'contacts' in navigator &&
+        typeof (navigator as unknown as { contacts?: { select?: unknown } }).contacts?.select === 'function'
+      );
+    });
+  }, []);
+
+  // ── Import from device contacts ─────────────────────────────────────────────
+
+  function handleNativeContactsSelected(contacts: { id: string; name: string; email: string; phone: string }[]) {
+    const imported: Row[] = contacts.map((c) => ({
+      id: Math.random().toString(36).slice(2),
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+    }));
+    if (!imported.length) return;
+    setRows((prev) => {
+      const filled = prev.filter((r) => r.name.trim() || r.email.trim() || r.phone.trim());
+      const combined = [...filled, ...imported];
+      return combined.length > 0 ? combined : [newRow()];
+    });
+    setRowErrors(new Map());
+    setShowNativePicker(false);
+  }
+
+  async function handleImportContacts() {
+    setImportError('');
+    if (isNativeApp) {
+      setShowNativePicker(true);
+      return;
+    }
+    type ContactsNav = {
+      contacts: {
+        getProperties: () => Promise<string[]>;
+        select: (p: string[], o: { multiple: boolean }) => Promise<{ name?: string[]; email?: string[]; tel?: string[] }[]>;
+      };
+    };
+    try {
+      const nav = (navigator as unknown as ContactsNav).contacts;
+
+      // Ask the device which properties it supports, then request only those
+      const supported = await nav.getProperties();
+      const props = (['name', 'email', 'tel'] as const).filter((p) => supported.includes(p));
+      if (!props.length) {
+        setImportError(lang === 'he' ? 'המכשיר אינו תומך בייבוא אנשי קשר' : 'Device does not support contact import');
+        return;
+      }
+
+      const selected = await nav.select(props, { multiple: true });
+
+      if (!selected?.length) return;
+
+      const imported: Row[] = selected.map((c) => ({
+        id: Math.random().toString(36).slice(2),
+        name: c.name?.[0]?.trim() ?? '',
+        email: c.email?.[0]?.trim() ?? '',
+        phone: c.tel?.[0]?.trim() ?? '',
+      })).filter((r) => r.name || r.email || r.phone);
+
+      if (!imported.length) return;
+
+      setRows((prev) => {
+        const filled = prev.filter((r) => r.name.trim() || r.email.trim() || r.phone.trim());
+        const combined = [...filled, ...imported];
+        return combined.length > 0 ? combined : [newRow()];
+      });
+      setRowErrors(new Map());
+    } catch (err) {
+      // AbortError = user dismissed the picker — no action needed
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setImportError(lang === 'he' ? 'לא ניתן לפתוח את אנשי הקשר' : 'Could not open contacts');
+    }
+  }
 
   // ── Cell update ────────────────────────────────────────────────────────────
 
@@ -236,6 +334,14 @@ export default function BulkStudentsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
+      {showNativePicker && (
+        <NativeContactsPickerModal
+          lang={lang}
+          isRTL={isRTL}
+          onSelect={handleNativeContactsSelected}
+          onClose={() => setShowNativePicker(false)}
+        />
+      )}
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
         <button onClick={() => router.push('/teacher/students')} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
@@ -245,6 +351,17 @@ export default function BulkStudentsPage() {
           <h1 className="text-lg font-bold text-gray-900">{t('students.bulkEdit')}</h1>
           <p className="text-xs text-gray-400 mt-0.5 truncate">{t('students.bulkSubtitle')}</p>
         </div>
+        {contactsSupported && (
+          <button
+            onClick={handleImportContacts}
+            className="border border-gray-300 text-gray-700 rounded-xl px-3 py-2 text-sm font-medium hover:bg-gray-50 transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            {lang === 'he' ? 'ייבא אנשי קשר' : 'Import contacts'}
+          </button>
+        )}
+        {importError && (
+          <span className="text-xs text-red-500 flex-shrink-0">{importError}</span>
+        )}
         <button
           onClick={handleSave}
           disabled={saving || filledCount === 0}

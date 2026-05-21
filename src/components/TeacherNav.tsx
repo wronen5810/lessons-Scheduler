@@ -13,7 +13,7 @@ import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import SaderotLogo from '@/components/SaderotLogo';
 import {
   Calendar, Users, Users2, CreditCard, MessageSquare, Share2,
-  Settings, LogOut, Clock, UserCircle, HelpCircle, Home,
+  Settings, LogOut, Clock, UserCircle, HelpCircle, Home, ClipboardList,
 } from 'lucide-react';
 
 export default function TeacherNav({ title, nextLesson }: { title?: string; nextLesson?: { hours: number; minutes: number } | null }) {
@@ -168,6 +168,11 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
                     {t('teacher.billing')}
                   </Link>
                 )}
+                <Link href="/teacher/pending-lessons" onClick={closeMenu}
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                  <ClipboardList className="w-4 h-4 flex-shrink-0" />
+                  {lang === 'he' ? 'שיעורים ממתינים' : 'Pending Lessons'}
+                </Link>
                 {features.messages && (
                   <Link href="/teacher/messages" onClick={closeMenu}
                     className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">

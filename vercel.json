@@ -1,4 +1,16 @@
 {
+  "redirects": [
+    {
+      "source": "/tril",
+      "destination": "/trial",
+      "permanent": true
+    },
+    {
+      "source": "/tri\u05da",
+      "destination": "/trial",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/reminders",

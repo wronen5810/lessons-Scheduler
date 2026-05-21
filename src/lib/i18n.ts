@@ -82,6 +82,9 @@ const en = {
   'billing.setRate': 'Set rate',
   'billing.editGroup': 'Edit group',
   'billing.noPhoneOwed': '₪{amount} owed',
+  'billing.sendReminder': 'Send reminder',
+  'billing.reminderTitle': 'Payment reminder',
+  'billing.reminderSentOn': 'Reminder sent {date}',
   // ── Messages ─────────────────────────────────────────────
   'messages.title': 'Messages',
   'messages.inbox': 'Inbox',
@@ -506,6 +509,9 @@ const he: typeof en = {
   'billing.setRate': 'הגדר תמחור',
   'billing.editGroup': 'ערוך קבוצה',
   'billing.noPhoneOwed': '₪{amount} חוב',
+  'billing.sendReminder': 'שלח תזכורת',
+  'billing.reminderTitle': 'תזכורת תשלום',
+  'billing.reminderSentOn': 'תזכורת נשלחה {date}',
   // ── Messages ─────────────────────────────────────────────
   'messages.title': 'הודעות',
   'messages.inbox': 'תיבת דואר נכנס',

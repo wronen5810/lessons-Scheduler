@@ -4,12 +4,17 @@ import { createServiceSupabase } from '@/lib/supabase-server';
 import { formatTime, getEndTime } from '@/lib/dates';
 
 export interface BillingRow {
+  student_id: string | null;
   student_email: string;
   student_name: string;
   rate: number | null;
   completed_lessons: number;
   balance: number | null;
+  unallocated_credits: number;
+  net_balance: number | null;
+  last_reminder_at: string | null;
   lessons: { date: string; start_time: string; end_time: string; booking_type: string; status: string }[];
+  payments: { id: string; amount: number; note: string | null; paid_at: string; booking_id: string | null }[];
 }
 
 export interface GroupBillingRow {
@@ -21,7 +26,7 @@ export interface GroupBillingRow {
   completed_lessons: number;
   balance_per_student: number | null;
   total_balance: number | null;
-  members: { student_id: string; student_name: string; student_email: string; unpaid_lessons: number; unpaid_balance: number | null }[];
+  members: { student_id: string; student_name: string; student_email: string; unpaid_lessons: number; unpaid_balance: number | null; last_reminder_at: string | null }[];
   lessons: { date: string; start_time: string; end_time: string; booking_type: string; booking_id: string; status: string }[];
 }
 
@@ -40,8 +45,8 @@ export async function GET() {
 async function getBillingData(teacherId: string) {
   const supabase = createServiceSupabase();
 
-  const [{ data: students }, { data: otDone }, { data: recDone }, { data: groups }, { data: templates }] = await Promise.all([
-    supabase.from('students').select('email, name, rate').eq('teacher_id', teacherId),
+  const [{ data: students }, { data: otDone }, { data: recDone }, { data: groups }, { data: templates }, { data: allStudentPayments }] = await Promise.all([
+    supabase.from('students').select('id, email, name, rate').eq('teacher_id', teacherId),
     supabase
       .from('one_time_bookings')
       .select('id, student_email, student_name, specific_date, start_time, duration_minutes, status, group_id')
@@ -54,9 +59,22 @@ async function getBillingData(teacherId: string) {
       .eq('status', 'completed'),
     supabase.from('student_groups').select('id, name, rate').eq('teacher_id', teacherId),
     supabase.from('slot_templates').select('id, start_time, duration_minutes').eq('teacher_id', teacherId),
+    supabase
+      .from('student_payments')
+      .select('id, student_id, amount, note, booking_id, paid_at')
+      .eq('teacher_id', teacherId)
+      .is('booking_id', null)
+      .order('paid_at', { ascending: false }),
   ]);
 
   const tplMap = new Map((templates ?? []).map((t) => [t.id, t]));
+
+  // Build unallocated credits per student_id
+  const unallocatedByStudentId = new Map<string, { id: string; amount: number; note: string | null; paid_at: string; booking_id: string | null }[]>();
+  for (const p of allStudentPayments ?? []) {
+    if (!unallocatedByStudentId.has(p.student_id)) unallocatedByStudentId.set(p.student_id, []);
+    unallocatedByStudentId.get(p.student_id)!.push({ id: p.id, amount: Number(p.amount), note: p.note, paid_at: p.paid_at, booking_id: p.booking_id });
+  }
 
   // Fetch group members and payment records
   const groupIds = (groups ?? []).map((g) => g.id);
@@ -65,14 +83,27 @@ async function getBillingData(teacherId: string) {
     ...(recDone ?? []).filter((b) => b.group_id).map((b) => b.id),
   ];
 
-  const [{ data: allMembers }, { data: allPayments }] = await Promise.all([
+  const [{ data: allMembers }, { data: allPayments }, { data: allMessages }] = await Promise.all([
     groupIds.length
       ? supabase.from('student_group_members').select('group_id, student_id, students(name, email)').in('group_id', groupIds)
       : Promise.resolve({ data: [] }),
     groupBookingIds.length
       ? supabase.from('group_booking_payments').select('booking_type, booking_id, student_id').eq('teacher_id', teacherId).in('booking_id', groupBookingIds)
       : Promise.resolve({ data: [] }),
+    supabase
+      .from('messages')
+      .select('student_email, sent_at')
+      .eq('teacher_id', teacherId)
+      .eq('direction', 'to_student')
+      .order('sent_at', { ascending: false }),
   ]);
+
+  // Map: student_email → latest sent_at
+  const lastReminderMap = new Map<string, string>();
+  for (const msg of allMessages ?? []) {
+    const key = msg.student_email.toLowerCase();
+    if (!lastReminderMap.has(key)) lastReminderMap.set(key, msg.sent_at);
+  }
 
   // Map: booking_id → Set of paid student_ids
   const paidByBooking = new Map<string, Set<string>>();
@@ -107,12 +138,17 @@ async function getBillingData(teacherId: string) {
     if (!byStudent.has(key)) {
       const s = studentMap.get(key);
       byStudent.set(key, {
+        student_id: s?.id ?? null,
         student_email: key,
         student_name: s?.name ?? nameFromBooking,
         rate: s?.rate ?? null,
         completed_lessons: 0,
         balance: null,
+        unallocated_credits: 0,
+        net_balance: null,
+        last_reminder_at: null,
         lessons: [],
+        payments: [],
       });
     }
     return byStudent.get(key)!;
@@ -137,11 +173,20 @@ async function getBillingData(teacherId: string) {
 
   for (const row of byStudent.values()) {
     row.balance = row.rate != null ? row.completed_lessons * row.rate : null;
+    row.last_reminder_at = lastReminderMap.get(row.student_email) ?? null;
     row.lessons.sort((a, b) => a.date.localeCompare(b.date));
+    if (row.student_id) {
+      const credits = unallocatedByStudentId.get(row.student_id) ?? [];
+      row.unallocated_credits = credits.reduce((s, p) => s + p.amount, 0);
+      row.payments = credits;
+      row.net_balance = row.balance != null ? Math.max(0, row.balance - row.unallocated_credits) : null;
+    } else {
+      row.net_balance = row.balance;
+    }
   }
 
   const individualBilling = [...byStudent.values()]
-    .filter((r) => r.completed_lessons > 0)
+    .filter((r) => r.completed_lessons > 0 || r.unallocated_credits > 0)
     .sort((a, b) => a.student_name.localeCompare(b.student_name));
 
   // ── Group billing ───────────────────────────────────────────────
@@ -179,6 +224,7 @@ async function getBillingData(teacherId: string) {
         ...m,
         unpaid_lessons: unpaidLessons,
         unpaid_balance: perStudentRate != null ? unpaidLessons * perStudentRate : null,
+        last_reminder_at: lastReminderMap.get(m.student_email.toLowerCase()) ?? null,
       };
     });
 

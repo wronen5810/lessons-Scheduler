@@ -57,6 +57,67 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     updatePayload.cancelled_by = action === 'approve-cancellation' ? 'student' : 'teacher';
   }
 
+  // For complete/pay on individual (non-group) lessons: handle student_payments
+  const isIndividualLesson = !booking.group_id && (action === 'complete' || action === 'pay');
+  if (isIndividualLesson) {
+    const { data: student } = await supabase
+      .from('students')
+      .select('id, rate')
+      .eq('email', booking.student_email)
+      .eq('teacher_id', auth.user.id)
+      .single();
+
+    if (student) {
+      if (action === 'complete' && student.rate && student.rate > 0) {
+        // Check if there are sufficient unallocated funds to auto-pay this lesson
+        const { data: unallocated } = await supabase
+          .from('student_payments')
+          .select('id, amount')
+          .eq('teacher_id', auth.user.id)
+          .eq('student_id', student.id)
+          .is('booking_id', null)
+          .order('paid_at');
+
+        const totalUnallocated = (unallocated ?? []).reduce((s, p) => s + Number(p.amount), 0);
+
+        if (totalUnallocated >= student.rate) {
+          // Auto-allocate: record payment for this lesson and mark as paid
+          updatePayload.status = 'paid';
+          await supabase.from('student_payments').insert({
+            teacher_id: auth.user.id,
+            student_id: student.id,
+            amount: student.rate,
+            booking_type: type,
+            booking_id: id,
+          });
+
+          // Deduct from unallocated payments FIFO
+          let remaining = student.rate;
+          for (const p of (unallocated ?? [])) {
+            if (remaining <= 0) break;
+            const pAmount = Number(p.amount);
+            if (pAmount <= remaining) {
+              await supabase.from('student_payments').delete().eq('id', p.id);
+              remaining -= pAmount;
+            } else {
+              await supabase.from('student_payments').update({ amount: pAmount - remaining }).eq('id', p.id);
+              remaining = 0;
+            }
+          }
+        }
+      } else if (action === 'pay') {
+        // Manual pay: record the payment for this lesson
+        await supabase.from('student_payments').insert({
+          teacher_id: auth.user.id,
+          student_id: student.id,
+          amount: student.rate ?? 0,
+          booking_type: type,
+          booking_id: id,
+        });
+      }
+    }
+  }
+
   // approve-cancellation always affects only the single booking (slot reverts to available)
   if (type === 'recurring' && booking.series_id && ['approve', 'reject', 'cancel'].includes(action)) {
     let query = supabase

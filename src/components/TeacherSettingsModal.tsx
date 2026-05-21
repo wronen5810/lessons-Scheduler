@@ -8,6 +8,7 @@ import {
   type NotificationKey,
   type NotificationPreferences,
 } from '@/lib/notifications';
+import { exportToExcel } from '@/lib/exportToExcel';
 
 interface Props {
   settings: TeacherSettings;
@@ -24,10 +25,12 @@ const NOTIFICATION_ROWS: { key: NotificationKey; label: string; direction: strin
   { key: 'access_request',   label: 'New student request',  direction: '→ you' },
 ];
 
-type Tab = 'general' | 'profile';
+type Tab = 'general' | 'profile' | 'export';
 
 export default function TeacherSettingsModal({ settings, onSave, onClose, initialTab = 'general' }: Props & { initialTab?: Tab }) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   // ── General settings state ──
   const [duration, setDuration] = useState(settings.default_duration_minutes);
@@ -249,29 +252,31 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
               className="text-xs text-gray-500 hover:text-gray-700 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
               Cancel
             </button>
+            {activeTab !== 'export' && (
             <button
               onClick={activeTab === 'profile' ? handleProfileSave : handleGeneralSave}
               disabled={saving}
               className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
               {saving ? 'Saving...' : 'Save'}
             </button>
+          )}
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none ms-1">&times;</button>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-          {(['general', 'profile'] as const).map((tab) => (
+          {(['general', 'profile', 'export'] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); setError(''); }}
+              onClick={() => { setActiveTab(tab); setError(''); setExportError(''); }}
               className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
                 activeTab === tab
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab === 'general' ? 'General' : 'Profile'}
+              {tab === 'general' ? 'General' : tab === 'profile' ? 'Profile' : 'Export'}
             </button>
           ))}
         </div>
@@ -760,6 +765,70 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── EXPORT TAB ── */}
+        {activeTab === 'export' && (
+          <div className="space-y-5">
+            <p className="text-sm text-gray-600">
+              Download all your data as a spreadsheet with separate tabs for students, lessons, billing, notebook and more.
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  setExportLoading(true);
+                  setExportError('');
+                  try {
+                    const res = await fetch('/api/teacher/export');
+                    if (!res.ok) throw new Error('Export failed');
+                    const data = await res.json();
+                    exportToExcel(data);
+                  } catch {
+                    setExportError('Export failed. Please try again.');
+                  } finally {
+                    setExportLoading(false);
+                  }
+                }}
+                disabled={exportLoading}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-900">Download for Excel</p>
+                  <p className="text-xs text-gray-400">Saves a .xlsx file to your device</p>
+                </div>
+                <span className="text-lg">⬇</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  setExportLoading(true);
+                  setExportError('');
+                  try {
+                    const res = await fetch('/api/teacher/export');
+                    if (!res.ok) throw new Error('Export failed');
+                    const data = await res.json();
+                    exportToExcel(data);
+                  } catch {
+                    setExportError('Export failed. Please try again.');
+                  } finally {
+                    setExportLoading(false);
+                  }
+                }}
+                disabled={exportLoading}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-900">Download for Google Sheets</p>
+                  <p className="text-xs text-gray-400">Same file — upload to Google Drive to open in Sheets</p>
+                </div>
+                <span className="text-lg">⬇</span>
+              </button>
+            </div>
+
+            {exportLoading && <p className="text-xs text-gray-500 text-center">Preparing export…</p>}
+            {exportError && <p className="text-sm text-red-600">{exportError}</p>}
           </div>
         )}
 
