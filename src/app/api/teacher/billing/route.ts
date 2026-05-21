@@ -129,6 +129,7 @@ async function getBillingData(teacherId: string) {
       .filter((s): s is typeof s & { email: string } => s.email != null)
       .map((s) => [s.email.toLowerCase(), s])
   );
+  const studentById = new Map((students ?? []).map((s) => [s.id, s]));
 
   // ── Individual student billing ──────────────────────────────────
   const byStudent = new Map<string, BillingRow>();
@@ -169,6 +170,28 @@ async function getBillingData(teacherId: string) {
     const st = tpl ? formatTime(tpl.start_time) : '';
     row.lessons.push({ date: b.lesson_date, start_time: st, end_time: getEndTime(st, tpl?.duration_minutes ?? 45), booking_type: 'recurring', status: b.status });
     row.completed_lessons++;
+  }
+
+  // Ensure students with unallocated payments appear even if they have no completed lessons
+  for (const [studentId, credits] of unallocatedByStudentId.entries()) {
+    const s = studentById.get(studentId);
+    if (!s?.email) continue;
+    const key = s.email.toLowerCase();
+    if (!byStudent.has(key)) {
+      byStudent.set(key, {
+        student_id: s.id,
+        student_email: key,
+        student_name: s.name,
+        rate: s.rate ?? null,
+        completed_lessons: 0,
+        balance: null,
+        unallocated_credits: credits.reduce((sum, p) => sum + p.amount, 0),
+        net_balance: null,
+        last_reminder_at: lastReminderMap.get(key) ?? null,
+        lessons: [],
+        payments: credits,
+      });
+    }
   }
 
   for (const row of byStudent.values()) {
