@@ -65,6 +65,10 @@ export default function BillingPage() {
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [receiptGenerating, setReceiptGenerating] = useState<string | null>(null);
 
+  // All-students picker (for receipt search)
+  const [allStudents, setAllStudents] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [receiptPick, setReceiptPick] = useState('');
+
   // Reminder modal state
   const [reminderTarget, setReminderTarget] = useState<ReminderTarget | null>(null);
   const [reminderChannels, setReminderChannels] = useState({ email: true, whatsapp: false, notification: false });
@@ -72,6 +76,15 @@ export default function BillingPage() {
   const [reminderSending, setReminderSending] = useState(false);
   const [reminderSent, setReminderSent] = useState(false);
   const [reminderError, setReminderError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/teacher/students')
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { id: string; name: string; email: string }[]) =>
+        setAllStudents(Array.isArray(data) ? [...data].sort((a, b) => a.name.localeCompare(b.name)) : [])
+      )
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/teacher/billing')
@@ -237,6 +250,37 @@ export default function BillingPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+        {/* Receipt search — always visible once students are loaded */}
+        {allStudents.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">
+              {isRTL ? 'קבלות לפי תלמיד' : 'Receipts by Student'}
+            </p>
+            <div className="flex gap-2">
+              <select
+                value={receiptPick}
+                onChange={(e) => setReceiptPick(e.target.value)}
+                className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">{isRTL ? 'בחר תלמיד...' : 'Select a student…'}</option>
+                {allStudents.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}{s.email ? ` · ${s.email}` : ''}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  const s = allStudents.find((x) => x.id === receiptPick);
+                  if (s) { openReceiptModal(s.id, s.name); setReceiptPick(''); }
+                }}
+                disabled={!receiptPick}
+                className="flex-shrink-0 text-sm px-3 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-40 transition-colors font-medium"
+              >
+                {isRTL ? 'פתח' : 'Open'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
         ) : fetchError ? (
