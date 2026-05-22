@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('student_payments')
-    .select('id, student_id, amount, note, booking_type, booking_id, paid_at')
+    .select('id, student_id, amount, note, booking_type, booking_id, paid_at, receipt_number')
     .eq('teacher_id', auth.user.id)
     .order('paid_at', { ascending: false });
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       booking_id: null,
       booking_type: null,
     })
-    .select('id, student_id, amount, note, booking_type, booking_id, paid_at')
+    .select('id, student_id, amount, note, booking_type, booking_id, paid_at, receipt_number')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

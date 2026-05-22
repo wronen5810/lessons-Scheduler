@@ -3,10 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { BillingRow, GroupBillingRow } from '@/app/api/teacher/billing/route';
+import type { ReceiptData } from '@/app/api/teacher/receipts/route';
+import { ReceiptDocument } from '@/components/ReceiptDocument';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type ReminderTarget = { studentId: string; studentName: string; balance: number | null };
 type PaymentTarget = { studentId: string; studentName: string };
+type ReceiptStudent = { id: string; name: string };
+type PaymentItem = { id: string; student_id: string; amount: number; note: string | null; paid_at: string; booking_id: string | null; booking_type: string | null; receipt_number: string | null };
 
 function formatReminderDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -29,6 +33,15 @@ function PlusIcon() {
   );
 }
 
+function ReceiptIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 2v20l3-2 3 2 3-2 3 2 3-2V2l-3 2-3-2-3 2-3-2z"/>
+      <line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/>
+    </svg>
+  );
+}
+
 export default function BillingPage() {
   const { t, isRTL } = useLanguage();
   const [individual, setIndividual] = useState<BillingRow[]>([]);
@@ -44,6 +57,13 @@ export default function BillingPage() {
   const [paymentNote, setPaymentNote] = useState('');
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+
+  // Receipt state
+  const [receiptStudent, setReceiptStudent] = useState<ReceiptStudent | null>(null);
+  const [paymentsForReceipt, setPaymentsForReceipt] = useState<PaymentItem[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptGenerating, setReceiptGenerating] = useState<string | null>(null);
 
   // Reminder modal state
   const [reminderTarget, setReminderTarget] = useState<ReminderTarget | null>(null);
@@ -116,6 +136,49 @@ export default function BillingPage() {
     + groupBilling.reduce((sum, r) => sum + r.completed_lessons, 0);
 
   const hasData = individual.length > 0 || groupBilling.length > 0;
+
+  async function openReceiptModal(studentId: string, studentName: string) {
+    setReceiptStudent({ id: studentId, name: studentName });
+    setPaymentsForReceipt([]);
+    setReceiptData(null);
+    setPaymentsLoading(true);
+    try {
+      const res = await fetch(`/api/teacher/payments?student_id=${studentId}`);
+      const data = await res.json();
+      setPaymentsForReceipt(Array.isArray(data) ? data : []);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  }
+
+  async function generateReceipt(paymentId: string) {
+    setReceiptGenerating(paymentId);
+    try {
+      const res = await fetch('/api/teacher/receipts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_id: paymentId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setReceiptData(data);
+        setPaymentsForReceipt((prev) =>
+          prev.map((p) => p.id === paymentId ? { ...p, receipt_number: data.receipt_number } : p)
+        );
+      }
+    } finally {
+      setReceiptGenerating(null);
+    }
+  }
+
+  function printReceipt() {
+    const style = document.createElement('style');
+    style.id = 'receipt-print-style';
+    style.textContent = `@media print { body > * { display:none !important; } #receipt-print-root { display:flex !important; position:fixed; inset:0; background:white; align-items:flex-start; justify-content:center; padding:24px; overflow:auto; } }`;
+    document.head.appendChild(style);
+    window.print();
+    setTimeout(() => document.getElementById('receipt-print-style')?.remove(), 500);
+  }
 
   function openReminder(studentId: string, studentName: string, balance: number | null) {
     const amount = balance != null && balance > 0 ? `₪${balance.toLocaleString()}` : null;
@@ -264,6 +327,15 @@ export default function BillingPage() {
                               className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors flex-shrink-0"
                             >
                               <BellIcon />
+                            </button>
+                          )}
+                          {row.student_id && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openReceiptModal(row.student_id!, row.student_name); }}
+                              title={isRTL ? 'קבלות' : 'Receipts'}
+                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 p-1 rounded transition-colors flex-shrink-0"
+                            >
+                              <ReceiptIcon />
                             </button>
                           )}
                           <span className="text-gray-300 text-xs">{isExpanded ? '▲' : '▼'}</span>
@@ -460,6 +532,80 @@ export default function BillingPage() {
           </>
         )}
       </main>
+
+      {/* ── Payments & Receipts modal ── */}
+      {receiptStudent && !receiptData && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={() => setReceiptStudent(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{isRTL ? 'תשלומים וקבלות' : 'Payments & Receipts'}</p>
+                <p className="text-base font-bold text-gray-900 mt-0.5">{receiptStudent.name}</p>
+              </div>
+              <button onClick={() => setReceiptStudent(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+
+            {paymentsLoading ? (
+              <p className="text-xs text-gray-400 text-center py-4">{t('common.loading')}</p>
+            ) : paymentsForReceipt.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-4">{isRTL ? 'אין תשלומים רשומים' : 'No payments recorded'}</p>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {paymentsForReceipt.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-gray-900">₪{Number(p.amount).toLocaleString()}</span>
+                        {p.booking_id ? (
+                          <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">{isRTL ? 'שיעור' : 'Lesson'}</span>
+                        ) : (
+                          <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">{isRTL ? 'קרדיט' : 'Credit'}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{new Date(p.paid_at).toLocaleDateString()}{p.note ? ` · ${p.note}` : ''}</p>
+                      {p.receipt_number && (
+                        <p className="text-xs text-blue-500 mt-0.5 font-medium">#{p.receipt_number}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => generateReceipt(p.id)}
+                      disabled={receiptGenerating === p.id}
+                      className="flex-shrink-0 text-xs bg-gray-900 text-white px-2.5 py-1.5 rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors font-medium"
+                    >
+                      {receiptGenerating === p.id ? '...' : p.receipt_number ? (isRTL ? 'פתח' : 'Open') : (isRTL ? 'צור קבלה' : 'Generate')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Receipt preview modal ── */}
+      {receiptData && (
+        <div id="receipt-print-root" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50" onClick={() => setReceiptData(null)}>
+          <div className="w-full max-w-lg space-y-3" onClick={(e) => e.stopPropagation()}>
+            {/* Toolbar */}
+            <div className="flex items-center justify-between gap-3 px-1">
+              <button
+                onClick={() => setReceiptData(null)}
+                className="text-white/80 hover:text-white text-sm flex items-center gap-1.5"
+              >
+                ← {isRTL ? 'חזרה' : 'Back'}
+              </button>
+              <button
+                onClick={printReceipt}
+                className="bg-white text-gray-900 text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                🖨 {isRTL ? 'הדפס / שמור PDF' : 'Print / Save PDF'}
+              </button>
+            </div>
+            {/* Receipt */}
+            <ReceiptDocument data={receiptData} lang={isRTL ? 'he' : 'en'} />
+          </div>
+        </div>
+      )}
 
       {/* ── Record Payment modal ── */}
       {paymentTarget && (
