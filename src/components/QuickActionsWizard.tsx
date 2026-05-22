@@ -298,6 +298,8 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [prepaid, setPrepaid] = useState(false);
+
   // Inline new-student form (inside pickStudent step)
   const [showNewStudent, setShowNewStudent] = useState(false);
   const newStudentNameRef = useRef<HTMLInputElement>(null);
@@ -426,6 +428,7 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
         student_id: student.id,
         student_name: student.name,
         student_email: student.email,
+        prepaid,
       }),
     });
     setLoading(false);
@@ -667,6 +670,17 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
             </div>
           )}
 
+          {selectedStudent && !showNewStudent && (
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none mt-3">
+              <input
+                type="checkbox"
+                checked={prepaid}
+                onChange={(e) => setPrepaid(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 accent-blue-600"
+              />
+              <span>Prepaid <span className="text-gray-400 font-normal text-xs">(student already paid)</span></span>
+            </label>
+          )}
           {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
           <WizardActions
             onNext={assignStudent}
