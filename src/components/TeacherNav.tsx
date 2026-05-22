@@ -19,8 +19,16 @@ import {
 export default function TeacherNav({ title, nextLesson }: { title?: string; nextLesson?: { hours: number; minutes: number } | null }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { t, lang } = useLanguage();
+  const { t, lang, setLang } = useLanguage();
   const { settings, save: saveSettings } = useTeacherSettings();
+
+  // Sync language preference from DB to context whenever settings load
+  useEffect(() => {
+    if (settings.ui_language && settings.ui_language !== lang) {
+      setLang(settings.ui_language);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.ui_language]);
   const features = settings.features;
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('');

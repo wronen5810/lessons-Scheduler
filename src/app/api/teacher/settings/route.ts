@@ -43,6 +43,7 @@ export interface TeacherSettings {
   time_format: '24h' | '12h';
   notification_preferences: NotificationPreferences;
   features: TeacherFeatures;
+  ui_language: 'en' | 'he';
 }
 
 const DEFAULTS: TeacherSettings = {
@@ -50,6 +51,7 @@ const DEFAULTS: TeacherSettings = {
   time_format: '24h',
   notification_preferences: DEFAULT_NOTIFICATION_PREFERENCES,
   features: DEFAULT_FEATURES,
+  ui_language: 'he',
 };
 
 export async function GET() {
@@ -59,12 +61,12 @@ export async function GET() {
   const supabase = createServiceSupabase();
   const { data } = await supabase
     .from('teacher_settings')
-    .select('default_duration_minutes, time_format, notification_preferences, features')
+    .select('default_duration_minutes, time_format, notification_preferences, features, ui_language')
     .eq('teacher_id', auth.user.id)
     .single();
 
   const payload = data
-    ? { ...data, notification_preferences: mergePrefs(data.notification_preferences), features: mergeFeatures(data.features) }
+    ? { ...data, notification_preferences: mergePrefs(data.notification_preferences), features: mergeFeatures(data.features), ui_language: (data.ui_language === 'en' ? 'en' : 'he') as 'en' | 'he' }
     : DEFAULTS;
 
   return NextResponse.json(payload, {
@@ -110,10 +112,17 @@ export async function PATCH(request: NextRequest) {
     update.features = mergeFeatures(body.features, currentPoliciesAt);
   }
 
+  if (body.ui_language !== undefined) {
+    if (!['en', 'he'].includes(body.ui_language)) {
+      return NextResponse.json({ error: 'ui_language must be en or he' }, { status: 400 });
+    }
+    update.ui_language = body.ui_language;
+  }
+
   const { data, error } = await supabase
     .from('teacher_settings')
     .upsert({ teacher_id: auth.user.id, ...update, updated_at: new Date().toISOString() })
-    .select('default_duration_minutes, time_format, notification_preferences, features')
+    .select('default_duration_minutes, time_format, notification_preferences, features, ui_language')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -121,5 +130,6 @@ export async function PATCH(request: NextRequest) {
     ...data,
     notification_preferences: mergePrefs(data.notification_preferences),
     features: mergeFeatures(data.features),
+    ui_language: (data.ui_language === 'en' ? 'en' : 'he') as 'en' | 'he',
   });
 }

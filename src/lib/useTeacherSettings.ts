@@ -7,6 +7,7 @@ const DEFAULTS: TeacherSettings = {
   time_format: '24h',
   notification_preferences: DEFAULT_NOTIFICATION_PREFERENCES,
   features: { billing: false, messages: false, groups: false, notebook: false, allow_cancellation: false, auto_approve_students: true, policies_accepted_at: null },
+  ui_language: 'he',
 };
 
 export function useTeacherSettings() {

@@ -9,6 +9,7 @@ import {
   type NotificationPreferences,
 } from '@/lib/notifications';
 import { exportToExcel } from '@/lib/exportToExcel';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Props {
   settings: TeacherSettings;
@@ -28,6 +29,7 @@ const NOTIFICATION_ROWS: { key: NotificationKey; label: string; direction: strin
 type Tab = 'general' | 'profile' | 'export';
 
 export default function TeacherSettingsModal({ settings, onSave, onClose, initialTab = 'general' }: Props & { initialTab?: Tab }) {
+  const { setLang } = useLanguage();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [exportLoading, setExportLoading] = useState(false);
   const [exportError, setExportError] = useState('');
@@ -35,6 +37,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
   // ── General settings state ──
   const [duration, setDuration] = useState(settings.default_duration_minutes);
   const [timeFormat, setTimeFormat] = useState<'24h' | '12h'>(settings.time_format);
+  const [uiLang, setUiLang] = useState<'en' | 'he'>(settings.ui_language ?? 'he');
   const [prefs, setPrefs] = useState<NotificationPreferences>({
     ...DEFAULT_NOTIFICATION_PREFERENCES,
     ...settings.notification_preferences,
@@ -181,11 +184,13 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
       time_format: timeFormat,
       notification_preferences: prefs,
       features,
+      ui_language: uiLang,
     });
     setSaving(false);
     if ('error' in result) {
       setError((result as { error: string }).error);
     } else {
+      setLang(uiLang);
       onClose();
     }
   }
@@ -315,6 +320,22 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   <span className="text-sm text-gray-700">12-hour <span className="text-gray-400">(2:30 PM)</span></span>
                 </label>
               </div>
+            </div>
+
+            {/* Interface language */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Interface language</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="uiLang" value="he" checked={uiLang === 'he'} onChange={() => setUiLang('he')} className="accent-blue-600" />
+                  <span className="text-sm text-gray-700">עברית <span className="text-gray-400">(Hebrew)</span></span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="uiLang" value="en" checked={uiLang === 'en'} onChange={() => setUiLang('en')} className="accent-blue-600" />
+                  <span className="text-sm text-gray-700">English</span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Sets the default language for your interface.</p>
             </div>
 
             {/* Student enrollment */}
