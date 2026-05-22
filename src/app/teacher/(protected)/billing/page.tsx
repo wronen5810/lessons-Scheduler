@@ -185,12 +185,48 @@ export default function BillingPage() {
   }
 
   function printReceipt() {
-    const style = document.createElement('style');
-    style.id = 'receipt-print-style';
-    style.textContent = `@media print { body > * { display:none !important; } #receipt-print-root { display:flex !important; position:fixed; inset:0; background:white; align-items:flex-start; justify-content:center; padding:24px; overflow:auto; } }`;
-    document.head.appendChild(style);
-    window.print();
-    setTimeout(() => document.getElementById('receipt-print-style')?.remove(), 500);
+    const el = document.getElementById('receipt-document');
+    if (!el) return;
+
+    const printLabel = isRTL ? 'הדפס / שמור PDF' : 'Print / Save PDF';
+    const html = [
+      '<!DOCTYPE html>',
+      `<html lang="${isRTL ? 'he' : 'en'}" dir="${isRTL ? 'rtl' : 'ltr'}">`,
+      '<head>',
+      '<meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width,initial-scale=1">',
+      `<title>Receipt${receiptData?.receipt_number ? ' #' + receiptData.receipt_number : ''}</title>`,
+      '<style>',
+      '*{margin:0;padding:0;box-sizing:border-box}',
+      "body{background:#f1f5f9;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;gap:14px;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}",
+      '.pbtn{padding:10px 28px;background:#1e293b;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.2px}',
+      '@media print{.pbtn{display:none!important}body{background:white;padding:0;display:block}}',
+      '</style>',
+      '</head>',
+      '<body>',
+      `<button class="pbtn" onclick="window.print()">🖨 ${printLabel}</button>`,
+      el.outerHTML,
+      '<script>',
+      'try{setTimeout(function(){window.print();},400);}catch(e){}',
+      '<\/script>',
+      '</body>',
+      '</html>',
+    ].join('');
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const opened = window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+    // Fallback when popup is blocked (e.g. some browsers or desktop policy)
+    if (!opened) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt-${receiptData?.receipt_number ?? 'download'}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   }
 
   function openReminder(studentId: string, studentName: string, balance: number | null) {
@@ -628,7 +664,7 @@ export default function BillingPage() {
 
       {/* ── Receipt preview modal ── */}
       {receiptData && (
-        <div id="receipt-print-root" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50" onClick={() => setReceiptData(null)}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50" onClick={() => setReceiptData(null)}>
           <div className="w-full max-w-lg space-y-3" onClick={(e) => e.stopPropagation()}>
             {/* Toolbar */}
             <div className="flex items-center justify-between gap-3 px-1">

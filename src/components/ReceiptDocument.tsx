@@ -45,7 +45,7 @@ export function ReceiptDocument({ data, lang = 'he' }: { data: ReceiptData; lang
   };
 
   return (
-    <div style={s.root}>
+    <div style={s.root} id="receipt-document">
       {/* Header */}
       <div style={s.header}>
         <div style={s.logo}>SaderOT</div>
