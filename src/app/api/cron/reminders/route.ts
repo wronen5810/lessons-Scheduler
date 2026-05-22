@@ -29,11 +29,19 @@ export async function GET(request: NextRequest) {
     return prefCache.get(teacherId)!;
   }
 
-  async function getPhone(teacherId: string, email: string): Promise<string | null> {
-    const cacheKey = `${teacherId}:${email}`;
+  async function getPhone(teacherId: string, email: string, name?: string): Promise<string | null> {
+    const cacheKey = `${teacherId}:${email || name || ''}`;
     if (!phoneCache.has(cacheKey)) {
-      const { data } = await supabase.from('students').select('phone').ilike('email', email).eq('teacher_id', teacherId).single();
-      phoneCache.set(cacheKey, data?.phone ?? null);
+      let phone: string | null = null;
+      if (email) {
+        const { data } = await supabase.from('students').select('phone').ilike('email', email).eq('teacher_id', teacherId).maybeSingle();
+        phone = data?.phone ?? null;
+      }
+      if (!phone && name) {
+        const { data } = await supabase.from('students').select('phone').ilike('name', name).eq('teacher_id', teacherId).maybeSingle();
+        phone = data?.phone ?? null;
+      }
+      phoneCache.set(cacheKey, phone);
     }
     return phoneCache.get(cacheKey)!;
   }
@@ -60,11 +68,11 @@ export async function GET(request: NextRequest) {
       cancelToken: booking.cancel_token,
     };
     try {
-      if (sendEmail(prefs, 'lesson_reminder')) {
+      if (sendEmail(prefs, 'lesson_reminder') && booking.student_email) {
         await emailStudentReminder(reminderInfo);
       }
       if (sendWhatsApp(prefs, 'lesson_reminder')) {
-        const phone = await getPhone(booking.teacher_id, booking.student_email);
+        const phone = await getPhone(booking.teacher_id, booking.student_email, booking.student_name);
         if (phone) await whatsappStudentReminder({ ...reminderInfo, phone });
       }
       await supabase.from('one_time_bookings').update({ reminder_sent: true }).eq('id', booking.id);
@@ -117,11 +125,11 @@ export async function GET(request: NextRequest) {
       cancelToken: booking.cancel_token,
     };
     try {
-      if (sendEmail(prefs, 'lesson_reminder')) {
+      if (sendEmail(prefs, 'lesson_reminder') && booking.student_email) {
         await emailStudentReminder(reminderInfo);
       }
       if (sendWhatsApp(prefs, 'lesson_reminder')) {
-        const phone = await getPhone(booking.teacher_id, booking.student_email);
+        const phone = await getPhone(booking.teacher_id, booking.student_email, booking.student_name);
         if (phone) await whatsappStudentReminder({ ...reminderInfo, phone });
       }
       await supabase.from('recurring_reminders').insert({ booking_id: booking.id, lesson_date: tomorrow });

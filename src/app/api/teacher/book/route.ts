@@ -130,23 +130,25 @@ export async function POST(request: NextRequest) {
       return;
     }
 
-    if (!student_email) return;
-    const { data: studentRow } = await supabase
-      .from('students')
-      .select('phone')
-      .ilike('email', student_email)
-      .eq('teacher_id', teacherId)
-      .single();
+    // Look up student phone — prefer by ID (most reliable), fall back to email
+    let studentPhone: string | null = null;
+    if (bodyStudentId) {
+      const { data: sr } = await supabase.from('students').select('phone').eq('id', bodyStudentId).eq('teacher_id', teacherId).maybeSingle();
+      studentPhone = sr?.phone ?? null;
+    } else if (student_email) {
+      const { data: sr } = await supabase.from('students').select('phone').ilike('email', student_email).eq('teacher_id', teacherId).maybeSingle();
+      studentPhone = sr?.phone ?? null;
+    }
     await Promise.all([
-      sendEmail(prefs, 'lesson_approved')
+      sendEmail(prefs, 'lesson_approved') && student_email
         ? emailStudentDirectBooking({ ...baseInfo, studentName: student_name, studentEmail: student_email })
             .catch((e) => console.error('Email failed:', e))
         : null,
-      sendWhatsApp(prefs, 'lesson_approved') && studentRow?.phone
-        ? whatsappStudentApproved({ ...baseInfo, studentName: student_name, phone: studentRow.phone })
+      sendWhatsApp(prefs, 'lesson_approved') && studentPhone
+        ? whatsappStudentApproved({ ...baseInfo, studentName: student_name, phone: studentPhone })
             .catch((e) => console.error('WhatsApp failed:', e))
         : null,
-      sendPush(prefs, 'lesson_approved')
+      sendPush(prefs, 'lesson_approved') && student_email
         ? sendPushToEmails(supabase, [student_email], 'Lesson Confirmed', `Your lesson on ${start_time} has been confirmed.`)
             .catch((e) => console.error('Push failed:', e))
         : null,

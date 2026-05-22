@@ -244,12 +244,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     ]);
   } else {
     // Individual booking — notify the student directly
-    const { data: studentRow } = await supabase
-      .from('students')
-      .select('phone')
-      .ilike('email', booking.student_email)
-      .eq('teacher_id', auth.user.id)
-      .single();
+    // Look up phone by email; fall back to student name if no email stored
+    let studentPhone: string | null = null;
+    if (booking.student_email) {
+      const { data: sr } = await supabase.from('students').select('phone').ilike('email', booking.student_email).eq('teacher_id', auth.user.id).maybeSingle();
+      studentPhone = sr?.phone ?? null;
+    }
+    if (!studentPhone && booking.student_name) {
+      const { data: sr } = await supabase.from('students').select('phone').ilike('name', booking.student_name).eq('teacher_id', auth.user.id).maybeSingle();
+      studentPhone = sr?.phone ?? null;
+    }
 
     const pushTitle =
       action === 'approve' ? 'Lesson Confirmed' :
@@ -260,13 +264,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                              `Your lesson on ${emailInfo.startTime} has been cancelled.`;
 
     await Promise.all([
-      sendEmail(prefs, notifKey) ? (
+      sendEmail(prefs, notifKey) && emailInfo.studentEmail ? (
         action === 'approve' ? emailStudentApproved(emailInfo) :
         action === 'reject'  ? emailStudentRejected(emailInfo) :
                                emailStudentCancelledByTeacher(emailInfo)
       ).catch((e) => console.error('Email failed:', e)) : null,
-      sendWhatsApp(prefs, notifKey) && studentRow?.phone ? (async () => {
-        const waInfo = { ...emailInfo, phone: studentRow.phone };
+      sendWhatsApp(prefs, notifKey) && studentPhone ? (async () => {
+        const waInfo = { ...emailInfo, phone: studentPhone };
         return (
           action === 'approve' ? whatsappStudentApproved(waInfo) :
           action === 'reject'  ? whatsappStudentRejected(waInfo) :
