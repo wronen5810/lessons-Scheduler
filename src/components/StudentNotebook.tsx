@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Scope = 'individual' | 'group';
 
@@ -38,7 +38,16 @@ interface GradeEntry {
   created_at: string;
 }
 
-type Tab = 'homework' | 'notes' | 'resources' | 'grades';
+interface FileEntry {
+  id: string;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  url: string;
+  created_at: string;
+}
+
+type Tab = 'homework' | 'notes' | 'resources' | 'grades' | 'files';
 
 interface Props {
   teacherId: string;
@@ -48,6 +57,20 @@ interface Props {
 function formatDate(iso: string) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fileTypeBadge(mimeType: string): { label: string; color: string } {
+  if (mimeType === 'application/pdf') return { label: 'PDF', color: 'bg-red-100 text-red-700' };
+  if (mimeType.includes('word') || mimeType.includes('document')) return { label: 'DOC', color: 'bg-blue-100 text-blue-700' };
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet') || mimeType === 'text/csv') return { label: 'XLS', color: 'bg-green-100 text-green-700' };
+  if (mimeType.startsWith('image/')) return { label: 'IMG', color: 'bg-purple-100 text-purple-700' };
+  return { label: 'FILE', color: 'bg-gray-100 text-gray-700' };
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function StudentNotebook({ teacherId, email }: Props) {
@@ -81,20 +104,27 @@ export default function StudentNotebook({ teacherId, email }: Props) {
 
   const [saving, setSaving] = useState(false);
 
+  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const baseParams = `email=${encodeURIComponent(email)}&teacherId=${encodeURIComponent(teacherId)}`;
 
   async function loadAll() {
     setLoading(true);
-    const [hw, nt, rs, gr] = await Promise.all([
+    const [hw, nt, rs, gr, fl] = await Promise.all([
       fetch(`/api/notebook?type=homework&${baseParams}`).then((r) => r.ok ? r.json() : []),
       fetch(`/api/notebook?type=notes&${baseParams}`).then((r) => r.ok ? r.json() : []),
       fetch(`/api/notebook?type=resources&${baseParams}`).then((r) => r.ok ? r.json() : []),
       fetch(`/api/notebook?type=grades&${baseParams}`).then((r) => r.ok ? r.json() : []),
+      fetch(`/api/notebook/files?${baseParams}`).then((r) => r.ok ? r.json() : []),
     ]);
     setHomework(hw);
     setNotes(nt);
     setResources(rs);
     setGrades(gr);
+    setFiles(fl);
     setLoading(false);
   }
 
@@ -240,6 +270,36 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     setGrades((prev) => prev.filter((g) => g.id !== id));
   }
 
+  // --- Files ---
+  async function uploadFile(file: File) {
+    setFileError('');
+    if (file.size > 5 * 1024 * 1024) { setFileError('File must be under 5 MB'); return; }
+    const allowed = new Set([
+      'application/pdf', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv', 'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    ]);
+    if (!allowed.has(file.type)) {
+      setFileError('File type not allowed. Use PDF, Word, Excel, CSV, or images.');
+      return;
+    }
+    setUploadingFile(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`/api/notebook/files?${baseParams}`, { method: 'POST', body: fd });
+    setUploadingFile(false);
+    if (!res.ok) { const d = await res.json(); setFileError(d.error || 'Upload failed'); return; }
+    const newFile: FileEntry = await res.json();
+    setFiles((prev) => [newFile, ...prev]);
+  }
+
+  async function deleteFile(id: string) {
+    await fetch(`/api/notebook/files/${id}?${baseParams}`, { method: 'DELETE' });
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+  }
+
   function startEdit(id: string, data: Record<string, string>) {
     setEditId(id);
     setEditData(data);
@@ -250,6 +310,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
     { key: 'notes', label: 'Notes' },
     { key: 'resources', label: 'Resources' },
     { key: 'grades', label: 'Grades' },
+    { key: 'files', label: 'Files' },
   ];
 
   return (
@@ -741,6 +802,68 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                     + Add grade
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* ── FILES TAB ── */}
+            {tab === 'files' && (
+              <div>
+                {files.length === 0 && !uploadingFile ? (
+                  <p className="py-6 text-center text-gray-400 text-sm">No files yet.</p>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {files.map((f) => {
+                      const { label, color } = fileTypeBadge(f.file_type);
+                      return (
+                        <div key={f.id} className="flex items-center gap-3 py-2.5 group">
+                          <span className={`flex-shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded ${color}`}>
+                            {label}
+                          </span>
+                          <a
+                            href={f.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 min-w-0 text-sm text-gray-800 hover:text-blue-600 hover:underline truncate"
+                          >
+                            {f.file_name}
+                          </a>
+                          <span className="flex-shrink-0 text-xs text-gray-400">{formatFileSize(f.file_size)}</span>
+                          <span className="flex-shrink-0 text-xs text-gray-400 hidden sm:block">{formatDate(f.created_at)}</span>
+                          <button
+                            onClick={() => deleteFile(f.id)}
+                            className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {fileError && <p className="text-xs text-red-600 mt-2">{fileError}</p>}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.gif,.png,.webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadFile(f);
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  onClick={() => { setFileError(''); fileInputRef.current?.click(); }}
+                  disabled={uploadingFile}
+                  className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:opacity-50"
+                >
+                  {uploadingFile ? 'Uploading...' : '+ Upload file'}
+                </button>
+                <p className="mt-1 text-xs text-gray-400">
+                  PDF, Word, Excel, CSV · Images (JPG, PNG, GIF) · Max 5 MB
+                </p>
               </div>
             )}
           </>
