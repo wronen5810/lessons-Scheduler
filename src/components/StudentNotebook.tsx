@@ -63,6 +63,7 @@ function fileTypeBadge(mimeType: string): { label: string; color: string } {
   if (mimeType === 'application/pdf') return { label: 'PDF', color: 'bg-red-100 text-red-700' };
   if (mimeType.includes('word') || mimeType.includes('document')) return { label: 'DOC', color: 'bg-blue-100 text-blue-700' };
   if (mimeType.includes('excel') || mimeType.includes('spreadsheet') || mimeType === 'text/csv') return { label: 'XLS', color: 'bg-green-100 text-green-700' };
+  if (mimeType === 'text/plain') return { label: 'TXT', color: 'bg-gray-100 text-gray-600' };
   if (mimeType.startsWith('image/')) return { label: 'IMG', color: 'bg-purple-100 text-purple-700' };
   return { label: 'FILE', color: 'bg-gray-100 text-gray-700' };
 }
@@ -279,7 +280,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv', 'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'text/csv', 'text/plain', 'image/jpeg', 'image/png', 'image/gif', 'image/webp',
     ]);
     if (!allowed.has(file.type)) {
       setFileError('File type not allowed. Use PDF, Word, Excel, CSV, or images.');
@@ -846,7 +847,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.gif,.png,.webp"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.gif,.png,.webp"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -862,7 +863,7 @@ export default function StudentNotebook({ teacherId, email }: Props) {
                   {uploadingFile ? 'Uploading...' : '+ Upload file'}
                 </button>
                 <p className="mt-1 text-xs text-gray-400">
-                  PDF, Word, Excel, CSV · Images (JPG, PNG, GIF) · Max 5 MB
+                  PDF, Word, Excel, CSV, TXT · Images (JPG, PNG, GIF) · Max 5 MB
                 </p>
               </div>
             )}

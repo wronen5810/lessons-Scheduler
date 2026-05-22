@@ -12,6 +12,7 @@ const ALLOWED_TYPES = new Set([
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/csv',
+  'text/plain',
   'image/jpeg',
   'image/png',
   'image/gif',
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
   if (!ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json(
-      { error: 'File type not allowed. Accepted: PDF, Word, Excel, CSV, or images (JPG, PNG, GIF, WebP).' },
+      { error: 'File type not allowed. Accepted: PDF, Word, Excel, CSV, TXT, or images (JPG, PNG, GIF, WebP).' },
       { status: 400 },
     );
   }
