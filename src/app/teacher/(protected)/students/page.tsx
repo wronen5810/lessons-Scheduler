@@ -56,7 +56,22 @@ function StudentsPage() {
   const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
+  type MenuAnchor = { top?: number; bottom?: number; left?: number; right?: number };
+  const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState<MenuAnchor | null>(null);
   const [studentFilter, setStudentFilter] = useState<'all' | 'active' | 'waiting'>('all');
+
+  function calcAnchor(e: React.MouseEvent, estHeight: number): MenuAnchor {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const horizontal: MenuAnchor = isRTL
+      ? { left: rect.left }
+      : { right: window.innerWidth - rect.right };
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    if (spaceBelow < estHeight) {
+      return { bottom: window.innerHeight - rect.top + 4, ...horizontal };
+    }
+    return { top: rect.bottom + 4, ...horizontal };
+  }
 
   // Payment modal state
   const [paymentTarget, setPaymentTarget] = useState<{ studentId: string; studentName: string } | null>(null);
@@ -77,12 +92,13 @@ function StudentsPage() {
   const [managingGroup, setManagingGroup] = useState<StudentGroup | null>(null);
   const [notebookGroup, setNotebookGroup] = useState<StudentGroup | null>(null);
 
-  // Close menus on outside click
+  // Close menus on outside click or scroll
   useEffect(() => {
     if (!openMenuId && !statusMenuId) return;
-    const close = () => { setOpenMenuId(null); setStatusMenuId(null); };
+    const close = () => { setOpenMenuId(null); setStatusMenuId(null); setMenuAnchor(null); setStatusMenuAnchor(null); };
     document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
+    document.addEventListener('scroll', close, true);
+    return () => { document.removeEventListener('click', close); document.removeEventListener('scroll', close, true); };
   }, [openMenuId, statusMenuId]);
 
   async function load() {
@@ -371,7 +387,7 @@ function StudentsPage() {
                   {/* Status badge — click to open selection menu */}
                   <div className="relative flex-shrink-0">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setStatusMenuId(statusMenuId === student.id ? null : student.id); }}
+                      onClick={(e) => { e.stopPropagation(); if (statusMenuId === student.id) { setStatusMenuId(null); setStatusMenuAnchor(null); } else { setStatusMenuAnchor(calcAnchor(e, 110)); setStatusMenuId(student.id); } }}
                       className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
                         student.is_active
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -382,10 +398,11 @@ function StudentsPage() {
                     >
                       {student.is_active ? t('common.active') : student.is_waitlisted ? t('common.waiting') : t('common.inactive')} ▾
                     </button>
-                    {statusMenuId === student.id && (
+                    {statusMenuId === student.id && statusMenuAnchor && (
                       <div
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute end-0 top-7 w-28 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden"
+                        style={{ position: 'fixed', zIndex: 50, top: statusMenuAnchor.top, bottom: statusMenuAnchor.bottom, left: statusMenuAnchor.left, right: statusMenuAnchor.right }}
+                        className="w-28 bg-white border border-gray-200 rounded-xl shadow-lg py-1 overflow-hidden"
                       >
                         <button onClick={() => setStatus(student, 'active')}
                           className={`w-full text-start px-3 py-2 text-xs font-medium transition-colors ${student.is_active ? 'text-green-700 bg-green-50' : 'text-gray-700 hover:bg-green-50 hover:text-green-700'}`}>
@@ -406,15 +423,16 @@ function StudentsPage() {
                   {/* 3-dot menu */}
                   <div className="relative flex-shrink-0">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === student.id ? null : student.id); }}
+                      onClick={(e) => { e.stopPropagation(); if (openMenuId === student.id) { setOpenMenuId(null); setMenuAnchor(null); } else { setMenuAnchor(calcAnchor(e, 280)); setOpenMenuId(student.id); } }}
                       className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
                     >
                       ⋮
                     </button>
-                    {openMenuId === student.id && (
+                    {openMenuId === student.id && menuAnchor && (
                       <div
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute end-0 top-8 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden"
+                        style={{ position: 'fixed', zIndex: 50, top: menuAnchor.top, bottom: menuAnchor.bottom, left: menuAnchor.left, right: menuAnchor.right }}
+                        className="w-36 bg-white border border-gray-200 rounded-xl shadow-lg py-1 overflow-hidden"
                       >
                         <button onClick={() => { setOpenMenuId(null); setEditing({ ...student }); }}
                           className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
@@ -515,15 +533,16 @@ function StudentsPage() {
                       {/* 3-dot menu */}
                       <div className="relative flex-shrink-0">
                         <button
-                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === group.id ? null : group.id); }}
+                          onClick={(e) => { e.stopPropagation(); if (openMenuId === group.id) { setOpenMenuId(null); setMenuAnchor(null); } else { setMenuAnchor(calcAnchor(e, 180)); setOpenMenuId(group.id); } }}
                           className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
                         >
                           ⋮
                         </button>
-                        {openMenuId === group.id && (
+                        {openMenuId === group.id && menuAnchor && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="absolute end-0 top-8 w-36 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden"
+                            style={{ position: 'fixed', zIndex: 50, top: menuAnchor.top, bottom: menuAnchor.bottom, left: menuAnchor.left, right: menuAnchor.right }}
+                            className="w-36 bg-white border border-gray-200 rounded-xl shadow-lg py-1 overflow-hidden"
                           >
                             <button onClick={() => { setOpenMenuId(null); setManagingGroup(managingGroup?.id === group.id ? null : { ...group }); }}
                               className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
