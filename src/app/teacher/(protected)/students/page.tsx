@@ -57,6 +57,26 @@ function StudentsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
   type MenuAnchor = { top?: number; bottom?: number; left?: number; right?: number };
+
+  // ── Contacts state ───────────────────────────────────────────────
+  interface Contact {
+    id: string;
+    student_id: string;
+    name: string;
+    relationship: string | null;
+    email: string | null;
+    phone: string | null;
+    is_primary: boolean;
+    created_at: string;
+  }
+  const [contactsStudent, setContactsStudent] = useState<Student | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [contactEditId, setContactEditId] = useState<string | null>(null);
+  const [contactEditDraft, setContactEditDraft] = useState<Partial<Contact>>({});
+  const [contactEditSaving, setContactEditSaving] = useState(false);
+  const [newContact, setNewContact] = useState({ name: '', relationship: '', email: '', phone: '', is_primary: false });
+  const [contactAdding, setContactAdding] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<MenuAnchor | null>(null);
   const [studentFilter, setStudentFilter] = useState<'all' | 'active' | 'waiting'>('all');
@@ -178,6 +198,65 @@ function StudentsPage() {
     const res = await fetch(`/api/teacher/students/${student.id}/notes`);
     if (res.ok) setStudentNotes(await res.json());
     setNotesLoading(false);
+  }
+
+  async function openContacts(student: Student) {
+    setContactsStudent(student);
+    setContacts([]);
+    setContactsLoading(true);
+    setContactEditId(null);
+    setNewContact({ name: '', relationship: '', email: '', phone: '', is_primary: false });
+    const res = await fetch(`/api/teacher/students/${student.id}/contacts`);
+    if (res.ok) setContacts(await res.json());
+    setContactsLoading(false);
+  }
+
+  async function addContact(e: React.FormEvent) {
+    e.preventDefault();
+    if (!contactsStudent) return;
+    setContactAdding(true);
+    const res = await fetch(`/api/teacher/students/${contactsStudent.id}/contacts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newContact),
+    });
+    if (res.ok) {
+      setNewContact({ name: '', relationship: '', email: '', phone: '', is_primary: false });
+      const updated = await fetch(`/api/teacher/students/${contactsStudent.id}/contacts`);
+      if (updated.ok) setContacts(await updated.json());
+    }
+    setContactAdding(false);
+  }
+
+  async function saveContactEdit(contactId: string) {
+    if (!contactsStudent) return;
+    setContactEditSaving(true);
+    await fetch(`/api/teacher/students/${contactsStudent.id}/contacts/${contactId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contactEditDraft),
+    });
+    setContactEditId(null);
+    const updated = await fetch(`/api/teacher/students/${contactsStudent.id}/contacts`);
+    if (updated.ok) setContacts(await updated.json());
+    setContactEditSaving(false);
+  }
+
+  async function setPrimaryContact(contactId: string) {
+    if (!contactsStudent) return;
+    await fetch(`/api/teacher/students/${contactsStudent.id}/contacts/${contactId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_primary: true }),
+    });
+    const updated = await fetch(`/api/teacher/students/${contactsStudent.id}/contacts`);
+    if (updated.ok) setContacts(await updated.json());
+  }
+
+  async function deleteContact(contactId: string) {
+    if (!contactsStudent) return;
+    await fetch(`/api/teacher/students/${contactsStudent.id}/contacts/${contactId}`, { method: 'DELETE' });
+    setContacts((prev) => prev.filter((c) => c.id !== contactId));
   }
 
   async function saveEdit() {
@@ -437,6 +516,10 @@ function StudentsPage() {
                         <button onClick={() => { setOpenMenuId(null); setEditing({ ...student }); }}
                           className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
                           ✏️ {t('common.edit')}
+                        </button>
+                        <button onClick={() => { setOpenMenuId(null); openContacts(student); }}
+                          className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                          👤 {t('students.contacts')}
                         </button>
                         <button onClick={() => { setOpenMenuId(null); openNotes(student); }}
                           className="w-full text-start px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
@@ -729,6 +812,179 @@ function StudentsPage() {
                 {t('common.cancel')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contacts modal */}
+      {contactsStudent && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4" onClick={() => setContactsStudent(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-gray-900 flex-shrink-0">
+              {translate(lang, 'students.contactsTitle', { name: contactsStudent.name })}
+            </h3>
+
+            {/* Contact list */}
+            <div className="overflow-y-auto flex-1 space-y-2 min-h-0">
+              {contactsLoading && <p className="text-sm text-gray-400">{t('common.loading')}</p>}
+              {!contactsLoading && contacts.length === 0 && (
+                <p className="text-sm text-gray-400">{t('students.noContacts')}</p>
+              )}
+              {contacts.map((c) => (
+                <div key={c.id} className={`rounded-xl border p-3 space-y-2 ${c.is_primary ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                  {contactEditId === c.id ? (
+                    /* Inline edit form */
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          value={contactEditDraft.name ?? ''}
+                          onChange={(e) => setContactEditDraft({ ...contactEditDraft, name: e.target.value })}
+                          placeholder={t('students.contactName')}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          value={contactEditDraft.relationship ?? ''}
+                          onChange={(e) => setContactEditDraft({ ...contactEditDraft, relationship: e.target.value })}
+                          placeholder={t('students.relationship')}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="email"
+                          value={contactEditDraft.email ?? ''}
+                          onChange={(e) => setContactEditDraft({ ...contactEditDraft, email: e.target.value })}
+                          placeholder={t('common.email')}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="tel"
+                          value={contactEditDraft.phone ?? ''}
+                          onChange={(e) => setContactEditDraft({ ...contactEditDraft, phone: e.target.value })}
+                          placeholder={t('common.phone')}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => saveContactEdit(c.id)}
+                          disabled={contactEditSaving}
+                          className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {contactEditSaving ? t('common.saving') : t('common.save')}
+                        </button>
+                        <button
+                          onClick={() => setContactEditId(null)}
+                          className="px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Contact display */
+                    <>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-gray-900">{c.name}</span>
+                            {c.relationship && <span className="text-xs text-gray-500">{c.relationship}</span>}
+                            {c.is_primary && (
+                              <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-blue-600 text-white">
+                                {t('students.primaryContact')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-3 mt-0.5 flex-wrap">
+                            {c.email && <span className="text-xs text-gray-500">📧 {c.email}</span>}
+                            {c.phone && <span className="text-xs text-gray-500">📞 {c.phone}</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          {!c.is_primary && (
+                            <button
+                              onClick={() => setPrimaryContact(c.id)}
+                              className="text-xs px-2 py-1 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap"
+                            >
+                              {t('students.setPrimary')}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => { setContactEditId(c.id); setContactEditDraft({ name: c.name, relationship: c.relationship ?? '', email: c.email ?? '', phone: c.phone ?? '' }); }}
+                            className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                          >
+                            {t('common.edit')}
+                          </button>
+                          <button
+                            onClick={() => deleteContact(c.id)}
+                            className="text-xs px-2 py-1 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            {t('common.remove')}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add contact form */}
+            <form onSubmit={addContact} className="border-t border-gray-100 pt-4 space-y-2 flex-shrink-0">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('students.addContact')}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  required
+                  value={newContact.name}
+                  onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                  placeholder={`${t('students.contactName')} *`}
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  value={newContact.relationship}
+                  onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
+                  placeholder={t('students.relationship')}
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="email"
+                  value={newContact.email}
+                  onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                  placeholder={t('common.email')}
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="tel"
+                  value={newContact.phone}
+                  onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                  placeholder={t('common.phone')}
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newContact.is_primary}
+                  onChange={(e) => setNewContact({ ...newContact, is_primary: e.target.checked })}
+                  className="rounded"
+                />
+                {t('students.setPrimary')}
+              </label>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={contactAdding}
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {contactAdding ? t('common.adding') : t('students.addContact')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContactsStudent(null)}
+                  className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  {t('common.close')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

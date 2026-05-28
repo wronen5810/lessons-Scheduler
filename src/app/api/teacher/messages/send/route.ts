@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServiceSupabase();
-  const recipientMap = new Map<string, Recipient>();
+  // resolvedStudents: all student rows before contact override
+  const resolvedStudents: Recipient[] = [];
 
   // Individual students
   if (studentIds.length > 0) {
@@ -49,9 +50,7 @@ export async function POST(request: NextRequest) {
       .select('id, name, email, phone')
       .eq('teacher_id', auth.user.id)
       .in('id', studentIds);
-    for (const s of students ?? []) {
-      recipientMap.set(s.email.toLowerCase(), s);
-    }
+    for (const s of students ?? []) resolvedStudents.push(s);
   }
 
   // Group members — verify groups belong to teacher, then resolve members
@@ -76,11 +75,37 @@ export async function POST(request: NextRequest) {
           .select('id, name, email, phone')
           .eq('teacher_id', auth.user.id)
           .in('id', memberIds);
-        for (const s of students ?? []) {
-          recipientMap.set(s.email.toLowerCase(), s);
-        }
+        for (const s of students ?? []) resolvedStudents.push(s);
       }
     }
+  }
+
+  // Fetch primary contacts for all resolved students and override email/phone for delivery
+  const allStudentIds = [...new Set(resolvedStudents.map((s) => s.id))];
+  const primaryContactMap = new Map<string, { email: string | null; phone: string | null }>();
+  if (allStudentIds.length > 0) {
+    const { data: primaryContacts } = await supabase
+      .from('student_contacts')
+      .select('student_id, email, phone')
+      .eq('teacher_id', auth.user.id)
+      .in('student_id', allStudentIds)
+      .eq('is_primary', true);
+    for (const c of primaryContacts ?? []) {
+      primaryContactMap.set(c.student_id, { email: c.email, phone: c.phone });
+    }
+  }
+
+  // Build de-duped recipient map; primary contact overrides delivery email/phone
+  const recipientMap = new Map<string, Recipient>();
+  for (const s of resolvedStudents) {
+    const logKey = (s.email ?? s.id).toLowerCase();
+    if (recipientMap.has(logKey)) continue;
+    const contact = primaryContactMap.get(s.id);
+    recipientMap.set(logKey, {
+      ...s,
+      email: contact?.email || s.email,
+      phone: contact?.phone || s.phone,
+    });
   }
 
   const recipients = [...recipientMap.values()];
