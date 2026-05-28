@@ -75,6 +75,12 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // ── Calendar sync state ──
+  const [calToken, setCalToken] = useState<string | null>(null);
+  const [calUrl, setCalUrl]     = useState<string | null>(null);
+  const [calLoading, setCalLoading] = useState(false);
+  const [calCopied, setCalCopied]   = useState(false);
+
   // ── 2FA state ──
   type TwoFAStep = 'idle' | 'setup' | 'disabling';
   const [twoFAEnabled, setTwoFAEnabled] = useState<boolean | null>(null);
@@ -84,6 +90,39 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
   const [twoFACode, setTwoFACode] = useState('');
   const [twoFAError, setTwoFAError] = useState('');
   const [twoFALoading, setTwoFALoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/teacher/calendar-token')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) { setCalToken(d.token); setCalUrl(d.url); } })
+      .catch(() => {});
+  }, []);
+
+  async function generateCalToken() {
+    setCalLoading(true);
+    try {
+      const res = await fetch('/api/teacher/calendar-token', { method: 'POST' });
+      const d = await res.json();
+      setCalToken(d.token); setCalUrl(d.url);
+    } finally { setCalLoading(false); }
+  }
+
+  async function revokeCalToken() {
+    if (!confirm('Revoke calendar link? Anyone using the current URL will lose access.')) return;
+    setCalLoading(true);
+    try {
+      await fetch('/api/teacher/calendar-token', { method: 'DELETE' });
+      setCalToken(null); setCalUrl(null);
+    } finally { setCalLoading(false); }
+  }
+
+  function copyCalUrl() {
+    if (!calUrl) return;
+    navigator.clipboard.writeText(calUrl).then(() => {
+      setCalCopied(true);
+      setTimeout(() => setCalCopied(false), 2000);
+    });
+  }
 
   useEffect(() => {
     fetch('/api/teacher/2fa/status')
@@ -531,6 +570,67 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
               )}
 
               {twoFAError && <p className="text-xs text-red-600 mt-1">{twoFAError}</p>}
+            </div>
+
+            {/* ── Calendar Sync ── */}
+            <div className="border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium text-gray-700">Calendar Sync</label>
+                {calToken && (
+                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mb-3">
+                Subscribe to your lesson schedule in Google Calendar, Apple Calendar, or Outlook.{' '}
+                <a href="/teacher/calendar-help" target="_blank" className="text-blue-500 hover:underline">How to set up →</a>
+              </p>
+
+              {!calToken ? (
+                <button
+                  type="button"
+                  onClick={generateCalToken}
+                  disabled={calLoading}
+                  className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {calLoading ? 'Generating…' : 'Generate calendar link'}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={calUrl ?? ''}
+                      className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-600 bg-gray-50 font-mono truncate focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={copyCalUrl}
+                      className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
+                      {calCopied ? '✓ Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={generateCalToken}
+                      disabled={calLoading}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      {calLoading ? 'Working…' : 'Regenerate'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={revokeCalToken}
+                      disabled={calLoading}
+                      className="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400">Keep this URL private — it gives read access to your schedule.</p>
+                </div>
+              )}
             </div>
           </>
         )}
