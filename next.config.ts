@@ -9,6 +9,17 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Enable gzip/brotli compression for all responses
+  compress: true,
+
+  // Don't ship source maps to browsers in production
+  productionBrowserSourceMaps: false,
+
+  // Tree-shake large icon/utility packages at build time
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'date-fns'],
+  },
+
   async headers() {
     return [
       {

@@ -16,7 +16,19 @@ import {
   Settings, LogOut, Clock, UserCircle, HelpCircle, Home, ClipboardList,
 } from 'lucide-react';
 
-export default function TeacherNav({ title, nextLesson }: { title?: string; nextLesson?: { hours: number; minutes: number } | null }) {
+export default function TeacherNav({
+  title,
+  nextLesson,
+  teacherName: teacherNameProp,
+  teacherId: teacherIdProp,
+  pendingCount: pendingCountProp,
+}: {
+  title?: string;
+  nextLesson?: { hours: number; minutes: number } | null;
+  teacherName?: string;
+  teacherId?: string;
+  pendingCount?: number;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { t, lang, setLang } = useLanguage();
@@ -30,25 +42,33 @@ export default function TeacherNav({ title, nextLesson }: { title?: string; next
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.ui_language]);
   const features = settings.features;
-  const [teacherId, setTeacherId] = useState('');
-  const [teacherName, setTeacherName] = useState('');
+  const [teacherId, setTeacherId] = useState(teacherIdProp ?? '');
+  const [teacherName, setTeacherName] = useState(teacherNameProp ?? '');
   const [showShareLink, setShowShareLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'general' | 'profile'>('general');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(pendingCountProp ?? 0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    createBrowserSupabase().auth.getUser().then(({ data }) => {
-      if (data.user) setTeacherId(data.user.id);
-    });
-    fetch('/api/teacher/me/subscription').then(r => r.json()).then(data => {
-      if (data.teacher?.name) setTeacherName(data.teacher.name);
-    }).catch(() => {});
-    fetch('/api/teacher/requests').then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setPendingCount(data.length);
-    }).catch(() => {});
+    // Skip fetches for data already provided by the server layout
+    if (!teacherIdProp) {
+      createBrowserSupabase().auth.getUser().then(({ data }) => {
+        if (data.user) setTeacherId(data.user.id);
+      });
+    }
+    if (!teacherNameProp) {
+      fetch('/api/teacher/me/subscription').then(r => r.json()).then(data => {
+        if (data.teacher?.name) setTeacherName(data.teacher.name);
+      }).catch(() => {});
+    }
+    if (pendingCountProp === undefined) {
+      fetch('/api/teacher/requests').then(r => r.json()).then(data => {
+        if (Array.isArray(data)) setPendingCount(data.length);
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

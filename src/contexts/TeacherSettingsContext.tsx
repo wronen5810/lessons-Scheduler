@@ -1,0 +1,66 @@
+'use client';
+
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import type { TeacherSettings } from '@/app/api/teacher/settings/route';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '@/lib/notifications';
+
+const DEFAULTS: TeacherSettings = {
+  default_duration_minutes: 45,
+  time_format: '24h',
+  notification_preferences: DEFAULT_NOTIFICATION_PREFERENCES,
+  features: {
+    billing: false,
+    messages: false,
+    groups: false,
+    notebook: false,
+    allow_cancellation: false,
+    auto_approve_students: true,
+    policies_accepted_at: null,
+  },
+  ui_language: 'he',
+};
+
+interface TeacherSettingsContextValue {
+  settings: TeacherSettings;
+  loading: boolean;
+  save: (updates: Partial<TeacherSettings>) => Promise<TeacherSettings>;
+  reload: () => Promise<void>;
+}
+
+const TeacherSettingsContext = createContext<TeacherSettingsContextValue | null>(null);
+
+export function TeacherSettingsProvider({ children }: { children: ReactNode }) {
+  const [settings, setSettings] = useState<TeacherSettings>(DEFAULTS);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    const res = await fetch('/api/teacher/settings');
+    if (res.ok) setSettings(await res.json());
+    setLoading(false);
+  }
+
+  async function save(updates: Partial<TeacherSettings>): Promise<TeacherSettings> {
+    const res = await fetch('/api/teacher/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    const data = await res.json();
+    if (res.ok) setSettings(data);
+    return data;
+  }
+
+  useEffect(() => { load(); }, []);
+
+  return (
+    <TeacherSettingsContext.Provider value={{ settings, loading, save, reload: load }}>
+      {children}
+    </TeacherSettingsContext.Provider>
+  );
+}
+
+export function useTeacherSettingsCtx(): TeacherSettingsContextValue {
+  const ctx = useContext(TeacherSettingsContext);
+  if (!ctx) throw new Error('useTeacherSettingsCtx must be used inside TeacherSettingsProvider');
+  return ctx;
+}

@@ -84,13 +84,8 @@ export default function TeacherDashboard() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // Don't block the entire page on settings load — render immediately with defaults.
+  // Settings (feature flags, display preferences) are non-critical for initial paint.
 
   return (
     <>

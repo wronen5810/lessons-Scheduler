@@ -10,6 +10,7 @@ import PolicyFooter from '@/components/PolicyFooter';
 import PushRegistrar from '@/components/PushRegistrar';
 import EmailVerificationBanner from '@/components/EmailVerificationBanner';
 import { todayInIsrael, TZ } from '@/lib/dates';
+import { TeacherSettingsProvider } from '@/contexts/TeacherSettingsContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,18 +57,20 @@ export default async function TeacherProtectedLayout({ children }: { children: R
     );
   }
 
-  // Check policies + fetch upcoming lesson in parallel
+  // Fetch settings, upcoming bookings (for next-lesson calculation + pending count),
+  // and teacher profile — all in parallel so no query blocks another.
   const todayStr = todayInIsrael();
   const nowMs = Date.now();
 
-  const [{ data: tSettings }, { data: recurring }, { data: oneTime }] = await Promise.all([
+  const [{ data: tSettings }, { data: recurring }, { data: oneTime }, { data: profile }] = await Promise.all([
     supabase.from('teacher_settings').select('features').eq('teacher_id', user.id).single(),
-    supabase.from('recurring_bookings').select('lesson_date, start_time')
+    supabase.from('recurring_bookings').select('lesson_date, start_time, status')
       .eq('teacher_id', user.id).in('status', ['pending', 'approved'])
-      .gte('lesson_date', todayStr).order('lesson_date').order('start_time').limit(10),
-    supabase.from('one_time_bookings').select('specific_date, start_time')
+      .gte('lesson_date', todayStr).order('lesson_date').order('start_time').limit(20),
+    supabase.from('one_time_bookings').select('specific_date, start_time, status')
       .eq('teacher_id', user.id).in('status', ['pending', 'approved'])
-      .gte('specific_date', todayStr).order('specific_date').order('start_time').limit(10),
+      .gte('specific_date', todayStr).order('specific_date').order('start_time').limit(20),
+    supabase.from('profiles').select('display_name').eq('id', user.id).single(),
   ]);
 
   const featuresData = (tSettings?.features ?? {}) as Record<string, unknown>;
@@ -80,6 +83,11 @@ export default async function TeacherProtectedLayout({ children }: { children: R
       </SessionGuard>
     );
   }
+
+  // Derive pending count from already-fetched bookings (used for nav badge)
+  const pendingCount =
+    (recurring ?? []).filter(r => r.status === 'pending').length +
+    (oneTime ?? []).filter(r => r.status === 'pending').length;
 
   // Compute next upcoming lesson
   const candidates = [
@@ -100,14 +108,21 @@ export default async function TeacherProtectedLayout({ children }: { children: R
 
   return (
     <SessionGuard loginPath="/teacher/login" persistent>
-      <PushRegistrar />
-      <EmailVerificationBanner />
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <TeacherNav nextLesson={nextLesson} />
-        <AssistantBar />
-        <div className="flex-1 pb-14 sm:pb-0">{children}</div>
-        <PolicyFooter />
-      </div>
+      <TeacherSettingsProvider>
+        <PushRegistrar />
+        <EmailVerificationBanner />
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+          <TeacherNav
+            nextLesson={nextLesson}
+            teacherName={profile?.display_name ?? ''}
+            teacherId={user.id}
+            pendingCount={pendingCount}
+          />
+          <AssistantBar />
+          <div className="flex-1 pb-14 sm:pb-0">{children}</div>
+          <PolicyFooter />
+        </div>
+      </TeacherSettingsProvider>
     </SessionGuard>
   );
 }
