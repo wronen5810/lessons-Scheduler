@@ -497,7 +497,7 @@ const he: typeof en = {
   'common.skip': 'דלג',
   'common.done': 'סיום',
   // ── Billing ─────────────────────────────────────────────
-  'billing.summary': 'סיכום חשבונאות',
+  'billing.summary': 'סיכום חיובים',
   'billing.totalUnpaid': 'יתרת חוב כוללת',
   'billing.totalLessons': 'סה״כ שיעורים',
   'billing.noLessons': 'אין שיעורים שהושלמו עדיין.',
@@ -598,7 +598,7 @@ const he: typeof en = {
   // ── Teacher dashboard ───────────────────────────────────
   'teacher.schedule': 'לוח זמנים',
   'teacher.slots': 'חלונות זמן',
-  'teacher.billing': 'חשבונאות',
+  'teacher.billing': 'חיובים',
   'teacher.messages': 'הודעות',
   'teacher.shareLink': '⚭ שתף',
   'teacher.pendingRequests': 'בקשות ממתינות',

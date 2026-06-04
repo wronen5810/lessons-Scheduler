@@ -9,6 +9,7 @@ import { translate } from '@/lib/i18n';
 import TeacherSettingsModal from '@/components/TeacherSettingsModal';
 import QuickActionsWizard from '@/components/QuickActionsWizard';
 import { toSlug } from '@/lib/slug';
+import { Settings, CreditCard } from 'lucide-react';
 
 export default function TeacherDashboard() {
   const { settings, loading, save: saveSettings } = useTeacherSettings();
@@ -121,8 +122,9 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Summary row */}
+        {/* Summary rows — 3 across × 2 rows */}
         <div className="grid grid-cols-3 gap-3">
+          {/* Row 1: stats */}
           <Link href="/teacher/schedule" className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center transition-colors hover:border-blue-300">
             {todayCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
@@ -143,6 +145,21 @@ export default function TeacherDashboard() {
               : <p className="text-2xl font-bold text-gray-800">{studentCount}</p>
             }
             <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('common.students')}</p>
+          </Link>
+
+          {/* Row 2: actions */}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col items-center justify-center gap-1.5 transition-colors hover:border-blue-300 hover:bg-blue-50"
+          >
+            <Settings className="w-5 h-5 text-blue-500" />
+            <p className="text-xs text-gray-500 leading-tight text-center">{isRTL ? 'הגדרות ופרופיל' : 'Settings & Profile'}</p>
+          </button>
+          <Link href="/teacher/billing"
+            className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col items-center justify-center gap-1.5 transition-colors hover:border-blue-300 hover:bg-blue-50"
+          >
+            <CreditCard className="w-5 h-5 text-blue-500" />
+            <p className="text-xs text-gray-500 leading-tight text-center">{isRTL ? 'בדוק מצב חיובים' : 'Check Billing Status'}</p>
           </Link>
         </div>
 
