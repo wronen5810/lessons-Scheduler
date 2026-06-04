@@ -111,9 +111,15 @@ export default function TeacherDashboard() {
         ) : (
           <div className="bg-blue-600 rounded-2xl p-5 text-white shadow-md">
             <p className="text-sm font-semibold opacity-80">
-              {teacherName ? `Welcome back, ${teacherName}!` : t('teacher.welcomeBack')}
+              {teacherName ? (isRTL ? `שלום, ${teacherName}` : `Hi, ${teacherName}!`) : t('teacher.welcomeBack')}
             </p>
-            <p className="text-lg font-bold mt-0.5 opacity-90">{t('teacher.whatToDoToday')}</p>
+            <p className="text-2xl font-bold mt-1 min-h-[2rem]">
+              {todayCount === null
+                ? <span className="opacity-0">·</span>
+                : todayCount === 0
+                  ? (isRTL ? 'אין שיעורים היום' : 'No lessons today')
+                  : (isRTL ? `${todayCount} שיעורים היום` : `${todayCount} lesson${todayCount !== 1 ? 's' : ''} today`)}
+            </p>
             <Link href="/teacher/schedule"
               className="inline-flex items-center gap-1 mt-3 bg-white text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
               {t('teacher.schedule')} →
@@ -129,21 +135,21 @@ export default function TeacherDashboard() {
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className="text-2xl font-bold text-blue-600">{todayCount}</p>
             }
-            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.todayLessons')}</p>
+            <p className="text-sm text-gray-500 mt-0.5 leading-tight">{t('teacher.todayLessons')}</p>
           </Link>
           <Link href="/teacher/schedule" className={`bg-white rounded-xl border shadow-sm p-3 text-center transition-colors hover:border-amber-300 ${pendingCount ? 'border-amber-200' : 'border-gray-100'}`}>
             {pendingCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className={`text-2xl font-bold ${pendingCount ? 'text-amber-500' : 'text-gray-400'}`}>{pendingCount}</p>
             }
-            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.pendingRequests')}</p>
+            <p className="text-sm text-gray-500 mt-0.5 leading-tight">{t('teacher.pendingRequests')}</p>
           </Link>
           <Link href="/teacher/students" className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center transition-colors hover:border-blue-300">
             {studentCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className="text-2xl font-bold text-gray-800">{studentCount}</p>
             }
-            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('common.students')}</p>
+            <p className="text-sm text-gray-500 mt-0.5 leading-tight">{t('common.students')}</p>
           </Link>
 
         </div>
@@ -156,7 +162,7 @@ export default function TeacherDashboard() {
         }} />
 
         {/* Share link */}
-        {(teacherId || teacherName) && (
+        {studentCount === 0 && (teacherId || teacherName) && (
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-4 py-3">
             <p className="text-xs text-gray-400 mb-1.5">{t('teacher.copyShareLink')}</p>
             <div className="flex items-center gap-2">

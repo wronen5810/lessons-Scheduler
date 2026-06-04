@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { UserPlus, CalendarPlus, Users2, MessageSquare, X, ArrowLeft, UserPlus2, Settings, CreditCard } from 'lucide-react';
+import { UserPlus, CalendarPlus, Users2, MessageSquare, X, ArrowLeft, UserPlus2, CreditCard } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translate } from '@/lib/i18n';
 import VoiceMicButton from '@/components/VoiceMicButton';
@@ -1079,56 +1079,59 @@ export default function QuickActionsWizard({ onRefresh, onOpenSettings }: Props)
   const { t, isRTL } = useLanguage();
   const [active, setActive] = useState<WizardId | null>(null);
 
-  type ActionItem = {
-    id: string;
-    label: string;
-    desc: string;
-    iconBg: string;
-    icon: React.ReactNode;
-    wizardId?: WizardId;
-    href?: string;
-    onAction?: () => void;
-  };
-
-  const actions: ActionItem[] = [
-    { id: 'student', wizardId: 'student', label: t('wizard.addStudent'),  desc: t('wizard.addStudentDesc'),  iconBg: 'bg-violet-50 text-violet-600',  icon: <UserPlus className="w-6 h-6" /> },
-    { id: 'slot',    wizardId: 'slot',    label: t('wizard.addSlot'),      desc: t('wizard.addSlotDesc'),     iconBg: 'bg-blue-50 text-blue-600',      icon: <CalendarPlus className="w-6 h-6" /> },
-    { id: 'group',   wizardId: 'group',   label: t('wizard.addGroup'),     desc: t('wizard.addGroupDesc'),    iconBg: 'bg-emerald-50 text-emerald-600', icon: <Users2 className="w-6 h-6" /> },
-    { id: 'message', wizardId: 'message', label: t('wizard.sendMessage'),  desc: t('wizard.sendMessageDesc'), iconBg: 'bg-amber-50 text-amber-600',    icon: <MessageSquare className="w-6 h-6" /> },
-    { id: 'settings', label: isRTL ? 'הגדרות ופרופיל' : 'Settings & Profile', desc: isRTL ? 'עדכן הגדרות ופרופיל' : 'Update settings & profile', iconBg: 'bg-slate-50 text-slate-600', icon: <Settings className="w-6 h-6" />, onAction: () => onOpenSettings?.() },
-    { id: 'billing',  href: '/teacher/billing', label: isRTL ? 'בדוק מצב חיובים' : 'Check Billing Status', desc: isRTL ? 'צפה בחיובים ותשלומים' : 'View billing & payments', iconBg: 'bg-green-50 text-green-600', icon: <CreditCard className="w-6 h-6" /> },
+  const primaryActions: { id: WizardId; label: string; desc: string; iconBg: string; icon: React.ReactNode }[] = [
+    { id: 'student', label: t('wizard.addStudent'),  desc: t('wizard.addStudentDesc'),  iconBg: 'bg-violet-50 text-violet-600',   icon: <UserPlus className="w-7 h-7" /> },
+    { id: 'slot',    label: t('wizard.addSlot'),      desc: t('wizard.addSlotDesc'),     iconBg: 'bg-blue-50 text-blue-600',       icon: <CalendarPlus className="w-7 h-7" /> },
+    { id: 'group',   label: t('wizard.addGroup'),     desc: t('wizard.addGroupDesc'),    iconBg: 'bg-emerald-50 text-emerald-600', icon: <Users2 className="w-7 h-7" /> },
+    { id: 'message', label: t('wizard.sendMessage'),  desc: t('wizard.sendMessageDesc'), iconBg: 'bg-amber-50 text-amber-600',     icon: <MessageSquare className="w-7 h-7" /> },
   ];
 
   function close() { setActive(null); }
   function done()  { setActive(null); onRefresh?.(); }
 
-  const btnCls = "bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all p-3 text-left";
-
   return (
     <>
-      <div className="grid grid-cols-3 gap-3">
-        {actions.map((a) => {
-          const inner = (
-            <>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${a.iconBg}`}>
+      <div className="space-y-3">
+        {/* Section label */}
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-0.5">
+          {isRTL ? 'פעולות מהירות' : 'Quick Actions'}
+        </p>
+
+        {/* Primary workflow actions — 2×2 */}
+        <div className="grid grid-cols-2 gap-3">
+          {primaryActions.map((a) => (
+            <button key={a.id}
+              onClick={() => setActive(a.id)}
+              className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all p-4 text-left"
+            >
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${a.iconBg}`}>
                 {a.icon}
               </div>
               <p className="text-sm font-semibold text-gray-900">{a.label}</p>
               <p className="text-xs text-gray-400 mt-0.5">{a.desc}</p>
-            </>
-          );
-          if (a.href) {
-            return <Link key={a.id} href={a.href} className={btnCls + ' block'}>{inner}</Link>;
-          }
-          return (
-            <button key={a.id}
-              onClick={() => a.onAction ? a.onAction() : setActive(a.wizardId!)}
-              className={btnCls}
-            >
-              {inner}
             </button>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* Billing — distinct horizontal shortcut */}
+        <Link href="/teacher/billing"
+          className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md hover:border-green-200 transition-all px-4 py-3"
+        >
+          <div className="w-9 h-9 rounded-lg bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900">
+              {isRTL ? 'בדוק מצב חיובים' : 'Check Billing Status'}
+            </p>
+            <p className="text-xs text-gray-400">
+              {isRTL ? 'צפה בחיובים ותשלומים' : 'View billing & payments'}
+            </p>
+          </div>
+          <svg className="w-4 h-4 text-gray-300 flex-shrink-0 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
       </div>
 
       {active === 'student' && <AddStudentWizard onClose={close} onDone={done} />}
