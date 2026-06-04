@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.0"
+agp = "9.1.1"
 kotlin = "2.3.20"
 coreKtx = "1.15.0"
 junit = "4.13.2"
@@ -16,6 +16,7 @@ core = "1.17.0"
 cordovaAndroid = "14.0.1"
 json = "20250517"
 mockito = "5.20.0"
+playServicesAwareness = "20.0.0"
 
 # SDK Versions
 minSdk = "24"
@@ -37,6 +38,7 @@ androidx-core = { group = "androidx.core", name = "core", version.ref = "core" }
 cordova-framework = { group = "org.apache.cordova", name = "framework", version.ref = "cordovaAndroid" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+play-services-awareness = { group = "com.google.android.gms", name = "play-services-awareness", version.ref = "playServicesAwareness" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

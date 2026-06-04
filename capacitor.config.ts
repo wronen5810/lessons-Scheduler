@@ -1,7 +1,7 @@
 ﻿import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.saderot.app',
+  appId: 'com.saderOT.myapp',
   appName: 'saderOT',
   webDir: 'public',
   server: {

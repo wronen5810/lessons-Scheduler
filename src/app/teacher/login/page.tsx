@@ -38,9 +38,9 @@ export default function TeacherLogin() {
     // Check if 2FA is required for this account
     const res = await fetch('/api/teacher/2fa/status');
     const data = res.ok ? await res.json() : null;
-    setLoading(false);
 
     if (data?.totp_enabled) {
+      setLoading(false);
       setStep('totp');
     } else {
       fetch('/api/teacher/record-login', { method: 'POST' }).catch(() => {});

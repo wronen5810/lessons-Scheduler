@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Lessons Scheduler</string>
-    <string name="title_activity_main">Lessons Scheduler</string>
-    <string name="package_name">com.lessonscheduler.app</string>
-    <string name="custom_url_scheme">com.lessonscheduler.app</string>
+    <string name="app_name">SaderOT</string>
+    <string name="title_activity_main">SaderOT</string>
+    <string name="package_name">com.saderOT.myapp</string>
+    <string name="custom_url_scheme">com.saderOT.myapp</string>
 </resources>
