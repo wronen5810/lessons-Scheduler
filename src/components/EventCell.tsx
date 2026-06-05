@@ -4,11 +4,11 @@ import type { CalendarEvent, CalendarEventType } from '@/lib/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const EVENT_CONFIG: Record<CalendarEventType, { icon: string; bg: string; border: string; text: string }> = {
-  exam:      { icon: '📝', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800' },
-  task:      { icon: '✅', bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-800' },
-  paperwork: { icon: '📄', bg: 'bg-slate-50',  border: 'border-slate-200',  text: 'text-slate-700' },
-  vacation:  { icon: '🏖', bg: 'bg-teal-50',   border: 'border-teal-200',   text: 'text-teal-700' },
-  other:     { icon: '📌', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
+  exam:      { icon: '📝', bg: 'bg-red-100',  border: 'border-red-300',  text: 'text-red-800' },
+  task:      { icon: '✅', bg: 'bg-red-50',   border: 'border-red-200',  text: 'text-red-700' },
+  paperwork: { icon: '📄', bg: 'bg-rose-50',  border: 'border-rose-200', text: 'text-rose-700' },
+  vacation:  { icon: '🏖', bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800' },
+  other:     { icon: '📌', bg: 'bg-pink-50',  border: 'border-pink-200', text: 'text-pink-700' },
 };
 
 export default function EventCell({
