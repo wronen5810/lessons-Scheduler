@@ -19,9 +19,20 @@ interface Student {
   phone: string | null;
   rate: number | null;
   notes: string | null;
+  grade: number | null;
   is_active: boolean;
   is_waitlisted: boolean;
   created_at: string;
+}
+
+const HEBREW_GRADES: Record<number, string> = {
+  1: 'א', 2: 'ב', 3: 'ג', 4: 'ד', 5: 'ה', 6: 'ו',
+  7: 'ז', 8: 'ח', 9: 'ט', 10: 'י', 11: 'י"א', 12: 'י"ב',
+};
+
+function gradeLabel(grade: number | null, lang: string): string {
+  if (!grade) return '';
+  return lang === 'he' ? (HEBREW_GRADES[grade] ?? String(grade)) : String(grade);
 }
 
 function StudentsPage() {
@@ -42,6 +53,7 @@ function StudentsPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [grade, setGrade] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState('');
   const [editing, setEditing] = useState<Student | null>(null);
@@ -158,10 +170,10 @@ function StudentsPage() {
     const res = await fetch('/api/teacher/students', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, phone: phone || null }),
+      body: JSON.stringify({ name, email, phone: phone || null, grade }),
     });
     const data = await res.json();
-    if (!res.ok) { setFormError(data.error); } else { setName(''); setEmail(''); setPhone(''); load(); }
+    if (!res.ok) { setFormError(data.error); } else { setName(''); setEmail(''); setPhone(''); setGrade(null); load(); }
     setAdding(false);
   }
 
@@ -274,6 +286,7 @@ function StudentsPage() {
         phone: editing.phone || null,
         rate: editing.rate ?? null,
         notes: editing.notes || null,
+        grade: editing.grade ?? null,
       }),
     });
     setEditSaving(false);
@@ -408,13 +421,20 @@ function StudentsPage() {
                   {t('students.bulkEdit')} →
                 </Link>
               </div>
-              <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
+              <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3 flex-wrap">
                 <input type="text" placeholder={t('students.fullName')} required value={name} onChange={(e) => setName(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="flex-1 min-w-[140px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="email" placeholder={t('students.emailAddress')} value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="flex-1 min-w-[140px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="tel" placeholder={t('common.phone')} value={phone} onChange={(e) => setPhone(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="flex-1 min-w-[120px] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <select value={grade ?? ''} onChange={(e) => setGrade(e.target.value ? Number(e.target.value) : null)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">{t('students.grade')}</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((g) => (
+                    <option key={g} value={g}>{gradeLabel(g, lang)}</option>
+                  ))}
+                </select>
                 <button type="submit" disabled={adding}
                   className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap">
                   {adding ? t('common.adding') : t('common.add')}
@@ -464,6 +484,11 @@ function StudentsPage() {
                     <span className="text-xs text-gray-400 truncate hidden sm:inline">{student.email}</span>
                     {student.phone && <span className="text-xs text-gray-500">📞 {student.phone}</span>}
                     {student.rate != null && <span className="text-xs text-gray-500">₪{student.rate}</span>}
+                    {student.grade != null && (
+                      <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
+                        {isRTL ? 'כיתה ' : 'Gr.'}{gradeLabel(student.grade, lang)}
+                      </span>
+                    )}
                   </div>
 
                   {/* Status badge — click to open selection menu */}
@@ -796,6 +821,17 @@ function StudentsPage() {
                 value={editing.rate ?? ''} onChange={(e) => setEditing({ ...editing, rate: e.target.value ? Number(e.target.value) : null })}
                 placeholder="150"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('students.grade')}</label>
+              <select value={editing.grade ?? ''} onChange={(e) => setEditing({ ...editing, grade: e.target.value ? Number(e.target.value) : null })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="">{t('students.noGrade')}</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((g) => (
+                  <option key={g} value={g}>{gradeLabel(g, lang)}</option>
+                ))}
+              </select>
             </div>
 
             <div>

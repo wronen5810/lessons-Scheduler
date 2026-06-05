@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireTeacher();
   if (auth.error) return auth.error;
 
-  const { name, email, phone } = await request.json();
+  const { name, email, phone, grade } = await request.json();
   if (!name || (!email && !phone)) {
     return NextResponse.json({ error: 'Name and email or phone are required' }, { status: 400 });
   }
@@ -35,11 +35,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid phone number (Israeli or US format required)' }, { status: 400 });
     }
   }
+  if (grade != null && (typeof grade !== 'number' || grade < 1 || grade > 12)) {
+    return NextResponse.json({ error: 'Grade must be between 1 and 12' }, { status: 400 });
+  }
 
   const supabase = createServiceSupabase();
   const { data, error } = await supabase
     .from('students')
-    .insert({ name, email: email ? email.toLowerCase().trim() : null, phone: phone ?? null, teacher_id: auth.user.id })
+    .insert({ name, email: email ? email.toLowerCase().trim() : null, phone: phone ?? null, teacher_id: auth.user.id, grade: grade ?? null })
     .select()
     .single();
 
