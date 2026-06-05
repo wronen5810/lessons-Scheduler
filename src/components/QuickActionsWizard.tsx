@@ -838,10 +838,20 @@ function AddGroupWizard({ onClose, onDone }: { onClose: () => void; onDone: () =
 
 // ─── Send Message Wizard ──────────────────────────────────────────────────────
 
+interface Contact {
+  id: string;
+  student_id: string;
+  name: string;
+  relationship: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+}
+
 function SendMessageWizard({ onClose }: { onClose: () => void }) {
   type Step = 'message' | 'recipients' | 'method' | 'done';
 
-  const { t, lang } = useLanguage();
+  const { t, lang, isRTL } = useLanguage();
   const [step, setStep] = useState<Step>('message');
   const [message, setMessage] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
@@ -852,24 +862,46 @@ function SendMessageWizard({ onClose }: { onClose: () => void }) {
   const [waResult, setWaResult] = useState<{ sent: number; failed: { name: string }[]; noPhone: { name: string; email: string }[] } | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // contacts support
+  const [contactsMap, setContactsMap] = useState<Map<string, Contact[]>>(new Map());
+  const [selectedContacts, setSelectedContacts] = useState<Map<string, string>>(new Map()); // studentId → contactId
 
   const title = t('wizard.sendMessage');
 
   async function goToRecipients() {
     setLoading(true);
-    const [sr, gr] = await Promise.all([
+    const [sr, gr, cr] = await Promise.all([
       fetch('/api/teacher/students').then((r) => r.json()),
       fetch('/api/teacher/groups').then((r) => r.json()),
+      fetch('/api/teacher/students/contacts-all').then((r) => r.json()).catch(() => []),
     ]);
     if (Array.isArray(sr)) setStudents(sr.filter((s: Student) => s.is_active));
     if (Array.isArray(gr)) setGroups(gr);
+    if (Array.isArray(cr)) {
+      const map = new Map<string, Contact[]>();
+      for (const c of cr as Contact[]) {
+        if (!map.has(c.student_id)) map.set(c.student_id, []);
+        map.get(c.student_id)!.push(c);
+      }
+      setContactsMap(map);
+    }
     setLoading(false);
     setStep('recipients');
   }
 
   function toggleStudentId(id: string) {
+    const adding = !selectedStudentIds.has(id);
     setSelectedStudentIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    if (adding) {
+      // Auto-select primary contact when student is added
+      const contacts = contactsMap.get(id) ?? [];
+      const primary = contacts.find((c) => c.is_primary) ?? contacts[0];
+      if (primary) setSelectedContacts((prev) => new Map(prev).set(id, primary.id));
+    } else {
+      setSelectedContacts((prev) => { const m = new Map(prev); m.delete(id); return m; });
+    }
   }
+
   function toggleGroupId(id: string) {
     setSelectedGroupIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
@@ -881,6 +913,17 @@ function SendMessageWizard({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError('');
     try {
+      // Build contact overrides from teacher's selection
+      const contactOverrides = Array.from(selectedStudentIds)
+        .map((studentId) => {
+          const contactId = selectedContacts.get(studentId);
+          if (!contactId) return null;
+          const contact = (contactsMap.get(studentId) ?? []).find((c) => c.id === contactId);
+          if (!contact) return null;
+          return { studentId, email: contact.email ?? '', phone: contact.phone ?? null };
+        })
+        .filter((o): o is { studentId: string; email: string; phone: string | null } => o !== null);
+
       const res = await fetch('/api/teacher/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -889,6 +932,7 @@ function SendMessageWizard({ onClose }: { onClose: () => void }) {
           studentIds: Array.from(selectedStudentIds),
           groupIds: Array.from(selectedGroupIds),
           channels,
+          contactOverrides,
         }),
       });
       setLoading(false);
@@ -1001,7 +1045,7 @@ function SendMessageWizard({ onClose }: { onClose: () => void }) {
           {groups.length === 0 && students.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">{t('wizard.noStudentsYet')}</p>
           ) : (
-            <div className="max-h-56 overflow-y-auto space-y-3 -mx-1 px-1">
+            <div className="max-h-64 overflow-y-auto space-y-3 -mx-1 px-1">
               {groups.length > 0 && (
                 <div>
                   <p className="text-xs text-gray-400 font-medium mb-1.5 px-1">{t('common.groups')}</p>
@@ -1025,15 +1069,59 @@ function SendMessageWizard({ onClose }: { onClose: () => void }) {
                 <div>
                   <p className="text-xs text-gray-400 font-medium mb-1.5 px-1">{t('common.students')}</p>
                   <div className="space-y-1.5">
-                    {students.map((s) => (
-                      <button key={s.id} onClick={() => toggleStudentId(s.id)}
-                        className={`w-full text-left px-3 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all ${
-                          selectedStudentIds.has(s.id) ? 'bg-blue-50 border-2 border-blue-400 text-blue-800 font-medium' : 'border border-gray-100 hover:border-blue-200'
-                        }`}>
-                        <CheckBox checked={selectedStudentIds.has(s.id)} />
-                        {s.name}
-                      </button>
-                    ))}
+                    {students.map((s) => {
+                      const isSelected = selectedStudentIds.has(s.id);
+                      const contacts = contactsMap.get(s.id) ?? [];
+                      const selContactId = selectedContacts.get(s.id) ?? '';
+                      return (
+                        <div key={s.id}>
+                          <button onClick={() => toggleStudentId(s.id)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all ${
+                              isSelected
+                                ? 'bg-blue-50 border-2 border-blue-400 text-blue-800 font-medium'
+                                : 'border border-gray-100 hover:border-blue-200 hover:bg-blue-50'
+                            }`}>
+                            <CheckBox checked={isSelected} />
+                            <span className="flex-1">{s.name}</span>
+                            {s.email && <span className="text-xs text-gray-400 truncate max-w-[100px]">{s.email}</span>}
+                          </button>
+
+                          {/* Contact selector — shown only when student is selected and has contacts */}
+                          {isSelected && contacts.length > 0 && (
+                            <div className="ms-7 mt-1 mb-0.5 space-y-1">
+                              <p className="text-[11px] font-medium text-gray-400 px-1">
+                                {isRTL ? 'שלח אל:' : 'Send to:'}
+                              </p>
+                              {contacts.map((c) => (
+                                <button key={c.id} type="button"
+                                  onClick={() => setSelectedContacts((prev) => new Map(prev).set(s.id, c.id))}
+                                  className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center gap-2 transition-all ${
+                                    selContactId === c.id
+                                      ? 'bg-blue-100 border border-blue-300 text-blue-900'
+                                      : 'bg-white border border-gray-100 hover:border-blue-200 hover:bg-blue-50 text-gray-700'
+                                  }`}
+                                >
+                                  {/* Radio dot */}
+                                  <div className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                                    selContactId === c.id ? 'border-blue-500' : 'border-gray-300'
+                                  }`}>
+                                    {selContactId === c.id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                  </div>
+                                  <span className="font-medium">{c.name}</span>
+                                  {c.relationship && <span className="text-gray-400">· {c.relationship}</span>}
+                                  {c.is_primary && (
+                                    <span className="bg-blue-100 text-blue-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                      {isRTL ? 'ראשי' : 'Primary'}
+                                    </span>
+                                  )}
+                                  <span className="text-gray-400 truncate flex-1 text-end">{c.email ?? c.phone ?? ''}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -22,11 +22,13 @@ export async function POST(request: NextRequest) {
     groupIds = [] as string[],
     message,
     channels = { email: false, whatsapp: false, notification: false },
+    contactOverrides = [] as { studentId: string; email: string; phone: string | null }[],
   } = body as {
     studentIds: string[];
     groupIds: string[];
     message: string;
     channels: { email: boolean; whatsapp: boolean; notification: boolean };
+    contactOverrides?: { studentId: string; email: string; phone: string | null }[];
   };
 
   if (!message?.trim()) {
@@ -80,31 +82,39 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Fetch primary contacts for all resolved students and override email/phone for delivery
+  // Build request-level override map (teacher's explicit contact selection — highest priority)
+  const requestOverrideMap = new Map<string, { email: string; phone: string | null }>();
+  for (const o of contactOverrides) {
+    if (o.studentId && o.email) requestOverrideMap.set(o.studentId, { email: o.email, phone: o.phone });
+  }
+
+  // Fetch DB primary contacts as fallback for students without a request override
   const allStudentIds = [...new Set(resolvedStudents.map((s) => s.id))];
+  const needsDbLookup = allStudentIds.filter((id) => !requestOverrideMap.has(id));
   const primaryContactMap = new Map<string, { email: string | null; phone: string | null }>();
-  if (allStudentIds.length > 0) {
+  if (needsDbLookup.length > 0) {
     const { data: primaryContacts } = await supabase
       .from('student_contacts')
       .select('student_id, email, phone')
       .eq('teacher_id', auth.user.id)
-      .in('student_id', allStudentIds)
+      .in('student_id', needsDbLookup)
       .eq('is_primary', true);
     for (const c of primaryContacts ?? []) {
       primaryContactMap.set(c.student_id, { email: c.email, phone: c.phone });
     }
   }
 
-  // Build de-duped recipient map; primary contact overrides delivery email/phone
+  // Build de-duped recipient map (de-dup by student ID)
+  // Priority: request override > DB primary contact > student's own email/phone
   const recipientMap = new Map<string, Recipient>();
   for (const s of resolvedStudents) {
-    const logKey = (s.email ?? s.id).toLowerCase();
-    if (recipientMap.has(logKey)) continue;
-    const contact = primaryContactMap.get(s.id);
-    recipientMap.set(logKey, {
+    if (recipientMap.has(s.id)) continue;
+    const reqOverride = requestOverrideMap.get(s.id);
+    const dbContact  = primaryContactMap.get(s.id);
+    recipientMap.set(s.id, {
       ...s,
-      email: contact?.email || s.email,
-      phone: contact?.phone || s.phone,
+      email: reqOverride?.email ?? dbContact?.email ?? s.email,
+      phone: reqOverride !== undefined ? reqOverride.phone : (dbContact?.phone ?? s.phone),
     });
   }
 
