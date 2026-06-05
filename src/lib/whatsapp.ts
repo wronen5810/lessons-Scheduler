@@ -122,6 +122,29 @@ export async function whatsappTeacherAccessRequest(info: {
   );
 }
 
+export async function whatsappEventReminder({
+  phone,
+  studentName,
+  eventType,
+  description,
+  eventDate,
+  eventTime,
+}: {
+  phone: string;
+  studentName: string;
+  eventType: string;
+  description: string;
+  eventDate: string;
+  eventTime: string | null;
+}): Promise<void> {
+  const timeStr = eventTime ? ` at ${eventTime.slice(0, 5)}` : '';
+  await sendTemplate(phone, process.env.TWILIO_TEMPLATE_LESSON_REMINDER!, {
+    '1': studentName,
+    '2': `${formatDisplayDateLong(eventDate)}${timeStr}`,
+    '3': `${eventType}: ${description}`,
+  });
+}
+
 export async function whatsappDirectMessage(
   phone: string,
   studentName: string,

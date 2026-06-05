@@ -9,7 +9,11 @@ import SaderotLogo from '@/components/SaderotLogo';
 import StudentNotebook from '@/components/StudentNotebook';
 import StudentPushRegistrar from '@/components/StudentPushRegistrar';
 import PolicyFooter from '@/components/PolicyFooter';
+import EventCell from '@/components/EventCell';
+import type { CalendarEvent, CalendarEventType } from '@/lib/types';
 import { todayInIsrael } from '@/lib/dates';
+
+const EVENT_TYPES: CalendarEventType[] = ['exam', 'task', 'paperwork', 'vacation', 'other'];
 
 type Tab = 'schedule' | 'messages' | 'notebook' | 'settings';
 
@@ -80,6 +84,15 @@ export default function StudentPortalPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [allowCancellation, setAllowCancellation] = useState(true);
 
+  // Events
+  const [studentEvents, setStudentEvents] = useState<CalendarEvent[]>([]);
+  const [addEventOpen, setAddEventOpen] = useState(false);
+  const [evType, setEvType] = useState<CalendarEventType>('exam');
+  const [evDate, setEvDate] = useState('');
+  const [evTime, setEvTime] = useState('');
+  const [evDesc, setEvDesc] = useState('');
+  const [evSaving, setEvSaving] = useState(false);
+
   // Compose message
   const [messageBody, setMessageBody] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -139,6 +152,7 @@ export default function StudentPortalPage() {
     loadBookings(activeTeacher);
     loadMessages(activeTeacher);
     loadSettings(activeTeacher);
+    loadEvents(activeTeacher);
     fetch(`/api/teacher-features/${activeTeacher.teacherId}`)
       .then(r => r.json())
       .then(d => { if (d.allow_cancellation === false) setAllowCancellation(false); })
@@ -159,6 +173,14 @@ export default function StudentPortalPage() {
       headers: { Authorization: `Bearer ${s.token}` },
     });
     if (res.ok) setMessages(await res.json());
+  }
+
+  async function loadEvents(s: TeacherSession) {
+    const res = await fetch(
+      `/api/student/events?email=${encodeURIComponent(s.email)}&teacherId=${s.teacherId}`,
+      { headers: { Authorization: `Bearer ${s.token}` } }
+    );
+    if (res.ok) setStudentEvents(await res.json());
   }
 
   async function loadSettings(s: TeacherSession) {
@@ -378,6 +400,124 @@ export default function StudentPortalPage() {
                 );
               })
             )}
+
+            {/* Upcoming Events */}
+            <div className="pt-2 border-t border-slate-100 mt-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  {t('events.upcomingEvents')}
+                </h3>
+                <button
+                  onClick={() => { setEvDate(today); setAddEventOpen(true); }}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  + {t('events.addEvent')}
+                </button>
+              </div>
+              {studentEvents.length === 0
+                ? <p className="text-xs text-slate-400">{t('events.noEvents')}</p>
+                : studentEvents.map(e => <EventCell key={e.id} event={e} />)
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Add Event Modal */}
+        {addEventOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+              <h2 className="text-base font-semibold text-slate-800">{t('events.addEvent')}</h2>
+
+              {/* Event type */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('events.eventType')}</label>
+                <select
+                  value={evType}
+                  onChange={e => setEvType(e.target.value as CalendarEventType)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                >
+                  {EVENT_TYPES.map(et => (
+                    <option key={et} value={et}>{t(`events.${et}` as Parameters<typeof t>[0])}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('events.description')}</label>
+                <input
+                  type="text"
+                  value={evDesc}
+                  onChange={e => setEvDesc(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('events.eventDate')}</label>
+                <input
+                  type="date"
+                  value={evDate}
+                  onChange={e => setEvDate(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  dir="ltr"
+                />
+              </div>
+
+              {/* Time (optional) */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('events.eventTime')}</label>
+                <input
+                  type="time"
+                  value={evTime}
+                  onChange={e => setEvTime(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  dir="ltr"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => { setAddEventOpen(false); setEvDesc(''); setEvTime(''); }}
+                  className="flex-1 py-2 border border-slate-300 text-slate-700 text-sm rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  disabled={evSaving || !evDesc.trim() || !evDate}
+                  onClick={async () => {
+                    if (!activeTeacher || !evDesc.trim() || !evDate) return;
+                    setEvSaving(true);
+                    try {
+                      const res = await fetch('/api/student/events', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${activeTeacher.token}` },
+                        body: JSON.stringify({
+                          teacherId: activeTeacher.teacherId,
+                          event_type: evType,
+                          description: evDesc.trim(),
+                          event_date: evDate,
+                          event_time: evTime || null,
+                        }),
+                      });
+                      if (res.ok) {
+                        setAddEventOpen(false);
+                        setEvDesc('');
+                        setEvTime('');
+                        setEvType('exam');
+                        loadEvents(activeTeacher);
+                      }
+                    } finally {
+                      setEvSaving(false);
+                    }
+                  }}
+                  className="flex-1 py-2 bg-blue-600 text-white text-sm rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors"
+                >
+                  {evSaving ? t('common.saving') : t('common.save')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

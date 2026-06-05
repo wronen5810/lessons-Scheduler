@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
-import { emailStudentReminder } from '@/lib/email';
-import { whatsappStudentReminder } from '@/lib/whatsapp';
+import { emailStudentReminder, emailEventReminder } from '@/lib/email';
+import { whatsappStudentReminder, whatsappEventReminder } from '@/lib/whatsapp';
 import { formatDate, getEndTime, todayInIsrael } from '@/lib/dates';
 import { addDays, parseISO } from 'date-fns';
 import { mergePrefs, sendEmail, sendWhatsApp, type NotificationPreferences } from '@/lib/notifications';
@@ -135,6 +135,72 @@ export async function GET(request: NextRequest) {
       await supabase.from('recurring_reminders').insert({ booking_id: booking.id, lesson_date: tomorrow });
     } catch (err) {
       console.error('Failed to send reminder for recurring booking', booking.id, err);
+    }
+  }
+
+  // --- Calendar event reminders ---
+  const today = todayInIsrael();
+
+  const { data: dueEvents } = await supabase
+    .from('calendar_events')
+    .select('*, calendar_event_students(student_id, students(id, name, email, phone))')
+    .eq('reminder_sent', false)
+    .not('reminder_days', 'is', null);
+
+  for (const event of dueEvents ?? []) {
+    const eventDay = formatDate(addDays(parseISO(today), event.reminder_days as number));
+    if (eventDay !== event.event_date) continue;
+
+    const channels = (event.reminder_channels as { email: boolean; whatsapp: boolean } | null) ?? { email: true, whatsapp: false };
+    const eventTypeLabel = (event.event_type as string).charAt(0).toUpperCase() + (event.event_type as string).slice(1);
+
+    // Build recipient list from calendar_event_students + student_id (for student-created events)
+    type StudentRow = { id: string; name: string; email: string; phone?: string | null };
+    const recipients: StudentRow[] = [];
+    const seen = new Set<string>();
+
+    for (const es of (event.calendar_event_students as Array<{ student_id: string; students: StudentRow }>) ?? []) {
+      if (es.students && !seen.has(es.student_id)) {
+        seen.add(es.student_id);
+        recipients.push(es.students);
+      }
+    }
+
+    // If student-created event, also notify that student
+    if (event.student_id && !seen.has(event.student_id)) {
+      const { data: stu } = await supabase.from('students').select('id, name, email, phone').eq('id', event.student_id).maybeSingle();
+      if (stu) recipients.push(stu);
+    }
+
+    try {
+      for (const recipient of recipients) {
+        if (channels.email && recipient.email) {
+          await emailEventReminder({
+            studentName: recipient.name,
+            studentEmail: recipient.email,
+            eventType: eventTypeLabel,
+            description: event.description as string,
+            eventDate: event.event_date as string,
+            eventTime: event.event_time as string | null,
+          });
+        }
+        if (channels.whatsapp) {
+          const phone = recipient.phone ?? await getPhone(event.teacher_id as string, recipient.email, recipient.name);
+          if (phone) {
+            await whatsappEventReminder({
+              phone,
+              studentName: recipient.name,
+              eventType: eventTypeLabel,
+              description: event.description as string,
+              eventDate: event.event_date as string,
+              eventTime: event.event_time as string | null,
+            });
+          }
+        }
+      }
+      await supabase.from('calendar_events').update({ reminder_sent: true }).eq('id', event.id);
+    } catch (err) {
+      console.error('Failed to send reminder for calendar event', event.id, err);
     }
   }
 

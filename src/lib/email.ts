@@ -290,6 +290,36 @@ export async function emailSubscribeInvite({ email }: { email: string }) {
   });
 }
 
+export async function emailEventReminder({
+  studentName,
+  studentEmail,
+  eventType,
+  description,
+  eventDate,
+  eventTime,
+}: {
+  studentName: string;
+  studentEmail: string;
+  eventType: string;
+  description: string;
+  eventDate: string;
+  eventTime: string | null;
+}) {
+  const timeStr = eventTime ? ` at ${eventTime.slice(0, 5)}` : '';
+  await getResend().emails.send({
+    from: FROM(),
+    to: studentEmail,
+    subject: `Reminder: ${eventType} on ${formatDisplayDateLong(eventDate)}`,
+    html: `
+      <h2>Event Reminder</h2>
+      <p>Hi ${studentName},</p>
+      <p>Just a reminder about an upcoming event:</p>
+      <p><strong>${formatDisplayDateLong(eventDate)}${timeStr}</strong></p>
+      <p><strong>${eventType}:</strong> ${description}</p>
+    `,
+  });
+}
+
 export async function emailDirectMessage({
   to,
   studentName,

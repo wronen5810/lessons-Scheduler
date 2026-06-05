@@ -119,3 +119,27 @@ export interface GroupMember {
   student_email: string;
   added_at: string;
 }
+
+export type CalendarEventType = 'exam' | 'task' | 'paperwork' | 'vacation' | 'other';
+
+export interface CalendarEvent {
+  id: string;
+  teacher_id: string;
+  created_by: 'teacher' | 'student';
+  student_id: string | null;
+  event_type: CalendarEventType;
+  description: string;
+  event_date: string;         // YYYY-MM-DD
+  event_time: string | null;  // HH:MM
+  reminder_days: number | null;
+  reminder_channels: { email: boolean; whatsapp: boolean; push: boolean } | null;
+  reminder_sent: boolean;
+  created_at: string;
+  // joined via Supabase relational select (teacher view)
+  calendar_event_students?: {
+    student_id: string;
+    students: { id: string; name: string; email: string };
+  }[];
+  // populated for student-created events on teacher calendar
+  student_name?: string;
+}

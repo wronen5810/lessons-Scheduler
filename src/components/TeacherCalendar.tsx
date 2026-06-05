@@ -2,8 +2,9 @@
 
 import { addDays, parseISO } from 'date-fns';
 import { DAY_NAMES_SHORT, formatDate } from '@/lib/dates';
-import type { ComputedSlot } from '@/lib/types';
+import type { CalendarEvent, ComputedSlot } from '@/lib/types';
 import SlotCell from './SlotCell';
+import EventCell from './EventCell';
 
 interface Props {
   slots: ComputedSlot[];
@@ -12,9 +13,13 @@ interface Props {
   onSelectSlot: (slot: ComputedSlot) => void;
   onAddSlot?: (date: string) => void;
   timeFormat?: '24h' | '12h';
+  events?: CalendarEvent[];
+  showEvents?: boolean;
+  onSelectEvent?: (event: CalendarEvent) => void;
+  onAddEvent?: (date: string) => void;
 }
 
-function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat = '24h', showDayNames = true }: {
+function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat = '24h', showDayNames = true, events = [], showEvents = true, onSelectEvent, onAddEvent }: {
   weekStart: string;
   slots: ComputedSlot[];
   today: string;
@@ -22,9 +27,14 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
   onAddSlot?: (date: string) => void;
   timeFormat?: '24h' | '12h';
   showDayNames?: boolean;
+  events?: CalendarEvent[];
+  showEvents?: boolean;
+  onSelectEvent?: (event: CalendarEvent) => void;
+  onAddEvent?: (date: string) => void;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => formatDate(addDays(parseISO(weekStart), i)));
   const slotsByDay = (date: string) => slots.filter((s) => s.date === date);
+  const eventsByDay = (date: string) => events.filter((e) => e.event_date === date);
 
   return (
     <div className="grid grid-cols-7 gap-1 sm:gap-2">
@@ -32,6 +42,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
         const isToday = date === today;
         const dayNum = date.slice(8);
         const daySlots = slotsByDay(date);
+        const dayEvents = eventsByDay(date);
 
         const isPast = date < today;
 
@@ -53,22 +64,36 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
                     title="Add slot"
                   >+</button>
                 )}
+                {onAddEvent && (
+                  <button
+                    onClick={() => onAddEvent(date)}
+                    className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-orange-500 text-xs leading-none transition-colors"
+                    title="Add event"
+                  >📅</button>
+                )}
               </div>
             </div>
 
-            {daySlots.length === 0 ? (
+            {daySlots.length === 0 && (!showEvents || dayEvents.length === 0) ? (
               <div className="text-center text-gray-200 text-xs py-0.5">·</div>
             ) : (
-              daySlots.map((slot) => (
-                <SlotCell
-                  key={`${slot.date}-${slot.start_time}`}
-                  slot={slot}
-                  onClick={onSelectSlot}
-                  isTeacher
-                  timeFormat={timeFormat}
-                  compact
-                />
-              ))
+              <>
+                {daySlots.map((slot) => (
+                  <SlotCell
+                    key={`${slot.date}-${slot.start_time}`}
+                    slot={slot}
+                    onClick={onSelectSlot}
+                    isTeacher
+                    timeFormat={timeFormat}
+                    compact
+                  />
+                ))}
+                {showEvents && dayEvents.map((ev) => (
+                  <div key={ev.id} className="mt-0.5">
+                    <EventCell event={ev} compact onClick={() => onSelectEvent?.(ev)} />
+                  </div>
+                ))}
+              </>
             )}
           </div>
         );
@@ -77,7 +102,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
   );
 }
 
-export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, onAddSlot, timeFormat = '24h' }: Props) {
+export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, onAddSlot, timeFormat = '24h', events = [], showEvents = true, onSelectEvent, onAddEvent }: Props) {
   return (
     <div className="space-y-2">
       {weekStarts.map((weekStart, index) => (
@@ -90,6 +115,10 @@ export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot
             onAddSlot={onAddSlot}
             timeFormat={timeFormat}
             showDayNames={index === 0}
+            events={events}
+            showEvents={showEvents}
+            onSelectEvent={onSelectEvent}
+            onAddEvent={onAddEvent}
           />
         </div>
       ))}
