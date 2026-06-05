@@ -78,6 +78,8 @@ export default function SchedulePage() {
   const [evType, setEvType] = useState<CalendarEventType>('exam');
   const [evDate, setEvDate] = useState('');
   const [evTime, setEvTime] = useState('');
+  const [evEndDate, setEvEndDate] = useState('');
+  const [evEndTime, setEvEndTime] = useState('');
   const [evDesc, setEvDesc] = useState('');
   const [evAssignMode, setEvAssignMode] = useState<'none' | 'students' | 'grade'>('none');
   const [evStudentIds, setEvStudentIds] = useState<string[]>([]);
@@ -223,7 +225,7 @@ export default function SchedulePage() {
 
   // ── Event CRUD ────────────────────────────────────────────────────
   function openAddEvent(date: string) {
-    setEvType('exam'); setEvDate(date); setEvTime(''); setEvDesc('');
+    setEvType('exam'); setEvDate(date); setEvTime(''); setEvEndDate(date); setEvEndTime(''); setEvDesc('');
     setEvAssignMode('none'); setEvStudentIds([]); setEvGrade(null);
     setEvReminder(false); setEvReminderDays(1); setEvReminderEmail(true);
     setEvReminderWhatsapp(false); setEvReminderPush(false);
@@ -233,6 +235,7 @@ export default function SchedulePage() {
 
   async function saveEvent() {
     if (!evDesc.trim() || !evDate) { setEventError(isRTL ? 'נדרש תיאור ותאריך' : 'Description and date are required'); return; }
+    const endDate = evEndDate && evEndDate >= evDate ? evEndDate : null;
     setEventSaving(true);
     setEventError('');
     const body: Record<string, unknown> = {
@@ -240,6 +243,8 @@ export default function SchedulePage() {
       description: evDesc.trim(),
       event_date: evDate,
       event_time: evTime || null,
+      event_end_date: endDate,
+      event_end_time: endDate ? (evEndTime || null) : null,
     };
     if (evAssignMode === 'students') body.student_ids = evStudentIds;
     if (evAssignMode === 'grade' && evGrade) body.grade = evGrade;
@@ -284,7 +289,7 @@ export default function SchedulePage() {
   const daySlots = filteredSlots
     .filter((s) => s.date === selectedDate && s.state !== 'unavailable')
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
-  const dayEvents = showEvents ? filteredEvents.filter((e) => e.event_date === selectedDate) : [];
+  const dayEvents = showEvents ? filteredEvents.filter((e) => e.event_date <= selectedDate && (e.event_end_date ?? e.event_date) >= selectedDate) : [];
 
   function slotLabel(slot: ComputedSlot): string {
     if (slot.group_name) return slot.group_name;
@@ -487,7 +492,7 @@ export default function SchedulePage() {
                     const colSlots = filteredSlots
                       .filter((s) => s.date === date && s.state !== 'unavailable')
                       .sort((a, b) => a.start_time.localeCompare(b.start_time));
-                    const colEvents = showEvents ? filteredEvents.filter((e) => e.event_date === date) : [];
+                    const colEvents = showEvents ? filteredEvents.filter((e) => e.event_date <= date && (e.event_end_date ?? e.event_date) >= date) : [];
 
                     return (
                       <div key={date} className="flex flex-col bg-white min-h-[200px]">
@@ -554,7 +559,7 @@ export default function SchedulePage() {
                   const isSelected = date === selectedDate;
                   const isT = date === today;
                   const hasContent = filteredSlots.some((s) => s.date === date && s.state !== 'unavailable')
-                    || (showEvents && filteredEvents.some((e) => e.event_date === date));
+                    || (showEvents && filteredEvents.some((e) => e.event_date <= date && (e.event_end_date ?? e.event_date) >= date));
                   return (
                     <div key={date} onClick={() => setSelectedDate(date)}
                       className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl transition-all cursor-pointer ${
@@ -748,16 +753,33 @@ export default function SchedulePage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
+            {/* Start */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('events.eventDate')}</label>
-                <input type="date" value={evDate} onChange={(e) => setEvDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isRTL ? 'תאריך התחלה' : 'Start date'}</label>
+                <input type="date" value={evDate}
+                  onChange={(e) => { setEvDate(e.target.value); if (!evEndDate || e.target.value > evEndDate) setEvEndDate(e.target.value); }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{t('events.eventTime')}</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isRTL ? 'שעת התחלה' : 'Start time'}</label>
                 <input type="time" value={evTime} onChange={(e) => setEvTime(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
+              </div>
+            </div>
+
+            {/* End */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isRTL ? 'תאריך סיום' : 'End date'}</label>
+                <input type="date" value={evEndDate} min={evDate}
+                  onChange={(e) => setEvEndDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isRTL ? 'שעת סיום' : 'End time'}</label>
+                <input type="time" value={evEndTime} onChange={(e) => setEvEndTime(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
               </div>
             </div>
 
@@ -849,7 +871,11 @@ export default function SchedulePage() {
               <button onClick={() => setEditingEvent(null)} className="text-gray-300 hover:text-gray-500 text-xl leading-none flex-shrink-0">×</button>
             </div>
             <div className="text-sm text-gray-600 space-y-1">
-              <p>📅 {editingEvent.event_date}{editingEvent.event_time ? ` · ${editingEvent.event_time.slice(0, 5)}` : ''}</p>
+              <p>📅 {editingEvent.event_date}{editingEvent.event_time ? ` ${editingEvent.event_time.slice(0, 5)}` : ''}
+                {editingEvent.event_end_date && editingEvent.event_end_date !== editingEvent.event_date
+                  ? ` → ${editingEvent.event_end_date}${editingEvent.event_end_time ? ` ${editingEvent.event_end_time.slice(0, 5)}` : ''}`
+                  : (editingEvent.event_end_time ? ` → ${editingEvent.event_end_time.slice(0, 5)}` : '')}
+              </p>
               {editingEvent.created_by === 'student' && (
                 <p className="text-xs text-indigo-600 font-medium">{t('events.createdByStudent')}{editingEvent.student_name ? `: ${editingEvent.student_name}` : ''}</p>
               )}

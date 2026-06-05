@@ -34,7 +34,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
 }) {
   const days = Array.from({ length: 7 }, (_, i) => formatDate(addDays(parseISO(weekStart), i)));
   const slotsByDay = (date: string) => slots.filter((s) => s.date === date);
-  const eventsByDay = (date: string) => events.filter((e) => e.event_date === date);
+  const eventsByDay = (date: string) => events.filter((e) => e.event_date <= date && (e.event_end_date ?? e.event_date) >= date);
 
   return (
     <div className="grid grid-cols-7 gap-1 sm:gap-2">

@@ -17,19 +17,27 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceSupabase();
+  // Fetch events that start <= to AND (end >= from OR start >= from)
+  // We query event_date <= to, then filter client-side for end overlap
   const { data, error } = await supabase
     .from('calendar_events')
     .select('*, calendar_event_students(student_id, students(id, name, email))')
     .eq('teacher_id', auth.user.id)
-    .gte('event_date', from)
     .lte('event_date', to)
     .order('event_date')
     .order('event_time', { nullsFirst: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Filter: event must overlap with [from, to]
+  // overlap = event_date <= to AND (event_end_date ?? event_date) >= from
+  const inRange = (data ?? []).filter((ev) => {
+    const endDate = ev.event_end_date ?? ev.event_date;
+    return endDate >= from;
+  });
+
   // Attach student_name for student-created events so the calendar can show it
-  const enriched = (data ?? []).map((ev) => {
+  const enriched = inRange.map((ev) => {
     if (ev.created_by === 'student' && ev.student_id) {
       const row = (ev.calendar_event_students as { students: { name: string } }[] | null)?.find(
         (r) => r.students
@@ -48,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const {
-    event_type, description, event_date, event_time,
+    event_type, description, event_date, event_time, event_end_date, event_end_time,
     student_ids, grade,
     reminder_days, reminder_channels,
   } = body as {
@@ -56,6 +64,8 @@ export async function POST(request: NextRequest) {
     description: string;
     event_date: string;
     event_time?: string;
+    event_end_date?: string;
+    event_end_time?: string;
     student_ids?: string[];
     grade?: number;
     reminder_days?: number;
@@ -78,6 +88,8 @@ export async function POST(request: NextRequest) {
       description: description.trim(),
       event_date,
       event_time: event_time || null,
+      event_end_date: event_end_date || null,
+      event_end_time: event_end_time || null,
       reminder_days: reminder_days ?? null,
       reminder_channels: reminder_channels ?? null,
     })

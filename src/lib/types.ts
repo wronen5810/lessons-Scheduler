@@ -129,8 +129,10 @@ export interface CalendarEvent {
   student_id: string | null;
   event_type: CalendarEventType;
   description: string;
-  event_date: string;         // YYYY-MM-DD
-  event_time: string | null;  // HH:MM
+  event_date: string;            // YYYY-MM-DD (start date)
+  event_time: string | null;     // HH:MM (start time)
+  event_end_date: string | null; // YYYY-MM-DD (end date, null = same as start)
+  event_end_time: string | null; // HH:MM (end time)
   reminder_days: number | null;
   reminder_channels: { email: boolean; whatsapp: boolean; push: boolean } | null;
   reminder_sent: boolean;

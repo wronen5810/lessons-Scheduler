@@ -90,6 +90,8 @@ export default function StudentPortalPage() {
   const [evType, setEvType] = useState<CalendarEventType>('exam');
   const [evDate, setEvDate] = useState('');
   const [evTime, setEvTime] = useState('');
+  const [evEndDate, setEvEndDate] = useState('');
+  const [evEndTime, setEvEndTime] = useState('');
   const [evDesc, setEvDesc] = useState('');
   const [evSaving, setEvSaving] = useState(false);
 
@@ -408,7 +410,7 @@ export default function StudentPortalPage() {
                   {t('events.upcomingEvents')}
                 </h3>
                 <button
-                  onClick={() => { setEvDate(today); setAddEventOpen(true); }}
+                  onClick={() => { setEvDate(today); setEvEndDate(today); setAddEventOpen(true); }}
                   className="text-xs text-blue-600 hover:underline"
                 >
                   + {t('events.addEvent')}
@@ -453,33 +455,58 @@ export default function StudentPortalPage() {
                 />
               </div>
 
-              {/* Date */}
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t('events.eventDate')}</label>
-                <input
-                  type="date"
-                  value={evDate}
-                  onChange={e => setEvDate(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  dir="ltr"
-                />
+              {/* Start date/time */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">{lang === 'he' ? 'תאריך התחלה' : 'Start date'}</label>
+                  <input
+                    type="date"
+                    value={evDate}
+                    onChange={e => { setEvDate(e.target.value); if (!evEndDate || e.target.value > evEndDate) setEvEndDate(e.target.value); }}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">{lang === 'he' ? 'שעת התחלה' : 'Start time'}</label>
+                  <input
+                    type="time"
+                    value={evTime}
+                    onChange={e => setEvTime(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    dir="ltr"
+                  />
+                </div>
               </div>
 
-              {/* Time (optional) */}
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">{t('events.eventTime')}</label>
-                <input
-                  type="time"
-                  value={evTime}
-                  onChange={e => setEvTime(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  dir="ltr"
-                />
+              {/* End date/time */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">{lang === 'he' ? 'תאריך סיום' : 'End date'}</label>
+                  <input
+                    type="date"
+                    value={evEndDate}
+                    min={evDate}
+                    onChange={e => setEvEndDate(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">{lang === 'he' ? 'שעת סיום' : 'End time'}</label>
+                  <input
+                    type="time"
+                    value={evEndTime}
+                    onChange={e => setEvEndTime(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    dir="ltr"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2 pt-1">
                 <button
-                  onClick={() => { setAddEventOpen(false); setEvDesc(''); setEvTime(''); }}
+                  onClick={() => { setAddEventOpen(false); setEvDesc(''); setEvTime(''); setEvEndDate(''); setEvEndTime(''); }}
                   className="flex-1 py-2 border border-slate-300 text-slate-700 text-sm rounded-lg hover:bg-slate-50 transition-colors"
                 >
                   {t('common.cancel')}
@@ -499,12 +526,16 @@ export default function StudentPortalPage() {
                           description: evDesc.trim(),
                           event_date: evDate,
                           event_time: evTime || null,
+                          event_end_date: (evEndDate && evEndDate >= evDate) ? evEndDate : null,
+                          event_end_time: (evEndDate && evEndDate >= evDate) ? (evEndTime || null) : null,
                         }),
                       });
                       if (res.ok) {
                         setAddEventOpen(false);
                         setEvDesc('');
                         setEvTime('');
+                        setEvEndDate('');
+                        setEvEndTime('');
                         setEvType('exam');
                         loadEvents(activeTeacher);
                       }

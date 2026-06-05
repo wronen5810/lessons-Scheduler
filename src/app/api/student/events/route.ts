@@ -33,15 +33,13 @@ export async function GET(request: NextRequest) {
   if (!studentId) return NextResponse.json([]);
 
   // Fetch events: student-created OR assigned via calendar_event_students
+  const today = new Date().toISOString().slice(0, 10);
+
   const { data, error } = await supabase
     .from('calendar_events')
     .select('*')
     .eq('teacher_id', teacherId)
-    .gte('event_date', new Date().toISOString().slice(0, 10))
-    .or(`student_id.eq.${studentId},id.in.(${
-      // Subquery is not directly supported; we do a separate query and filter
-      'null'
-    })`)
+    .eq('student_id', studentId)
     .order('event_date')
     .order('event_time', { nullsFirst: true });
 
@@ -61,7 +59,6 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('teacher_id', teacherId)
       .in('id', assignedIds)
-      .gte('event_date', new Date().toISOString().slice(0, 10))
       .order('event_date')
       .order('event_time', { nullsFirst: true });
     assignedEvents = ae ?? [];
@@ -69,24 +66,26 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Merge and deduplicate by id, sort by date
-  const ownEvents = (data ?? []).filter((e) => e.student_id === studentId);
-  const all = [...ownEvents, ...assignedEvents];
+  // Merge, deduplicate, then filter to events that end today or later
+  const all = [...(data ?? []), ...assignedEvents];
   const unique = Array.from(new Map(all.map((e) => [e.id, e])).values());
-  unique.sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+  const upcoming = unique.filter((e) => (e.event_end_date ?? e.event_date) >= today);
+  upcoming.sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
 
-  return NextResponse.json(unique);
+  return NextResponse.json(upcoming);
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { email, teacherId, event_type, description, event_date, event_time } = body as {
+  const { email, teacherId, event_type, description, event_date, event_time, event_end_date, event_end_time } = body as {
     email: string;
     teacherId: string;
     event_type: string;
     description: string;
     event_date: string;
     event_time?: string;
+    event_end_date?: string;
+    event_end_time?: string;
   };
 
   if (!email || !teacherId) {
@@ -123,6 +122,8 @@ export async function POST(request: NextRequest) {
       description: description.trim(),
       event_date,
       event_time: event_time || null,
+      event_end_date: event_end_date || null,
+      event_end_time: event_end_time || null,
     })
     .select()
     .single();
