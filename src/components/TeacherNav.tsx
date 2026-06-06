@@ -46,7 +46,7 @@ export default function TeacherNav({
   const features = settings.features;
   const [teacherId, setTeacherId] = useState(teacherIdProp ?? '');
   const [teacherName, setTeacherName] = useState(teacherNameProp ?? '');
-  const [profilePhotoUrl] = useState(profilePhotoUrlProp ?? '');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(profilePhotoUrlProp ?? '');
   const [showShareLink, setShowShareLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'general' | 'profile'>('general');
@@ -61,9 +61,10 @@ export default function TeacherNav({
         if (data.user) setTeacherId(data.user.id);
       });
     }
-    if (!teacherNameProp) {
-      fetch('/api/teacher/me/subscription').then(r => r.json()).then(data => {
-        if (data.teacher?.name) setTeacherName(data.teacher.name);
+    if (!teacherNameProp || !profilePhotoUrlProp) {
+      fetch('/api/teacher/profile').then(r => r.json()).then(data => {
+        if (!teacherNameProp && data.display_name) setTeacherName(data.display_name);
+        if (!profilePhotoUrlProp && data.photo_url) setProfilePhotoUrl(data.photo_url);
       }).catch(() => {});
     }
     if (pendingCountProp === undefined) {
