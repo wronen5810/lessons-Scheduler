@@ -272,7 +272,10 @@ export default function SchedulePage() {
 
   // ── Computed filtered data for "View as student" ──────────────────
   const filteredSlots = viewAsStudent
-    ? slots.filter((s) => (s as ComputedSlot & { student_email?: string }).student_email === viewAsStudent.email)
+    ? slots.filter((s) =>
+        s.state === 'available' ||
+        s.student_email === viewAsStudent.email
+      )
     : slots;
 
   const filteredEvents = viewAsStudent
@@ -505,7 +508,7 @@ export default function SchedulePage() {
                             {format(d, 'd')}
                           </div>
                           <div className="flex items-center justify-center gap-1 mt-1">
-                            <button onClick={() => setAddSlotDate(date)} className="text-xs text-gray-300 hover:text-blue-500 transition-colors leading-none" title="Add slot">+</button>
+                            <button onClick={() => setAddSlotDate(date)} className="text-base font-bold text-gray-400 hover:text-blue-500 transition-colors leading-none" title="Add slot">+</button>
                             <button onClick={() => openAddEvent(date)} className="text-xs text-gray-300 hover:text-orange-500 transition-colors leading-none" title={t('events.addEvent')}>📅</button>
                           </div>
                         </div>
@@ -535,7 +538,7 @@ export default function SchedulePage() {
                           ))}
                           {colSlots.length === 0 && colEvents.length === 0 && (
                             <button onClick={() => setAddSlotDate(date)}
-                              className="w-full py-6 flex items-center justify-center text-gray-200 hover:text-blue-300 transition-colors text-2xl"
+                              className="w-full py-6 flex items-center justify-center text-gray-300 hover:text-blue-400 transition-colors text-4xl font-bold"
                               title="Add slot">+</button>
                           )}
                         </div>
@@ -588,7 +591,7 @@ export default function SchedulePage() {
                   <p className="text-sm text-gray-400">{t('teacher.noLessonsDay')}</p>
                   <div className="flex gap-2">
                     <button onClick={() => setAddSlotDate(selectedDate)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
-                      + {t('common.add')} slot
+                      + {t('schedule.addSlot')}
                     </button>
                     <button onClick={() => openAddEvent(selectedDate)} className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors">
                       📅 {t('events.addEvent')}
@@ -628,7 +631,7 @@ export default function SchedulePage() {
                   <div className="flex gap-2">
                     <button onClick={() => setAddSlotDate(selectedDate)}
                       className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-sm font-medium hover:border-blue-300 hover:text-blue-500 transition-colors">
-                      + {t('common.add')} slot
+                      + {t('schedule.addSlot')}
                     </button>
                     <button onClick={() => openAddEvent(selectedDate)}
                       className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-orange-200 rounded-2xl text-orange-400 text-sm font-medium hover:border-orange-300 hover:text-orange-500 transition-colors">

@@ -74,8 +74,10 @@ export default function StudentEntryPage() {
     localStorage.setItem('last_student_email', studentEmail);
     if (data.teachers.length === 1) {
       localStorage.setItem('last_teacher_id', data.teachers[0].id);
+      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(studentEmail)}`);
+    } else {
+      router.push('/student/portal');
     }
-    router.push('/student/portal');
   }
 
   async function handlePrivacyAccept() {
@@ -92,8 +94,10 @@ export default function StudentEntryPage() {
     localStorage.setItem('last_student_email', resolvedEmail);
     if (pendingTeachers.length === 1) {
       localStorage.setItem('last_teacher_id', pendingTeachers[0].id);
+      router.push(`/t/${pendingTeachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
+    } else {
+      router.push('/student/portal');
     }
-    router.push('/student/portal');
   }
 
   async function handleVerifyOtp(e: React.FormEvent) {
@@ -122,8 +126,10 @@ export default function StudentEntryPage() {
     localStorage.setItem('last_student_email', resolvedEmail);
     if (data.teachers?.length === 1) {
       localStorage.setItem('last_teacher_id', data.teachers[0].id);
+      router.push(`/t/${data.teachers[0].id}?email=${encodeURIComponent(resolvedEmail)}`);
+    } else {
+      router.push('/student/portal');
     }
-    router.push('/student/portal');
   }
 
   return (

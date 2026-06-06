@@ -22,12 +22,11 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceSupabase();
   const today = todayInIsrael();
 
-  const { data: student } = await supabase
-    .from('students')
-    .select('id')
-    .eq('teacher_id', teacherId)
-    .ilike('email', email)
-    .single();
+  // Resolve student — identifier may be email or phone
+  const isEmailId = email.includes('@');
+  let studentQ = supabase.from('students').select('id').eq('teacher_id', teacherId);
+  studentQ = isEmailId ? studentQ.ilike('email', email) : studentQ.eq('phone', email);
+  const { data: student } = await studentQ.maybeSingle();
 
   const studentId = student?.id ?? null;
 

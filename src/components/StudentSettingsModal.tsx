@@ -15,8 +15,9 @@ interface Props {
 type TwoFAStep = 'idle' | 'scanning' | 'confirming';
 
 export default function StudentSettingsModal({ teacherId, email, token, onClose, onEmailChange }: Props) {
-  const { t, isRTL } = useLanguage();
+  const { t, lang, isRTL } = useLanguage();
 
+  const [studentName, setStudentName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -40,7 +41,8 @@ export default function StudentSettingsModal({ teacherId, email, token, onClose,
       const res = await fetch('/api/student/settings', { headers: authHeaders });
       if (res.ok) {
         const d = await res.json();
-        setNewEmail(d.email ?? email);
+        setStudentName(d.name ?? '');
+        setNewEmail(d.email ?? '');
         setPhone(d.phone ?? '');
         setTwoFactorEnabled(d.two_factor_enabled ?? false);
       }
@@ -146,6 +148,14 @@ export default function StudentSettingsModal({ teacherId, email, token, onClose,
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('student.contactInfo')}</p>
               <div className="space-y-3">
+                {studentName && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {lang === 'he' ? 'שם' : 'Name'}
+                    </label>
+                    <p className="text-sm text-gray-800 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">{studentName}</p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.email')}</label>
                   <input

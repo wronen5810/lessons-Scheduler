@@ -20,16 +20,14 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceSupabase();
   const endTime = getEndTime(start_time);
 
-  // Verify student is on this teacher's active list
-  const { data: student } = await supabase
-    .from('students')
-    .select('id, name, is_active')
-    .ilike('email', student_email)
-    .eq('teacher_id', teacher_id)
-    .single();
+  // Verify student is on this teacher's active list — identifier may be email or phone
+  const isEmailId = student_email.includes('@');
+  let studentQ = supabase.from('students').select('id, name, is_active').eq('teacher_id', teacher_id);
+  studentQ = isEmailId ? studentQ.ilike('email', student_email) : studentQ.eq('phone', student_email);
+  const { data: student } = await studentQ.maybeSingle();
 
   if (!student) {
-    return NextResponse.json({ error: 'Your email is not registered. Please contact the teacher.' }, { status: 403 });
+    return NextResponse.json({ error: 'Your account is not registered. Please contact the teacher.' }, { status: 403 });
   }
   if (!student.is_active) {
     return NextResponse.json({ error: 'Your account is currently inactive. Please contact the teacher.' }, { status: 403 });

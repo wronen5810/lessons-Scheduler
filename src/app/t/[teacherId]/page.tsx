@@ -10,14 +10,14 @@ import {
   nextMonth, prevMonth, todayInIsrael,
 } from '@/lib/dates';
 import { DAY_NAMES_HE, DAY_NAMES_SHORT_HE } from '@/lib/i18n';
-import type { ComputedSlot } from '@/lib/types';
+import type { ComputedSlot, CalendarEvent } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 import StudentNotebook from '@/components/StudentNotebook';
 import StudentSettingsModal from '@/components/StudentSettingsModal';
 import SaderotLogo from '@/components/SaderotLogo';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
-import { ArrowLeft, Calendar, BookOpen, LogOut, MessageSquare, Settings } from 'lucide-react';
+import { Calendar, BookOpen, LogOut, MessageSquare, Settings } from 'lucide-react';
 import PolicyFooter from '@/components/PolicyFooter';
 
 type Section = 'schedule' | 'messages' | 'notebook' | 'settings';
@@ -90,6 +90,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   const [bookingError, setBookingError] = useState('');
   const [myGroups, setMyGroups] = useState<{ id: string; name: string }[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [studentEvents, setStudentEvents] = useState<CalendarEvent[]>([]);
+  const [studentName, setStudentName] = useState('');
 
   // Cancel flow
   const [cancelTarget, setCancelTarget] = useState<StudentBooking | ComputedSlot | null>(null);
@@ -128,6 +130,17 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     }
   }
 
+  async function loadEvents() {
+    if (!email) return;
+    const tok = localStorage.getItem(`st_${teacherId}`);
+    if (!tok) return;
+    const res = await fetch(
+      `/api/student/events?email=${encodeURIComponent(email)}&teacherId=${teacherId}`,
+      { headers: { Authorization: `Bearer ${tok}` } }
+    );
+    if (res.ok) setStudentEvents(await res.json());
+  }
+
   async function loadMessages() {
     if (!email) return;
     const tok = localStorage.getItem(`st_${teacherId}`);
@@ -155,7 +168,16 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   }
 
   useEffect(() => { loadMonth(month); }, [month]);
-  useEffect(() => { loadBookings(); }, [email, teacherId]);
+  useEffect(() => { loadBookings(); loadEvents(); }, [email, teacherId]);
+  useEffect(() => {
+    if (!email) return;
+    const tok = localStorage.getItem(`st_${teacherId}`);
+    if (!tok) return;
+    fetch('/api/student/settings', { headers: { Authorization: `Bearer ${tok}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.name) setStudentName(d.name); })
+      .catch(() => {});
+  }, [email, teacherId]);
   useEffect(() => { if (section === 'messages') loadMessages(); }, [section]);
 
   useEffect(() => {
@@ -231,12 +253,33 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
     else m.booked = true;
   }
 
+  // Build event date markers (span full date range for multi-day events)
+  const eventDates = new Set<string>();
+  for (const e of studentEvents) {
+    let cur = e.event_date;
+    const end = e.event_end_date ?? e.event_date;
+    while (cur <= end) {
+      eventDates.add(cur);
+      const d = new Date(cur);
+      d.setDate(d.getDate() + 1);
+      cur = d.toISOString().slice(0, 10);
+    }
+  }
+
   const calendarDays = getCalendarDays(month);
 
   // Slots for selected date
   const dateSlots = selectedDate ? slots.filter(s => s.date === selectedDate && s.state !== 'unavailable' && s.state !== 'blocked') : [];
   const availableSlots = dateSlots.filter(s => s.state === 'available');
   const bookedSlots = dateSlots.filter(s => s.state !== 'available');
+
+  // Events for selected date
+  const dateEvents = selectedDate
+    ? studentEvents.filter(e => {
+        const end = e.event_end_date ?? e.event_date;
+        return selectedDate >= e.event_date && selectedDate <= end;
+      })
+    : [];
 
   function handleDateClick(date: string) {
     setSelectedDate(date);
@@ -320,12 +363,20 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            onClick={() => { setSection('schedule'); setStep('calendar'); }}
+            className="flex items-center gap-2.5 min-w-0 text-start"
+          >
             <SaderotLogo size="sm" />
-            {teacherName && (
-              <span className="text-sm font-semibold text-gray-800 truncate">{teacherName}</span>
-            )}
-          </div>
+            <div className="min-w-0">
+              {teacherName && (
+                <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{teacherName}</p>
+              )}
+              {studentName && (
+                <p className="text-xs text-gray-500 truncate leading-tight">{studentName}</p>
+              )}
+            </div>
+          </button>
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <div className="relative" ref={menuRef}>
@@ -341,15 +392,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
               {menuOpen && (
                 <div className="absolute end-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
                   <button
-                    onClick={() => { router.push('/student/portal'); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4 flex-shrink-0" />
-                    {t('student.portal')}
-                  </button>
-                  <div className="border-t border-gray-100 my-1" />
-                  <button
-                    onClick={() => { setSection('schedule'); setMenuOpen(false); }}
+                    onClick={() => { setSection('schedule'); setStep('calendar'); setMenuOpen(false); }}
                     className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${section === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'}`}
                   >
                     <Calendar className="w-4 h-4 flex-shrink-0" />
@@ -491,24 +534,30 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                         const isToday = date === today;
                         const hasAvailable = !isPast && marker?.available;
                         const hasBooked = marker?.booked;
-                        const isClickable = !isPast && (hasAvailable || hasBooked);
+                        const hasEventOnly = !isPast && !hasAvailable && !hasBooked && eventDates.has(date);
+                        const isClickable = !isPast && (hasAvailable || hasBooked || hasEventOnly);
                         const dayNum = parseInt(date.slice(8));
 
+                        const hasEvent = eventDates.has(date);
                         return (
                           <div key={date} className="h-10 flex items-center justify-center">
                             <button
                               onClick={() => isClickable && handleDateClick(date)}
                               disabled={!isClickable}
-                              className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-medium transition-all
+                              className={`relative w-9 h-9 flex items-center justify-center rounded-full text-sm font-medium transition-all
                                 ${!isClickable && !isToday ? 'text-gray-300 cursor-default' : ''}
                                 ${isToday && !hasAvailable && !hasBooked ? 'ring-2 ring-blue-400 text-blue-600 font-bold' : ''}
                                 ${hasAvailable && !hasBooked ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold' : ''}
                                 ${hasBooked && !hasAvailable ? 'bg-blue-100 text-blue-900 hover:bg-blue-200 cursor-pointer font-semibold' : ''}
                                 ${hasAvailable && hasBooked ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold ring-2 ring-blue-400 ring-offset-1' : ''}
+                                ${hasEventOnly ? 'text-gray-700 hover:bg-gray-100 cursor-pointer' : ''}
                                 ${isToday && (hasAvailable || hasBooked) ? 'ring-offset-1' : ''}
                               `}
                             >
                               {dayNum}
+                              {hasEvent && (
+                                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-rose-400 rounded-full" />
+                              )}
                             </button>
                           </div>
                         );
@@ -532,9 +581,87 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                   {email && (
                     <span className="flex items-center gap-2 text-xs text-gray-500">
                       <span className="w-5 h-5 rounded-full bg-amber-100 ring-2 ring-blue-400 ring-offset-1 inline-block" />
-                      Both
+                      {t('slot.both')}
                     </span>
                   )}
+                  {email && studentEvents.length > 0 && (
+                    <span className="flex items-center gap-2 text-xs text-gray-500">
+                      <span className="w-3 h-3 rounded-full bg-rose-400 inline-block" />
+                      {lang === 'he' ? 'אירוע' : 'Event'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Upcoming Lessons */}
+            {step === 'calendar' && email && bookings.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-gray-50">
+                  <h3 className="text-sm font-bold text-gray-900">
+                    {lang === 'he' ? 'השיעורים שלי' : 'My Lessons'}
+                  </h3>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {bookings.map(b => {
+                    const statusColors: Record<string, string> = {
+                      pending: 'text-amber-700 bg-amber-50',
+                      approved: 'text-blue-700 bg-blue-50',
+                      cancellation_requested: 'text-rose-700 bg-rose-50',
+                    };
+                    const statusLabels: Record<string, string> = {
+                      pending: t('slot.pending'),
+                      approved: t('slot.approved'),
+                      cancellation_requested: t('slot.cancelReq'),
+                    };
+                    const cls = statusColors[b.status] ?? 'text-gray-500 bg-gray-50';
+                    const dateLabel = b.specific_date ? format(parseISO(b.specific_date), 'dd/MM/yyyy') : '';
+                    return (
+                      <div key={b.id} className="flex items-center gap-3 px-5 py-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-gray-900">{dateLabel}</span>
+                            <span className="text-sm text-gray-500">{b.start_time}</span>
+                            {b.is_group && b.group_name && (
+                              <span className="text-xs text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full">{b.group_name}</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${cls}`}>
+                          {statusLabels[b.status] ?? b.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Upcoming Events */}
+            {step === 'calendar' && email && studentEvents.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-gray-50">
+                  <h3 className="text-sm font-bold text-gray-900">
+                    {lang === 'he' ? 'אירועים קרובים' : 'Upcoming Events'}
+                  </h3>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {studentEvents.map(e => {
+                    const icons: Record<string, string> = { exam: '📝', task: '✅', paperwork: '📄', vacation: '🏖️', other: '📌' };
+                    const dateStr = format(parseISO(e.event_date), 'dd/MM');
+                    const endStr = e.event_end_date && e.event_end_date !== e.event_date
+                      ? ` – ${format(parseISO(e.event_end_date), 'dd/MM')}`
+                      : '';
+                    return (
+                      <div key={e.id} className="flex items-center gap-3 px-5 py-2.5">
+                        <span className="text-base leading-none">{icons[e.event_type] ?? '📌'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-800 truncate">{e.description}</p>
+                          <p className="text-xs text-gray-400">{dateStr}{endStr}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -619,8 +746,28 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                     </div>
                   )}
 
-                  {availableSlots.length === 0 && bookedSlots.length === 0 && (
+                  {availableSlots.length === 0 && bookedSlots.length === 0 && dateEvents.length === 0 && (
                     <p className="text-sm text-gray-400 text-center py-4">{t('teacher.noLessonsDay')}</p>
+                  )}
+
+                  {/* Events for this date */}
+                  {dateEvents.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-gray-600 mb-3">
+                        {lang === 'he' ? 'אירועים' : 'Events'}
+                      </p>
+                      <div className="space-y-2">
+                        {dateEvents.map(e => {
+                          const icons: Record<string, string> = { exam: '📝', task: '✅', paperwork: '📄', vacation: '🏖️', other: '📌' };
+                          return (
+                            <div key={e.id} className="flex items-center gap-3 px-4 py-3 bg-rose-50 border border-rose-100 rounded-xl">
+                              <span className="text-base leading-none">{icons[e.event_type] ?? '📌'}</span>
+                              <p className="text-sm text-gray-800">{e.description}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

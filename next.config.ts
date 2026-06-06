@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     return [
       { source: '/landing', destination: '/landing/index.html' },
       { source: '/guide', destination: '/guide/index.html' },
+      { source: '/guide/en', destination: '/guide/en/index.html' },
     ];
   },
 };

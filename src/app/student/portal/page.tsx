@@ -167,7 +167,7 @@ export default function StudentPortalPage() {
       { headers: { Authorization: `Bearer ${s.token}` } }
     );
     if (res.status === 401) { router.replace('/student'); return; }
-    if (res.ok) setBookings(await res.json());
+    if (res.ok) { const data = await res.json(); setBookings(data.bookings ?? data ?? []); }
   }
 
   async function loadMessages(s: TeacherSession) {

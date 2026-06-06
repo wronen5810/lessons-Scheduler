@@ -258,6 +258,7 @@ const en = {
   'slot.cancelReq': 'Cancel req.',
   'slot.available': 'Available',
   'slot.confirmed': 'Confirmed',
+  'slot.both': 'Both',
   // ── Students page ────────────────────────────────────────
   'students.addStudent': 'Add Student',
   'students.fullName': 'Full name',
@@ -418,6 +419,7 @@ const en = {
   'schedule.cancelPending': 'Cancellation request already submitted and pending teacher approval.',
   'schedule.cancelPendingShort': 'Cancellation pending teacher approval',
   'schedule.group': 'Group',
+  'schedule.addSlot': 'Add lesson',
   // ── Signup (self-service) ─────────────────────────────────
   'signup.title': 'Create your free account',
   'signup.subtitle': '3 months free · No credit card required',
@@ -717,6 +719,7 @@ const he: typeof en = {
   'slot.cancelReq': 'בקשת ביטול',
   'slot.available': 'פנוי',
   'slot.confirmed': 'מאושר',
+  'slot.both': 'שניהם',
   // ── Students page ────────────────────────────────────────
   'students.addStudent': 'הוסף תלמיד/ה',
   'students.fullName': 'שם מלא',
@@ -877,6 +880,7 @@ const he: typeof en = {
   'schedule.cancelPending': 'בקשת הביטול כבר נשלחה וממתינה לאישור המורה.',
   'schedule.cancelPendingShort': 'ביטול ממתין לאישור המורה',
   'schedule.group': 'קבוצה',
+  'schedule.addSlot': 'הוסף שיעור',
   // ── Signup (self-service) ─────────────────────────────────
   'signup.title': 'צור/י חשבון חינם',
   'signup.subtitle': '3 חודשים חינם · ללא כרטיס אשראי',

@@ -21,13 +21,11 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceSupabase();
 
-  // Resolve student ID
-  const { data: student } = await supabase
-    .from('students')
-    .select('id')
-    .eq('teacher_id', teacherId)
-    .ilike('email', email)
-    .single();
+  // Resolve student ID — identifier may be email or phone
+  const isEmailId = email.includes('@');
+  let studentQuery = supabase.from('students').select('id').eq('teacher_id', teacherId);
+  studentQuery = isEmailId ? studentQuery.ilike('email', email) : studentQuery.eq('phone', email);
+  const { data: student } = await studentQuery.maybeSingle();
 
   const studentId = student?.id ?? null;
   if (!studentId) return NextResponse.json([]);
@@ -103,12 +101,12 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceSupabase();
 
-  const { data: student } = await supabase
-    .from('students')
-    .select('id')
-    .eq('teacher_id', teacherId)
-    .ilike('email', email.toLowerCase().trim())
-    .single();
+  // Resolve student — identifier may be email or phone
+  const normalizedId = email.toLowerCase().trim();
+  const isEmailId = normalizedId.includes('@');
+  let sq = supabase.from('students').select('id').eq('teacher_id', teacherId);
+  sq = isEmailId ? sq.ilike('email', normalizedId) : sq.eq('phone', normalizedId);
+  const { data: student } = await sq.maybeSingle();
 
   if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 });
 

@@ -89,6 +89,26 @@ body {
   color: var(--gray-500);
   font-weight: 500;
 }
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.lang-switch {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--orange);
+  text-decoration: none;
+  padding: 5px 12px;
+  border: 1px solid var(--orange-soft);
+  border-radius: 999px;
+  background: var(--orange-tint);
+  transition: all 0.15s ease;
+}
+.lang-switch:hover {
+  background: var(--orange-soft);
+  text-decoration: none;
+}
 
 /* Hero */
 .hero {
@@ -432,6 +452,88 @@ code, .menu-item {
 }
 .legend-desc { color: var(--gray-500); font-size: 14px; }
 
+/* Feature list */
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.feature-list li {
+  padding: 10px 0;
+  padding-right: 28px;
+  position: relative;
+  border-bottom: 1px solid var(--gray-100);
+}
+.feature-list li:last-child { border-bottom: none; }
+.feature-list li::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 18px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+/* Settings table */
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 24px;
+  font-size: 15px;
+}
+.settings-table th {
+  background: var(--gray-100);
+  font-family: 'Rubik', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 14px;
+  text-align: right;
+  border: 1px solid var(--gray-200);
+  color: var(--charcoal);
+}
+.settings-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--gray-200);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.settings-table tr:nth-child(even) td { background: var(--gray-50); }
+
+/* Dashboard cards preview */
+.dashboard-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin: 24px 0;
+}
+.dashboard-card {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 16px;
+}
+.dashboard-card .card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+.dashboard-card .card-value {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 800;
+  font-size: 28px;
+  color: var(--charcoal);
+}
+.dashboard-card.highlight {
+  background: var(--orange-tint);
+  border-color: var(--orange-soft);
+}
+.dashboard-card.highlight .card-value { color: var(--orange); }
+
 /* FAQ */
 .faq details {
   border-bottom: 1px solid var(--gray-200);
@@ -549,6 +651,7 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
   .steps > li { padding-right: 48px; }
   .steps > li::before { width: 32px; height: 32px; font-size: 13px; }
   .steps > li:not(:last-child)::after { right: 15px; }
+  .dashboard-preview { grid-template-columns: 1fr; }
 }
 
 /* Print */
@@ -572,18 +675,21 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
       </span>
       <span>saderOT</span>
     </a>
-    <span class="topbar-meta">מדריך למשתמש</span>
+    <div class="topbar-right">
+      <span class="topbar-meta">מדריך למשתמש</span>
+      <a href="/guide/en" class="lang-switch">English 🇺🇸</a>
+    </div>
   </div>
 </header>
 
 <section class="hero">
   <span class="hero-eyebrow">User Guide · מדריך</span>
   <h1>כל מה שצריך לדעת<br>על <span class="accent">saderOT</span></h1>
-  <p class="hero-sub">המדריך המלאה לאפליקציה – מהתחלה ועד תפיסת הכלים המתקדמים. עובד עם הסעיפים הפשוטים, כך שתוכלו לשלוט על הזמן שלכם.</p>
+  <p class="hero-sub">המדריך המלא לאפליקציה – מהתחלה ועד לכלים המתקדמים. כל הפונקציות, כל האפשרויות, בסדר הגיוני.</p>
   <div class="hero-meta">
-    <span><span class="dot"></span>זמן קריאה 10 דקות</span>
+    <span><span class="dot"></span>זמן קריאה ~15 דקות</span>
     <span><span class="dot"></span>13 פרקים</span>
-    <span><span class="dot"></span>עודכן 2026</span>
+    <span><span class="dot"></span>עודכן יוני 2026</span>
   </div>
 </section>
 
@@ -597,12 +703,12 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
       <li><a href="#students">ניהול תלמידים</a></li>
       <li><a href="#sharing">שיתוף קישור עם תלמידים</a></li>
       <li><a href="#requests">בקשות שיעור ואישור</a></li>
-      <li><a href="#booking-blocking">שיבוץ ומניעת חלונות פנויים</a></li>
+      <li><a href="#booking-blocking">שיבוץ ומניעת חלונות</a></li>
       <li><a href="#groups">קבוצות</a></li>
       <li><a href="#accounting">חשבונות ותשלומים</a></li>
       <li><a href="#messages">הודעות</a></li>
       <li><a href="#notifications">התראות פוש</a></li>
-      <li><a href="#settings">הגדרות ושפה</a></li>
+      <li><a href="#settings">הגדרות</a></li>
       <li><a href="#faq">שאלות נפוצות</a></li>
     </ol>
   </aside>
@@ -613,39 +719,26 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="welcome">
       <span class="section-num">01 · פרק</span>
       <h2 class="section-title">ברוכים הבאים ל-saderOT</h2>
-      <p class="section-lead">האפליקציה שמסדרת את העסק שלך – ניהול שיעורים, קבלת בקשות ועקבת תשלומים, הכל במקום אחד.</p>
+      <p class="section-lead">האפליקציה שמסדרת את העסק שלך – ניהול שיעורים, תלמידים, תשלומים והתקשרות, הכל במקום אחד.</p>
 
-      <p>סדר לחיים (<strong>saderOT</strong>) היא אפליקציה מיוחדת למורים פרטיים, לניהול בקשות פרטיות, לתזמונים ולהזמנות מקצועיים של מורי שיעורים פרטיים. ניתן לקפוץ ישר לתוך, ולהוסיף לפנקס קלות – אין צורך ללמוד הרבה.</p>
+      <p><strong>saderOT</strong> (סדר לחיים) היא אפליקציה ייעודית למורים פרטיים. היא מאפשרת לך לנהל לוח שיעורים, לקבל בקשות מתלמידים, לעקוב אחרי תשלומים ולשמור על תקשורת שוטפת – הכל ממקום אחד, בלי לבזבז זמן על ניהול ידני.</p>
 
       <h3>מה תוכל לעשות?</h3>
-      <ul style="list-style:none; padding:0; margin:16px 0;">
-        <li style="padding:10px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          <strong>ניהול לוח זמן</strong> – צור וסדר את זמן השיעורים שלך ואפשר לתלמידים לבקש שיעורים
-        </li>
-        <li style="padding:10px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          <strong>תלמידים ובקשות שיעור</strong> – ברגע אחד קל ומהיר, ואתה רק לאשר
-        </li>
-        <li style="padding:10px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          <strong>עקבת תשלומים</strong> – מי שילם, מי חייב, כמה מסתכם ביחס חודשי
-        </li>
-        <li style="padding:10px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          <strong>הודעות והתראות</strong> – תקשורת ישירה עם תלמידים, התראות פוש אוטומטיות
-        </li>
-        <li style="padding:10px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          <strong>קבוצות ושיעורים משותפים</strong> – לא רק אחד-על-אחד
-        </li>
+      <ul class="feature-list">
+        <li><strong>ניהול לוח זמנים</strong> – הגדר חלונות שיעור קבועים או חד-פעמיים, וקבל בקשות מתלמידים</li>
+        <li><strong>ניהול תלמידים</strong> – רשימת תלמידים עם פרטים, דירוג, תעריף שעורי, הערות ואנשי קשר</li>
+        <li><strong>עקיבת תשלומים</strong> – מי שילם, מי חייב, כמה מסתכם – עם אפשרות שליחת תזכורות</li>
+        <li><strong>הודעות ישירות</strong> – תקשורת עם תלמידים דרך אימייל, WhatsApp או התראות</li>
+        <li><strong>אירועים ביומן</strong> – הוסף מבחנים, משימות, חופשות ואירועים מיוחדים ללוח</li>
+        <li><strong>קבוצות ושיעורים משותפים</strong> – ניהול קבוצות תלמידים לשיעור אחד</li>
+        <li><strong>מחברת תלמיד</strong> – תיעוד משימות, הערות וציונים לכל תלמיד</li>
       </ul>
 
       <div class="callout tip">
         <div class="callout-icon">💡</div>
         <div class="callout-body">
           <span class="callout-title">טיפ לתחילת הדרך</span>
-          <p>כך מה לפעול בהתחלה ראשונה שלך, תתחיל בשני צעדים הבסיסיים: <strong>(1)</strong> להוסיף חלון זמן ראשון לכל יום פעמים בשבוע, ו-<strong>(2)</strong> להוסיף תלמיד אחד. תוך פחות משתי דקות יש לך מערכת שעובדת.</p>
+          <p>שתי פעולות ראשונות שמספיקות: <strong>(1)</strong> הוסף חלון זמן אחד לפחות ללוח, ו-<strong>(2)</strong> הוסף תלמיד אחד. תוך פחות מדקה יש לך מערכת שעובדת.</p>
         </div>
       </div>
     </section>
@@ -654,110 +747,203 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="quickstart">
       <span class="section-num">02 · פרק</span>
       <h2 class="section-title">התחלה מהירה</h2>
-      <p class="section-lead">ארבעה צעדים פשוטים – מ-0 לאפליקציה שעובדת בשניות.</p>
+      <p class="section-lead">ארבעה צעדים פשוטים – מ-0 לאפליקציה שעובדת.</p>
 
       <div class="quickstart-grid">
         <div class="quickstart-card">
           <span class="quickstart-num">1</span>
-          <h4>עדכן את לוח הזמנים</h4>
-          <p>להוסיף חלונות את זמן פתוחים – כל-פעמים או בשעות קבועות.</p>
+          <h4>הגדר את לוח הזמנים שלך</h4>
+          <p>הוסף חלונות זמן פתוחים – שבועיים חוזרים או חד-פעמיים. זה מה שתלמידים יראו כשיכנסו לדף שלך.</p>
         </div>
         <div class="quickstart-card">
           <span class="quickstart-num">2</span>
-          <h4>להוסיף תלמידים</h4>
-          <p>שם ומספר טלפון הם כל מה שצריך.</p>
+          <h4>הוסף תלמידים</h4>
+          <p>שם ומספר טלפון הם כל מה שצריך כדי להתחיל. ניתן להוסיף פרטים נוספים בהמשך.</p>
         </div>
         <div class="quickstart-card">
           <span class="quickstart-num">3</span>
-          <h4>שלח קישור לתלמידים</h4>
-          <p>הם יראים את הלוח שלך ויוכלו לבקש שיעורים בעצמם.</p>
+          <h4>שתף קישור עם תלמידים</h4>
+          <p>שלח את הקישור האישי שלך. תלמידים יראו את הלוח ויוכלו לבקש שיעורים בעצמם.</p>
         </div>
         <div class="quickstart-card">
           <span class="quickstart-num">4</span>
           <h4>אשר בקשות שיעור</h4>
-          <p>כל שיבוץ תלמיד בקבוצות ובכל מי שתרצה.</p>
+          <p>כל בקשה מופיעה בלוח בצהוב. לחץ עליה ואשר – הסטטוס יעבור לסגול (מאושר).</p>
         </div>
       </div>
 
-      <p>זהו. ברגע שעשית את ארבעת הצעדים האלה, האפליקציה כבר עובדת בשבילך. כל סעיף הבא מסביר בפירוט כיצד לעשות כל אחד מהם.</p>
+      <h3>מה רואים בלוח הבקרה (Dashboard)?</h3>
+      <p>לאחר ההתחברות תגיע ללוח הבקרה הראשי. זה מה שמוצג בו:</p>
+
+      <div class="dashboard-preview">
+        <div class="dashboard-card highlight">
+          <div class="card-label">השיעור הבא</div>
+          <div class="card-value">14:00</div>
+        </div>
+        <div class="dashboard-card">
+          <div class="card-label">שיעורים היום</div>
+          <div class="card-value">3</div>
+        </div>
+        <div class="dashboard-card">
+          <div class="card-label">בקשות ממתינות</div>
+          <div class="card-value">2</div>
+        </div>
+      </div>
+
+      <ul class="feature-list">
+        <li><strong>השיעור הבא</strong> – שם התלמיד ושעת השיעור הקרוב ביותר</li>
+        <li><strong>שיעורים היום</strong> – ספירת שיעורים פעילים (ממתינים, מאושרים, הושלמו) ליום הנוכחי</li>
+        <li><strong>בקשות ממתינות</strong> – כמה בקשות שיעור ממתינות לאישורך (מודגש אם יש)</li>
+        <li><strong>תלמידים פעילים</strong> – סך התלמידים הפעילים שלך</li>
+        <li><strong>קישור שיתוף</strong> – אם עדיין אין תלמידים, מוצג הקישור האישי שלך לשיתוף מיידי</li>
+      </ul>
+
+      <p>מלוח הבקרה ניתן לנווט בקלות לכל חלק באפליקציה דרך תפריט הצד.</p>
     </section>
 
     <!-- 03 ניהול לוח זמנים -->
     <section class="guide-section" id="schedule">
       <span class="section-num">03 · פרק</span>
       <h2 class="section-title">ניהול לוח זמנים</h2>
-      <p class="section-lead">הלב של המערכת שלך: יצירת חלונות זמן לכל יום, כל-פעמים או לחזור בשעות קבועות.</p>
+      <p class="section-lead">הלב של המערכת – הגדרת חלונות שיעור, ניהול אירועים, הוספת הערות ומעקב אחרי סטטוס כל שיעור.</p>
 
-      <p>לוח הזמנים הוא הלב של האפליקציה. כאן אתה מגדיר מתי אתה מלמד שיעורים, רואה חלונות שיעורים נקבעים, ועוקב אחרי הסטטוס של כל מה שיש לך.</p>
-
-      <h3>תצוגות לוח הזמן</h3>
-      <p>ניתן להחליף בין תצוגת <code>שבועי</code> ותצוגת <code>יום</code>. תצוגת שבועי נוחה לראות את הלוח שלך, ותצוגת יום נוחה לעבודה בפירוט על צפיות לקראת קריאה מהירה.</p>
+      <h3>תצוגות הלוח</h3>
+      <p>ניתן לעבור בין שתי תצוגות בראש הלוח:</p>
+      <ul class="feature-list">
+        <li><strong>תצוגה שבועית</strong> – רואים את כל השבוע בבת אחת. מתאים לסקירה כללית</li>
+        <li><strong>תצוגת יום</strong> – תצוגה מפורטת של יום בודד. מתאים לניהול יומי</li>
+      </ul>
+      <p>לניווט בין שבועות: השתמש בחיצים <code>←</code> <code>→</code> בראש הלוח, ולחץ על <code>היום</code> לחזרה לשבוע הנוכחי.</p>
 
       <h3>הוספת חלון זמן</h3>
-      <p>כדי להוסיף חלון זמן חדש, לחץ על סמל ה-<code>+</code> בלוח הזמנים של הלוח. נפתח חלון שבו תוכל לבחור את פרטי החלון:</p>
+      <p>לחץ על כפתור <code>+</code> בלוח כדי לפתוח את חלון יצירת השיעור:</p>
 
       <ol class="steps">
         <li>
-          <strong class="step-title">בחר אם החלון כל-פעמי או שבועי</strong>
-          בחר בין <code>Weekly</code> (שבועי, חוזר אוטומטית) לבין <code>One-time</code> (כל-פעמי). חלון שבועי יוצר חלון לכל שבוע בלוח בשעה שתבחר על שתחזור כל שבוע.
+          <strong class="step-title">בחר סוג חלון: שבועי או חד-פעמי</strong>
+          <strong>שבועי (Weekly)</strong> – יוצר חלון שחוזר אוטומטית בכל שבוע באותו יום ושעה. מתאים לתלמידים קבועים.<br>
+          <strong>חד-פעמי (One-time)</strong> – מופיע רק בתאריך שבחרת. מתאים לשיעורים מיוחדים.
+        </li>
+        <li>
+          <strong class="step-title">הגדר שעה, משך ויום</strong>
+          בחר שעת התחלה ומשך השיעור (ברירת מחדל לפי ההגדרות שלך). לחלון שבועי – בחר גם יום בשבוע. לחלון חד-פעמי – בחר תאריך ספציפי.
         </li>
         <li>
           <strong class="step-title">הוסף כותרת (אופציונלי)</strong>
-          כגון "שיעור פסנתר" או "שיעור מתמטיק". אם תשאיר ריק – החלון יופיע ללא כותרת.
+          למשל "שיעור פסנתר" או "חזרה לבגרות". אם תשאיר ריק – החלון יופיע ללא כותרת.
         </li>
         <li>
-          <strong class="step-title">קבע שעת התחלה ומשך</strong>
-          בחר שעה מהרשימה. שדה <code>Duration</code> קובע את מספר השיעור המשך (ברירת מחדל: 45).
+          <strong class="step-title">קבע מספר תלמידים מקסימלי</strong>
+          לשיעור פרטי בחר 1. לשיעור קבוצתי – בחר מספר גדול יותר (לפי גודל הקבוצה).
         </li>
         <li>
-          <strong class="step-title">בחר מספר תלמידים מקסימלי</strong>
-          עבור שיעורים פרטיים – בחר 1. עבור קבוצה של שיעור משותף – בחר מספר גדול יותר.
+          <strong class="step-title">תאריך סיום לחלון שבועי (אופציונלי)</strong>
+          אם תרצה שהחלון החוזר יפסיק בתאריך מסוים, הגדר תאריך סיום.
         </li>
         <li>
-          <strong class="step-title">לחץ על <code>Add slot</code></strong>
-          החלון יופיע בלוח. אם בחרת שבועי – הוא יופיע בכל שבוע בשעה שבחרת.
+          <strong class="step-title">לחץ על "הוסף"</strong>
+          החלון יופיע בלוח. חלון שבועי יוצר מופעים לכל שבועות קדימה.
         </li>
       </ol>
 
-      <h3>צבעי החלונות – סטטוס של כל חלון</h3>
-      <p>כל חלון בלוח מקבל צבע לפי הסטטוס שלו. הסטטוסים מופיעים בטבלה הבאה:</p>
+      <h3>צבעי הסטטוס – מה כל צבע אומר</h3>
+      <p>כל חלון בלוח מוצג בצבע לפי מצבו הנוכחי:</p>
 
       <div class="legend-grid">
         <div class="legend-item">
           <span class="legend-dot" style="background:#3b82f6;"></span>
-          <div><div class="legend-name">פנוי</div><div class="legend-desc">חלון פתוח לבקשת שיעורים</div></div>
+          <div><div class="legend-name">פנוי (כחול)</div><div class="legend-desc">חלון פתוח לבקשת שיעורים</div></div>
         </div>
         <div class="legend-item">
           <span class="legend-dot" style="background:#9ca3af;"></span>
-          <div><div class="legend-name">חסום</div><div class="legend-desc">חלון שחסמת ואינו פתוח לבקשות</div></div>
+          <div><div class="legend-name">חסום (אפור)</div><div class="legend-desc">חסמת חלון זה – לא מוצג לתלמידים</div></div>
         </div>
         <div class="legend-item">
           <span class="legend-dot" style="background:#eab308;"></span>
-          <div><div class="legend-name">ממתין</div><div class="legend-desc">בקשת תלמיד שעוד לא אושרה</div></div>
+          <div><div class="legend-name">ממתין (צהוב)</div><div class="legend-desc">בקשת תלמיד שממתינה לאישורך</div></div>
         </div>
         <div class="legend-item">
           <span class="legend-dot" style="background:#a855f7;"></span>
-          <div><div class="legend-name">מאושר</div><div class="legend-desc">השיעור נקבע ועוד לא התקיים</div></div>
+          <div><div class="legend-name">מאושר (סגול)</div><div class="legend-desc">שיעור נקבע – טרם התקיים</div></div>
         </div>
         <div class="legend-item">
           <span class="legend-dot" style="background:#8b5cf6;"></span>
-          <div><div class="legend-name">הושלם</div><div class="legend-desc">השיעור התקיים</div></div>
+          <div><div class="legend-name">הושלם (סגול כהה)</div><div class="legend-desc">השיעור התקיים – ממתין לסימון תשלום</div></div>
         </div>
         <div class="legend-item">
           <span class="legend-dot" style="background:#22c55e;"></span>
-          <div><div class="legend-name">שולם</div><div class="legend-desc">התלמיד שילם עבור השיעור</div></div>
+          <div><div class="legend-name">שולם (ירוק)</div><div class="legend-desc">השיעור שולם</div></div>
         </div>
         <div class="legend-item">
           <span class="legend-dot" style="background:#ef4444;"></span>
-          <div><div class="legend-name">בקשת ביטול</div><div class="legend-desc">תלמיד ביקש לבטל – מחייב תשומת לבך</div></div>
+          <div><div class="legend-name">בקשת ביטול (אדום)</div><div class="legend-desc">תלמיד ביקש ביטול – מחייב תשומת לבך</div></div>
+        </div>
+      </div>
+
+      <h3>שיבוץ תלמיד לשיעור</h3>
+      <p>לחץ על חלון פנוי בלוח. בפאנל שנפתח:</p>
+      <ol class="steps">
+        <li>
+          <strong class="step-title">לחץ "שבץ תלמיד" (Book for student)</strong>
+          נפתחת רשימה של התלמידים שלך.
+        </li>
+        <li>
+          <strong class="step-title">בחר תלמיד מהרשימה</strong>
+          לשיעורים עם מספר מקומות – ניתן לשבץ מספר תלמידים לאותו חלון.
+        </li>
+        <li>
+          <strong class="step-title">אשר את השיבוץ</strong>
+          השיעור ייעבר מיידית לסטטוס "מאושר" (סגול).
+        </li>
+      </ol>
+
+      <h3>הוספת הערות לשיעור</h3>
+      <p>כל שיעור מאושר מאפשר הוספת הערות. לחץ על השיעור הרלוונטי ובתחתית הפאנל תמצא קטע הערות:</p>
+      <ul class="feature-list">
+        <li><strong>כתוב הערה</strong> – הוסף הערה לגבי השיעור: ביצועים, חומר שכוסה, נושאים לחזרה</li>
+        <li><strong>גלוי לתלמיד / מוסתר</strong> – בחר אם ההערה תופיע גם בפורטל התלמיד</li>
+        <li><strong>מחיקת הערה</strong> – לחץ על כפתור המחיקה לצד כל הערה</li>
+      </ul>
+
+      <h3>ניהול אירועים ביומן</h3>
+      <p>בנוסף לחלונות שיעור, ניתן להוסיף אירועים ביומן כמו מבחנים, חופשות, פגישות ומשימות. אירועים אלו מופיעים בלוח ומאפשרים לתכנן מראש.</p>
+
+      <ol class="steps">
+        <li>
+          <strong class="step-title">לחץ על תאריך ריק בלוח ובחר "הוסף אירוע"</strong>
+          נפתח טופס יצירת אירוע.
+        </li>
+        <li>
+          <strong class="step-title">בחר את סוג האירוע</strong>
+          מבחן, משימה, חופשה, אירוע אישי או כל תיאור חופשי.
+        </li>
+        <li>
+          <strong class="step-title">הגדר תאריך ושעה</strong>
+          לאירועים שנמשכים מספר ימים – ניתן להגדיר תאריך סיום נפרד.
+        </li>
+        <li>
+          <strong class="step-title">שייך לתלמיד (אופציונלי)</strong>
+          אפשר לשייך אירוע לתלמיד ספציפי, למשל מבחן של תלמיד מסוים.
+        </li>
+        <li>
+          <strong class="step-title">שמור</strong>
+          האירוע יופיע בלוח במיקומו הנכון.
+        </li>
+      </ol>
+
+      <div class="callout tip">
+        <div class="callout-icon">📅</div>
+        <div class="callout-body">
+          <span class="callout-title">סינכרון עם יומן חיצוני</span>
+          <p>ניתן לסנכרן את לוח השיעורים עם Google Calendar, Apple Calendar או Outlook דרך קישור iCal. הגדרה זו נמצאת ב<strong>הגדרות → כרטיסיית General → סנכרון יומן</strong>. ראה פרק 12 לפרטים.</p>
         </div>
       </div>
 
       <div class="callout note">
         <div class="callout-icon">⏰</div>
         <div class="callout-body">
-          <span class="callout-title">ניווט בין שבועות</span>
-          <p>השתמש ב-<code>←</code> ו-<code>→</code> בראש הלוח לעבור לשבוע הקודם או הבא. ולחץ <code>↺</code> לחזור לשבוע הנוכחי מכל מקום.</p>
+          <span class="callout-title">ניווט מהיר בלוח</span>
+          <p>השתמש בחיצים <code>←</code> <code>→</code> בראש הלוח לעבור בין שבועות. לחץ <code>היום</code> לחזרה לשבוע הנוכחי מכל מקום.</p>
         </div>
       </div>
     </section>
@@ -766,37 +952,105 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="students">
       <span class="section-num">04 · פרק</span>
       <h2 class="section-title">ניהול תלמידים</h2>
-      <p class="section-lead">הוסף, עדכן ושמור על רשימות התלמידים שלך בסדירות.</p>
+      <p class="section-lead">כל מידע על כל תלמיד במקום אחד – פרטים, תעריף, אנשי קשר, הערות, מחברת ועוד.</p>
 
-      <p>רשימת התלמידים היא הבסיס לכל ניהול השיעורים. ניתן למצוא אותה – פתח את תפריט <code>תפריט</code> ובחר לאחר מכן <code>תלמידים</code>.</p>
+      <p>עבור ל<code>תפריט → תלמידים</code> כדי לפתוח את רשימת התלמידים שלך. הדף מחולק לשתי כרטיסיות: <strong>תלמידים</strong> ו-<strong>קבוצות</strong>.</p>
 
       <h3>הוספת תלמיד חדש</h3>
-      <p>לפני שתוכל להוסיף תלמיד תרצה לבחוא נתונים בסיסיים. אלה הם השדות:</p>
-
       <ol class="steps">
         <li>
-          <strong class="step-title">שם מלא</strong>
-          השם שיופיע בלוח הזמנים ובהתראות.
+          <strong class="step-title">שם מלא (חובה)</strong>
+          השם שיופיע בלוח הזמנים, בהתראות ובדוחות.
         </li>
         <li>
-          <strong class="step-title">מספר טלפון</strong>
-          משמשת לשיגור הודעות והתראות.
+          <strong class="step-title">כתובת אימייל (אופציונלי)</strong>
+          משמש לשליחת הודעות ולהתחברות לפורטל התלמיד.
         </li>
         <li>
-          <strong class="step-title">טלפון</strong>
-          קישור לשיגור ישיר לחלון. שדה טלפון הוא לא חובה.
+          <strong class="step-title">מספר טלפון (אופציונלי)</strong>
+          משמש לשליחת הודעות WhatsApp ו-SMS.
         </li>
         <li>
-          <strong class="step-title">לחץ על <code>הוסף</code></strong>
-          התלמיד יתווסף לרשימות ומוקבע מיד באפליקציה כרשות קישור ברשימה שלך.
+          <strong class="step-title">כיתה (אופציונלי)</strong>
+          בחר מתפריט נפתח כיתות א'-י"ב. מופיע כתגית צבעונית ברשימה.
+        </li>
+        <li>
+          <strong class="step-title">לחץ "הוסף תלמיד"</strong>
+          התלמיד יתווסף לרשימה ויהיה פעיל מיד.
         </li>
       </ol>
 
+      <h3>סינון הרשימה</h3>
+      <p>מעל הרשימה ישנן כפתורי סינון:</p>
+      <ul class="feature-list">
+        <li><strong>הכל</strong> – כל התלמידים</li>
+        <li><strong>פעיל</strong> – תלמידים פעילים בלבד</li>
+        <li><strong>ממתין</strong> – תלמידים ברשימת המתנה</li>
+      </ul>
+
+      <h3>פעולות על תלמיד (תפריט שלוש הנקודות)</h3>
+      <p>לחץ על תפריט שלוש הנקודות לצד כל תלמיד לפתיחת הפעולות הזמינות:</p>
+
+      <table class="settings-table">
+        <thead>
+          <tr><th>פעולה</th><th>תיאור</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>עריכת תלמיד</strong></td>
+            <td>ערוך שם, אימייל, טלפון, כיתה, <strong>תעריף שעתי (₪)</strong>, והערות פרטיות שאינן גלויות לתלמיד</td>
+          </tr>
+          <tr>
+            <td><strong>אנשי קשר</strong></td>
+            <td>הוסף ונהל אנשי קשר – הורים, אפוטרופוס, איש קשר לחירום. ניתן לציין שם, מערכת יחסים, אימייל וטלפון לכל איש קשר, ולסמן מי הוא איש הקשר הראשי</td>
+          </tr>
+          <tr>
+            <td><strong>הערות</strong></td>
+            <td>הצג את כל הערות השיעור שנוספו לתלמיד זה. לכל הערה מוצגים: תאריך, שעה, והאם גלויה לתלמיד (ירוק) או מוסתרת (אפור)</td>
+          </tr>
+          <tr>
+            <td><strong>מחברת</strong></td>
+            <td>פתח את מחברת התלמיד (אם פיצ'ר המחברת מופעל בהגדרות). כוללת: משימות, הערות, משאבים ורשימת ציונים</td>
+          </tr>
+          <tr>
+            <td><strong>היסטוריית כניסות</strong></td>
+            <td>צפה בזמני הכניסה האחרונים של התלמיד לפורטל שלו</td>
+          </tr>
+          <tr>
+            <td><strong>רישום תשלום</strong></td>
+            <td>פתח חלון לרישום תשלום – הזן סכום והערה (כגון "מזומן" או "העברה בנקאית")</td>
+          </tr>
+          <tr>
+            <td><strong>הסרת תלמיד</strong></td>
+            <td>מסיר את התלמיד מהרשימה לאחר אישור. אינו משפיע על שיעורים קיימים</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>שינוי סטטוס תלמיד</h3>
+      <p>לצד כל תלמיד ברשימה ישנה תגית סטטוס. לחץ עליה לשינוי:</p>
+      <ul class="feature-list">
+        <li><strong>פעיל (ירוק)</strong> – תלמיד רגיל הלומד כרגע</li>
+        <li><strong>ממתין (צהוב)</strong> – נמצא ברשימת המתנה</li>
+        <li><strong>לא פעיל (אפור)</strong> – הפסיק ללמוד, נשמר בארכיון</li>
+      </ul>
+
+      <h3>תעריף שעתי</h3>
+      <p>בפרופיל כל תלמיד ניתן להגדיר תעריף שעתי ספציפי (₪). תעריף זה ישמש בדוחות ובחשבונות. אם לא הוגדר תעריף לתלמיד – יוצג "ללא תעריף" בדף החשבונות.</p>
+
       <div class="callout tip">
-        <div class="callout-icon">✨</div>
+        <div class="callout-icon">📥</div>
         <div class="callout-body">
-          <span class="callout-title">חסוך זמן ומנוחה</span>
-          <p>ניתן לשלוף שתלמיד אחד אח – שתף איתם את הקישור שלך (ראה סעיף הבא). תלמידים שעוד אינם ברשימות ייתווסף אחרי אישור <strong>בקשת הצטרפות</strong>, אבל כדי שתשמור אותם – הם יתווסף אוטומטית לרשימות התלמידים שלך.</p>
+          <span class="callout-title">ייבוא תלמידים בכמות (Bulk Import)</span>
+          <p>יש לך רשימת תלמידים ארוכה? השתמש בייבוא מרובה: <code>תפריט → תלמידים → ייבוא</code>. ניתן לייבא מגיליון אלקטרוני (Excel / CSV) עם שמות, אימיילים ומספרי טלפון.</p>
+        </div>
+      </div>
+
+      <div class="callout note">
+        <div class="callout-icon">🔒</div>
+        <div class="callout-body">
+          <span class="callout-title">אנשי קשר – מתי זה שימושי?</span>
+          <p>אם אתה מלמד תלמידים קטנים, הוסף את פרטי ההורה כאיש קשר. כך תוכל לשלוח הודעות ישירות להורים ולהתקשר אליהם בקלות.</p>
         </div>
       </div>
     </section>
@@ -805,59 +1059,56 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="sharing">
       <span class="section-num">05 · פרק</span>
       <h2 class="section-title">שיתוף קישור עם תלמידים</h2>
-      <p class="section-lead">תן לתלמידים שלך לראות את הלוח ולבקש שיעורים בעצמם.</p>
+      <p class="section-lead">שלח קישור אחד – תלמידים יראו את הלוח שלך ויבקשו שיעורים בעצמם.</p>
 
-      <p>הדרך הפשוטה ביותר לנצל את היכולת לתת לתלמידים לבקש שיעורים בעצמם. כשיש לך קישור אחד. שלח את הקישור פעם אחת ובכל מקום – הם יראים את הלוח שלך בכל פעם שייכנסו כדי לבקש שיעורים שהוצאת.</p>
+      <p>לכל מורה יש קישור אישי ייחודי. כשתלמיד נכנס לקישור זה הוא רואה את חלונות הזמן הפנויים שלך ויכול לבקש שיעורים. אתה רק מאשר.</p>
 
-      <h3>איפה תמצא את הקישור?</h3>
-      <p>פתח את התפריט הראשי ובחר <code>שתף</code>:</p>
-
+      <h3>איפה מוצא את הקישור?</h3>
       <ol class="steps">
         <li>
-          <strong class="step-title">לחץ על <code>העתק</code></strong>
-          הקישור הועתק ללוח. בעת תלחץ שוב לוחץ כמה פעם אחת.
+          <strong class="step-title">לחץ על "שתף" בתפריט</strong>
+          הקישור האישי שלך מוצג, עם כפתור "העתק".
+        </li>
+        <li>
+          <strong class="step-title">לחץ "העתק"</strong>
+          הקישור מועתק ללוח הגזרים.
         </li>
         <li>
           <strong class="step-title">שלח לתלמידים</strong>
-          ב-WhatsApp, SMS, אימייל או כל ערוץ אחר. ניתן לאחסן שלח את הקישור פעם אחת לכל סביבה של תלמידים שלך.
-        </li>
-        <li>
-          <strong class="step-title">תלמידים קיימים ולא רשומים</strong>
-          תלמיד שצופה ברשימות התלמידים שלך רואה ישירות את הלוח הזמנים שלך כדי לבקש שיעורים.
+          ב-WhatsApp, SMS, אימייל – כל ערוץ שנוח לך. מספיק לשלוח פעם אחת.
         </li>
       </ol>
 
       <h3>תלמידים חדשים – בקשת הצטרפות</h3>
-      <p>תלמיד שעוד לא ברשימות התלמידים שלך יצטרך להשתמש באותו קישור כדי להצטרף. לתוצאה פשוטה:</p>
-
+      <p>תלמיד שאינו ברשימות שלך ייאלץ קודם להגיש בקשת הצטרפות:</p>
       <ol class="steps">
         <li>
-          <strong class="step-title">התלמיד נכנס לקישור הקבוע הפרטי</strong>
-          שם מלא, טלפון או תאריך – כל אחד יוכל להצטרף, רק שיהיה הלוח שלך.
+          <strong class="step-title">התלמיד לוחץ על הקישור שלך</strong>
+          הוא רואה דף ובו שם, אזור ותמונה שלך (אם הגדרת בפרופיל).
         </li>
         <li>
-          <strong class="step-title">בוא יגיע בקשת הצטרפות</strong>
-          אתה קיבל התראה שיש מישהו שמבקש להצטרף.
+          <strong class="step-title">מגיש בקשת הצטרפות</strong>
+          ממלא שם ופרטים. אתה מקבל התראה.
         </li>
         <li>
-          <strong class="step-title">אתה תאשר את הבקשה</strong>
-          ברגע שתאשרת – התלמיד יתווסף לרשימות התלמידים שלך, ויוכל להמשיך לבקש שיעורים.
+          <strong class="step-title">אתה מאשר את הבקשה</strong>
+          בלוח הבקרה או בהתראה. לאחר האישור – התלמיד מתווסף אוטומטית לרשימה שלך ויכול לבקש שיעורים.
         </li>
       </ol>
 
       <div class="callout tip">
-        <div class="callout-icon">🔐</div>
+        <div class="callout-icon">⚡</div>
         <div class="callout-body">
-          <span class="callout-title">שמור ניהול על רשימות תלמידים</span>
-          <p>ניתן לשלוח אחד תלמיד אחד – שתף קישור אחד עם אותם (ראה סעיף הבא). לא צריך לעשות כל לחצן "להוסיף" – זה מסמן שתתווסף מיוחד ניהול כל קישורים לתלמידים שלך, ובלבד שתישאר אותם בעצמך.</p>
+          <span class="callout-title">אישור אוטומטי</span>
+          <p>ניתן להפעיל <strong>אישור אוטומטי</strong> של תלמידים חדשים בהגדרות. כך כל מי שמגיש בקשה יתווסף מיד ללא צורך באישור ידני. ראה פרק 12.</p>
         </div>
       </div>
 
       <div class="callout note">
         <div class="callout-icon">🔗</div>
         <div class="callout-body">
-          <span class="callout-title">קישור אחד לכל התלמידים</span>
-          <p>אין צורך לייצר קישורים שונים לכל תלמיד – קישור אחד אחד לכל התלמידים שלך. שמור אותם בנוחה.</p>
+          <span class="callout-title">קישור אחד לכולם</span>
+          <p>אין צורך בקישורים שונים לכל תלמיד – קישור אחד מספיק לכל הרשימה. תלמידים קיימים (ברשימתך) רואים את הלוח מיד. תלמידים חדשים עוברים תהליך הצטרפות.</p>
         </div>
       </div>
     </section>
@@ -866,34 +1117,39 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="requests">
       <span class="section-num">06 · פרק</span>
       <h2 class="section-title">בקשות שיעור ואישור</h2>
-      <p class="section-lead">תלמידים מבקשים – אתה מאשר. כל כך פשוט. כל הזמן בידייך.</p>
+      <p class="section-lead">תלמידים מבקשים – אתה מאשר. פשוט, מהיר, הכל בידיך.</p>
 
-      <p>כשתשתמש נכנס לקישור שלך, הם רואים את הלוח שלך כפי שנראה ויכולים לבקש שיעורים בעצמם. הבקשות מופיעות אוטומטיות בשיעורים – אתה צריך לאשר ואתה קובע.</p>
+      <p>כשתלמיד נכנס לקישור שלך ובוחר חלון זמן, הבקשה מגיעה אליך אוטומטית ומופיעה בלוח בצבע <strong style="color:#eab308;">צהוב (ממתין)</strong>.</p>
 
-      <h3>איפה הבקשות מוצגות</h3>
-      <p>בקשה חדשה מופיעה בלוח הזמנים עם צבע <strong style="color:#eab308;">צהוב – ממתין</strong>. כשתפתח את האפליקציה, תוכל לראות בצד ימין כמה בקשות ממתינות לתשומת לבך.</p>
-
-      <h3>לאשר אם לדחות</h3>
+      <h3>כיצד לאשר או לדחות בקשה</h3>
       <ol class="steps">
         <li>
           <strong class="step-title">לחץ על החלון הצהוב בלוח</strong>
-          נפתח חלון עם פרטי הבקשה: שם התלמיד, תאריך ושעה.
+          נפתח פאנל עם פרטי הבקשה: שם התלמיד, תאריך, שעה וסוג השיעור.
         </li>
         <li>
-          <strong class="step-title">בחר לאשר אם לדחות</strong>
-          אם תאשרת – הסטטוס ישתנה ל<strong style="color:#a855f7;">סגול – מאושר</strong>, ויתקבל קבלת אישור. אם תדחה – יחזור מצב מחיקה לפני פנוי.
+          <strong class="step-title">לחץ "אשר" או "דחה"</strong>
+          <strong>אישור:</strong> הסטטוס עובר לסגול (מאושר), התלמיד מקבל התראה.<br>
+          <strong>דחייה:</strong> החלון חוזר לסטטוס פנוי (כחול), התלמיד מקבל הודעה.
         </li>
         <li>
-          <strong class="step-title">לעדכן השיעור – סגל להמשיך</strong>
-          כך לעשות הסטטוס ל<strong style="color:#8b5cf6;">הושלם</strong> כדי לאפשר עקבת תשלומים.
+          <strong class="step-title">לאחר שהשיעור התקיים – סמן "הושלם"</strong>
+          לחץ "סמן כהושלם" בפאנל השיעור. הצבע יעבור לסגול כהה. זה מה שמפעיל את מעקב התשלום.
         </li>
       </ol>
 
+      <h3>בקשות ביטול מתלמידים</h3>
+      <p>אם הפעלת את הפיצ'ר "בקשות ביטול" בהגדרות (ראה פרק 12), תלמידים יכולים לבקש לבטל שיעור. הבקשה מופיעה בלוח ב<strong style="color:#ef4444;">אדום</strong>:</p>
+      <ul class="feature-list">
+        <li><strong>אשר את הביטול</strong> – השיעור מבוטל, החלון נפתח מחדש</li>
+        <li><strong>דחה את הביטול</strong> – השיעור נשאר מאושר, התלמיד מקבל הודעה</li>
+      </ul>
+
       <div class="callout tip">
-        <div class="callout-icon">💬</div>
+        <div class="callout-icon">🔔</div>
         <div class="callout-body">
-          <span class="callout-title">שירות המשתמש המהיר</span>
-          <p>לרגע לפני שירות ישנן <em>"להוסיף חלון זמן חדש ב-15:00", "אחד לאשר שיעור"</em> – אתה יכול לבצע פעולות אחרות בלוח שלך אם עושה שיעורך, והאפליקציה תעזור לך לבצע אותם.</p>
+          <span class="callout-title">התראות על בקשות</span>
+          <p>כדי לא לפספס בקשות חדשות – הפעל התראות פוש (ראה פרק 11). תקבל התראה מיידית על כל בקשת שיעור חדשה.</p>
         </div>
       </div>
     </section>
@@ -902,36 +1158,44 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="booking-blocking">
       <span class="section-num">07 · פרק</span>
       <h2 class="section-title">שיבוץ ומניעת חלונות פנויים</h2>
-      <p class="section-lead">שיבוץ תלמיד בעצמך, חסימת זמן פרטי, ועריכת חלונות קיימים.</p>
+      <p class="section-lead">שבץ תלמיד ידנית, חסום שעות פרטיות, ערוך חלונות קיימים.</p>
 
-      <p>לפעמים אתה רוצה לשבץ תלמיד בחלון בעצמך, או לחסום שעה שאתה לא פנוי. זה גם בדרך אחד – פשוט לחץ עליו.</p>
+      <p>לחץ על כל חלון בלוח כדי לפתוח את פאנל הפעולות. מה שניתן לעשות תלוי בסטטוס הנוכחי של החלון:</p>
 
-      <h3>פעולות האחד על כל חלון</h3>
-
+      <h3>פעולות על חלון פנוי</h3>
       <ol class="steps">
         <li>
-          <strong class="step-title"><code>Book for student</code> – שיבוץ תלמיד</strong>
-          אתה בוחר תלמיד מהרשימות שלך ומשבץ אותם כאשר אישרת אחרון. השתמש כשתלמיד בקש שיעור בטלפון או ב-WhatsApp ואתה רוצה לרשום אותם מידית.
+          <strong class="step-title">שבץ תלמיד (Book for student)</strong>
+          בחר תלמיד מהרשימה ושבץ אותו ידנית – ללא צורך שיגיש בקשה. שימושי כשתלמיד ביקש שיעור בטלפון.
         </li>
         <li>
-          <strong class="step-title"><code>Block this slot</code> – חסימת חלון</strong>
-          הופך את החלון ל<strong style="color:#9ca3af;">חסום</strong> ולא יופיע לתלמידים. השתמש לפגישות פרטיות, ביקורים, חופשה, או כל שעה שאתה לא רוצה שיתבצע שיעורים.
+          <strong class="step-title">חסום חלון (Block this slot)</strong>
+          הופך את החלון לאפור (חסום). תלמידים לא יראו אותו. השתמש כשאתה לא פנוי בשעה זו – פגישה, חופשה, ענייני אישיים.
+        </li>
+      </ol>
+
+      <h3>עריכה ומחיקה</h3>
+      <ol class="steps">
+        <li>
+          <strong class="step-title">עריכת חלון (Edit slot)</strong>
+          שנה שעת התחלה, משך, כותרת, מספר מקסימלי של תלמידים, ותאריך סיום לחלון שבועי.
         </li>
         <li>
-          <strong class="step-title"><code>Edit slot</code> – עריכת חלון</strong>
-          שנה את השעה, משך, כותרת או מספר תלמידים מקסימלי בחלון קיים. שנה מחזורי לשיבוץ אחד תלמידים ומחלון לוחות שיבוצים.
+          <strong class="step-title">מחיקת חלון</strong>
+          לחלון <strong>שבועי</strong> – תישאל: "מחק רק את השבוע הנוכחי" או "מחק את כל הסדרה מהיום והלאה".<br>
+          לחלון <strong>חד-פעמי</strong> – מחיקה מיידית לאחר אישור.
         </li>
         <li>
-          <strong class="step-title"><code>Delete recurring slot</code> – מחיקת חלון חוזר</strong>
-          אם החלון הוא חלק מסדרת חלונות – תוכל לבחוא כמה למחוק (רק העתידיות) או את כל הסדרה ממחיקה.
+          <strong class="step-title">ביטול שיעור מאושר</strong>
+          לחץ "בטל שיעור". לשיעור חוזר (שבועי) – תוכל לקבוע תאריך אחרון (כל השיעורים מאותו תאריך יבוטלו).
         </li>
       </ol>
 
       <div class="callout note">
         <div class="callout-icon">⚠️</div>
         <div class="callout-body">
-          <span class="callout-title">זכור בזכרך – חסום מול מחיקה</span>
-          <p><strong>חסימה</strong> משמרת את החלון בלוח בלי להסתירו מהתלמידים. ניתן להחזיר אותם בפעם אחת ראשונה. <strong>מחיקה</strong> מסירה אותו לצמיתות. כך אתה לא בדק – חסימה תוכל להחזיר בהמשך בקלות.</p>
+          <span class="callout-title">חסימה לעומת מחיקה</span>
+          <p><strong>חסימה</strong> משמרת את החלון בלוח אך מסתירה אותו מתלמידים. ניתן לבטל חסימה בכל עת. <strong>מחיקה</strong> מסירה את החלון לצמיתות. בספק – העדף חסימה.</p>
         </div>
       </div>
     </section>
@@ -940,34 +1204,49 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="groups">
       <span class="section-num">08 · פרק</span>
       <h2 class="section-title">קבוצות</h2>
-      <p class="section-lead">נהל קבוצות תלמידים לשיעורים משותפים.</p>
+      <p class="section-lead">נהל שיעורים קבוצתיים – כמה תלמידים, שיעור אחד.</p>
 
-      <p>אם אתה נותן שיעורים קבוצתיים – הקבוצות מאפשרות לך לשבץ מספר תלמידים לאותו חלון זמן. כשתשבץ תלמיד בודד, אתה משבץ את כל הקבוצה שבמיוחד בוחרת.</p>
-
-      <h3>ניהול קבוצות</h3>
-      <p>פתח את התפריט הראשי ובחר <code>קבוצות</code>.</p>
+      <p>הקבוצות מאפשרות לשבץ מספר תלמידים לאותו חלון זמן ולנהל את תשלומיהם בנפרד. עבור לכרטיסיית <strong>קבוצות</strong> בדף התלמידים.</p>
 
       <h3>יצירת קבוצה חדשה</h3>
       <ol class="steps">
         <li>
-          <strong class="step-title">לחץ על "הוסף קבוצה"</strong>
-          תן לקבוצה שם – כגון "מתכונת ג' מתמטיקה" או "עמד שלישה בגיטרה".
+          <strong class="step-title">לחץ "הוסף קבוצה"</strong>
+          תן לקבוצה שם ייחודי, למשל "כיתה ג' מתמטיקה" או "שיעור גיטרה ג'".
         </li>
         <li>
-          <strong class="step-title">בחר תלמידים מהרשימות</strong>
-          סמן את התלמידים שתרצה לכלול. ניתן להוסיף ולהוציא תלמידים מקבוצה בכל עת.
+          <strong class="step-title">הגדר תעריף לקבוצה (אופציונלי)</strong>
+          הגדר תעריף כולל לשיעור לכל הקבוצה. המערכת מחשבת אוטומטית את החלק לכל תלמיד.
         </li>
         <li>
-          <strong class="step-title">שמור</strong>
-          בעת תשבץ תלמיד מהקבוצה, הוא ינוהל לפי שבחרת תלמיד בודד.
+          <strong class="step-title">שמור את הקבוצה</strong>
+          הקבוצה נוצרת ריקה. לאחר מכן הוסף חברים.
         </li>
       </ol>
+
+      <h3>ניהול חברי קבוצה</h3>
+      <p>לחץ על "חברים" לצד הקבוצה:</p>
+      <ul class="feature-list">
+        <li><strong>הוספת חבר</strong> – בחר תלמיד מהרשימה הכללית שלך</li>
+        <li><strong>הסרת חבר</strong> – לחץ "הסר" לצד שם התלמיד. אינו משפיע על שיעורים שכבר נרשמו</li>
+        <li><strong>צפייה בחברים</strong> – רשימה עם שם ואימייל לכל חבר</li>
+      </ul>
+
+      <h3>מחברת קבוצה</h3>
+      <p>אם פיצ'ר המחברת מופעל, ניתן לפתוח מחברת ייחודית לכל קבוצה עם משימות, הערות ותוכן משותף לחברי הקבוצה.</p>
+
+      <h3>עריכה ומחיקה של קבוצה</h3>
+      <p>לחץ על תפריט שלוש הנקודות לצד הקבוצה:</p>
+      <ul class="feature-list">
+        <li><strong>עריכה</strong> – שנה שם ותעריף</li>
+        <li><strong>מחיקה</strong> – מוחק את הקבוצה. שיעורים שכבר בוצעו אינם נמחקים</li>
+      </ul>
 
       <div class="callout tip">
         <div class="callout-icon">👥</div>
         <div class="callout-body">
-          <span class="callout-title">שים לב למקסימום</span>
-          <p>זכור לשים על <code>Max students = 1</code> אם קובץ קבוצה. אחרת שיעורים כמות כפולה לפני שיוציאו.</p>
+          <span class="callout-title">חלון עם מקסימום תלמידים</span>
+          <p>כשיוצרים חלון שבועי לשיעור קבוצתי, הגדר את <code>מקסימום תלמידים</code> לפי גודל הקבוצה. כך לא תתאפשר הרשמה מעל הקיבולת.</p>
         </div>
       </div>
     </section>
@@ -976,31 +1255,89 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="accounting">
       <span class="section-num">09 · פרק</span>
       <h2 class="section-title">חשבונות ותשלומים</h2>
-      <p class="section-lead">עקבת פשוטה ומהירה על מי שילם, מי חייב ומה מסתכם.</p>
+      <p class="section-lead">מעקב מלא אחרי תשלומים – מי שילם, מי חייב, שליחת תזכורות והפקת קבלות.</p>
 
-      <p>מסך חשבונות תוכל לראות את כל הסטטוס הכספי הכפול לאחר מכן – סקירת כמה סיום, כולל פתיחות ותשלומיות תשלומים. לדוגמה: <code>תפריט</code> → <code>חשבונות</code>.</p>
+      <p>עבור ל<code>תפריט → חשבונות</code>. מסך החשבונות מחולק לשני חלקים: תלמידים בודדים וקבוצות.</p>
 
-      <h3>סימון תשלום</h3>
+      <h3>כרטיסי סיכום</h3>
+      <ul class="feature-list">
+        <li><strong>סה"כ חוב (₪)</strong> – סכום כולל של כל השיעורים שהושלמו ועדיין לא שולמו</li>
+        <li><strong>מספר שיעורים</strong> – סה"כ שיעורים שהושלמו, עם פירוט לפי תלמידים וקבוצות</li>
+      </ul>
+
+      <h3>חשבון לתלמיד בודד</h3>
+      <p>לכל תלמיד מוצגים: מספר שיעורים, תעריף שעתי, יתרה לתשלום, וקרדיטים שלא הוקצו (אם שולם יותר).</p>
+
+      <p>לחץ על שם תלמיד להרחבת הפירוט – רשימת כל השיעורים עם תאריך, שעה וסטטוס.</p>
+
+      <h3>רישום תשלום</h3>
       <ol class="steps">
         <li>
-          <strong class="step-title">פתח שיעור שהושלם</strong>
-          כל שיעור שסטטוסו <strong style="color:#8b5cf6;">הושלם</strong> מופיע ברשימות השיעורים שהכסף הוא לגבות.
+          <strong class="step-title">לחץ על סמל ה-+ לצד שם התלמיד</strong>
+          נפתח חלון רישום תשלום.
         </li>
         <li>
-          <strong class="step-title">סמן "שולם"</strong>
-          סטטוס השיעור ישתנה ל<strong style="color:#22c55e;">ירוק – שולם</strong> יכול ויתווסף לסיכום כמה סיום שלך.
+          <strong class="step-title">הזן סכום (₪)</strong>
+          הסכום ששולם. שדה חובה.
         </li>
         <li>
-          <strong class="step-title">עקב אחרי כולל פתיחת תשלום</strong>
-          כל שיעור שהושלם אבל עוד לא סומן נשאר פתוח. רשימה זו עדכונית ותשמש כרשומה.
+          <strong class="step-title">הוסף הערה (אופציונלי)</strong>
+          למשל "מזומן", "העברה בנקאית", "ביט", "פייבוקס".
+        </li>
+        <li>
+          <strong class="step-title">לחץ "שמור"</strong>
+          התשלום נרשם ויתרת התלמיד מתעדכנת.
         </li>
       </ol>
+
+      <h3>שליחת תזכורת תשלום</h3>
+      <p>לתלמידים עם יתרה פתוחה ניתן לשלוח תזכורת בלחיצה:</p>
+      <ol class="steps">
+        <li>
+          <strong class="step-title">לחץ על סמל הפעמון לצד שם התלמיד</strong>
+          נפתח חלון שליחת תזכורת עם הודעה מוכנה מראש בעברית.
+        </li>
+        <li>
+          <strong class="step-title">בחר ערוץ שליחה</strong>
+          ניתן לסמן אחד או יותר: <strong>אימייל</strong>, <strong>WhatsApp</strong>, <strong>התראה</strong>.
+        </li>
+        <li>
+          <strong class="step-title">ערוך את הנוסח (אופציונלי)</strong>
+          ההודעה כוללת שם התלמיד ויתרה לתשלום. ניתן לערוך בחופשיות.
+        </li>
+        <li>
+          <strong class="step-title">לחץ "שלח"</strong>
+          ההודעה נשלחת. התאריך האחרון של התזכורת נשמר ומוצג ברשימה.
+        </li>
+      </ol>
+
+      <h3>הפקת קבלה</h3>
+      <ol class="steps">
+        <li>
+          <strong class="step-title">לחץ על סמל הקבלה לצד שם התלמיד</strong>
+          נפתח חלון עם רשימת כל התשלומים של התלמיד.
+        </li>
+        <li>
+          <strong class="step-title">בחר תשלום ולחץ "הפק קבלה"</strong>
+          נפתח מסמך קבלה להדפסה/שמירה כ-PDF.
+        </li>
+        <li>
+          <strong class="step-title">הדפס או שמור</strong>
+          השתמש בפונקציית ההדפסה של הדפדפן לשמירת קובץ PDF.
+        </li>
+      </ol>
+
+      <h3>חשבון לקבוצה</h3>
+      <p>בסעיף הקבוצות: לכל קבוצה מוצגים שיעורים שהושלמו, תעריף לשיעור לתלמיד, ויתרה לכל חבר. ניתן לשלוח תזכורת לכל חבר בנפרד בלחיצה על סמל הפעמון לצדו.</p>
+
+      <h3>חיפוש קבלות</h3>
+      <p>בראש דף החשבונות ישנו כלי חיפוש: בחר תלמיד מהתפריט הנפתח ולחץ "פתח" כדי לראות את כל הקבלות וההיסטוריה הכספית שלו.</p>
 
       <div class="callout note">
         <div class="callout-icon">💰</div>
         <div class="callout-body">
-          <span class="callout-title">ניהול הכנסות</span>
-          <p>אין מדריך של כל חודש כל הסיכומים, השתמש בסך אם תתאריך לכל מסך חשבונות. השתמש בח"ח/אקסל תוכנית כדי לנהול.</p>
+          <span class="callout-title">ייצוא לאקסל</span>
+          <p>ניתן לייצא את כל נתוני החשבונות לקובץ Excel מלא מ<strong>הגדרות → Export</strong>. הקובץ כולל שיעורים, תשלומים, תלמידים ומחברות – פרק 12.</p>
         </div>
       </div>
     </section>
@@ -1009,31 +1346,60 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="messages">
       <span class="section-num">10 · פרק</span>
       <h2 class="section-title">הודעות</h2>
-      <p class="section-lead">תקשורת ישירה עם תלמידים – מתוך האפליקציה.</p>
+      <p class="section-lead">תקשורת ישירה עם תלמידים – תיבת דואר נכנס וכלי שליחה מרובה ערוצים.</p>
 
-      <p>ניתן לעבור לחלון נוסף SMS ושיגור קבלה, ניתן להתקשר עם התלמידים ישירות מתוך האפליקציה. לדוגמה: <code>תפריט</code> → <code>הודעות</code>.</p>
+      <p>עבור ל<code>תפריט → הודעות</code>. המסך מחולק לשתי כרטיסיות: <strong>דואר נכנס</strong> ו-<strong>כתיבת הודעה</strong>.</p>
 
-      <h3>שיגור הודעה לתלמיד</h3>
+      <h3>כרטיסיית דואר נכנס</h3>
+      <p>מציגה את כל השיחות עם תלמידים, מסודרות לפי תלמיד. לכל שיחה:</p>
+      <ul class="feature-list">
+        <li>שם התלמיד ואימייל</li>
+        <li>תצוגה מקדימה של ההודעה האחרונה</li>
+        <li>תאריך ההודעה האחרונה</li>
+        <li>תג כחול עם ספירת הודעות שלא נקראו (אם יש)</li>
+      </ul>
+      <p>לחץ על שיחה לפתיחתה. ההיסטוריה המלאה מוצגת כרונולוגית, עם ציון שולח ושעה לכל הודעה.</p>
+
+      <h3>כרטיסיית כתיבת הודעה</h3>
+      <p>לשליחת הודעה לתלמיד אחד או ליותר בבת אחת:</p>
+
       <ol class="steps">
         <li>
-          <strong class="step-title">בחר תלמיד מהרשימות</strong>
-          נפתח חלון לשיגור הודעה לאותם. אם לא השתמש בהודעות ראשון – אין קוד אתה ראשון לשלוח.
+          <strong class="step-title">בחר נמענים</strong>
+          בחלונית השמאלית (בפאנל הימני בתצוגה RTL): חפש תלמידים לפי שם, סמן אותם. ניתן לבחור <strong>"בחר הכל"</strong> לשליחה לכל התלמידים, או לבחור <strong>קבוצה</strong> שלמה.
         </li>
         <li>
-          <strong class="step-title">כתוב את ההודעה בעצמך</strong>
-          ההודעה תישלח כהודעת SMS, ובכל מחיר בהיכן אתה ערוץ.
+          <strong class="step-title">כתוב את ההודעה</strong>
+          בטקסט-אריאה בחלונית הימנית.
         </li>
         <li>
-          <strong class="step-title">קבל התראות על תשובות</strong>
-          אם הפעלת התראות פוש (ראה סעיף 11), תקבל התראה בהישר שתלמיד עונה עליך.
+          <strong class="step-title">בחר ערוצי שליחה</strong>
+          סמן אחד או יותר:
+          <ul style="margin:8px 0 8px 16px;">
+            <li><strong>אימייל ✉️</strong> – נשלח לכתובת האימייל של התלמיד</li>
+            <li><strong>WhatsApp 💬</strong> – נפתח קישור לשליחה דרך WhatsApp (דורש מספר טלפון)</li>
+            <li><strong>התראה 🔔</strong> – נשלח כהתראת פוש (דורש שהתלמיד הפעיל התראות)</li>
+          </ul>
+        </li>
+        <li>
+          <strong class="step-title">לחץ "שלח"</strong>
+          ההודעה נשלחת. מוצגת רשימת תוצאות: כמה הצליחו, כמה נכשלו ולמה.
         </li>
       </ol>
 
+      <h3>תבניות הודעה</h3>
+      <p>כדי לחסוך זמן בהודעות חוזרות (תזכורות, אישורים, הודעות שגרתיות), עבור ל<code>תפריט → תבניות</code>:</p>
+      <ul class="feature-list">
+        <li><strong>הוסף תבנית</strong> – כתוב נוסח הודעה ושמור אותו בשם</li>
+        <li><strong>השתמש בתבנית</strong> – בעת כתיבת הודעה, בחר תבנית מהרשימה לטעינה מהירה</li>
+        <li><strong>ערוך / מחק תבניות</strong> – נהל את האוסף שלך</li>
+      </ul>
+
       <div class="callout tip">
-        <div class="callout-icon">📨</div>
+        <div class="callout-icon">📱</div>
         <div class="callout-body">
-          <span class="callout-title">תבניות הודעה שחוזרות</span>
-          <p>ניתן לנהל הודעות שחוזרות – לישלח שיעור, תזכורות, תקבול ועוד. אם צריך לכתוב אותם שוב ושוב.</p>
+          <span class="callout-title">שליחה ל-WhatsApp</span>
+          <p>שליחה ב-WhatsApp פותחת קישור לכל נמען בנפרד. ודא שיש מספר טלפון לכל תלמיד שבחרת לשלוח לו WhatsApp. תלמידים ללא טלפון יוצגו ברשימת "לא נשלח".</p>
         </div>
       </div>
     </section>
@@ -1042,151 +1408,299 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <section class="guide-section" id="notifications">
       <span class="section-num">11 · פרק</span>
       <h2 class="section-title">התראות פוש</h2>
-      <p class="section-lead">לא תפספס בקשת שיעור או הודעה שנשלח.</p>
+      <p class="section-lead">קבל התראה מיידית על כל פעילות חשובה – גם כשהאפליקציה סגורה.</p>
 
-      <p>האפליקציה יכולה לשלוח התראות פוש (Push Notifications) להישיר אם באנדרואיד. הדברים שתישאר תשמש הם:</p>
+      <h3>מה מגיע כהתראה?</h3>
+      <ul class="feature-list">
+        <li>תלמיד חדש הגיש בקשת הצטרפות</li>
+        <li>תלמיד קיים ביקש שיעור</li>
+        <li>תלמיד ביקש ביטול שיעור</li>
+        <li>הגיעה הודעה חדשה מתלמיד</li>
+        <li>תזכורת לשיעור הקרוב (לפי הגדרות)</li>
+      </ul>
 
-      <ul style="list-style:none; padding:0; margin:16px 0;">
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          תלמיד חדש שהגיש בקשת הצטרפות
+      <h3>כיצד להפעיל התראות</h3>
+      <ol class="steps">
+        <li>
+          <strong class="step-title">פתח את האפליקציה במכשיר שלך</strong>
+          ב-Android – בתוך האפליקציה המותקנת. ב-iPhone – דרך Safari (הוסף לדף הבית תחילה).
         </li>
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          תלמיד ביקש שיעורים בלוח השיעורים
+        <li>
+          <strong class="step-title">לחץ "אישור" בחלון ההרשאה</strong>
+          הדפדפן/האפליקציה יבקש אישור לשליחת התראות. לחץ "אפשר".
         </li>
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          תלמיד ביטל שיעור או ביקש שינוי
+        <li>
+          <strong class="step-title">בדוק שהתראות מופעלות</strong>
+          בהגדרות המכשיר – ודא ש-saderOT ברשימת האפליקציות המורשות להתראות.
         </li>
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          התקבלות הודעה חדשה מתלמיד
-        </li>
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          תזכורת על שיעור שהתקרב
-        </li>
+      </ol>
+
+      <h3>הגדרת העדפות התראות</h3>
+      <p>ב<code>הגדרות → General → העדפות התראות</code> ניתן לבחור בדיוק אילו אירועים יש לשלוח לאיזה ערוץ:</p>
+      <ul class="feature-list">
+        <li>בקשת שיעור – אימייל / WhatsApp / התראה</li>
+        <li>שיעור אושר – אימייל / WhatsApp / התראה</li>
+        <li>שיעור נדחה – אימייל / WhatsApp / התראה</li>
+        <li>שיעור בוטל – אימייל / WhatsApp / התראה</li>
+        <li>תזכורת שיעור – אימייל / WhatsApp / התראה</li>
+        <li>בקשת גישה – אימייל / WhatsApp / התראה</li>
       </ul>
 
       <div class="callout note">
         <div class="callout-icon">📱</div>
         <div class="callout-body">
           <span class="callout-title">משתמשי iPhone</span>
-          <p>גרסת iOS נתמכת עדיין על מסכים מיוחד. לגרסת משתמש iPhone יצטרכו להיכנס לאתר ידי דפדפן (Safari או Chrome) מהיתר לבחירת קצוות של מסך, ולאחר מכן – אם לפי קציר התחתון, לאחר התראות פוש שלהם ונשמעים הם רק ממישירות אם אנדרואיד.</p>
+          <p>על iPhone, פתח את saderOT ב-Safari, לחץ על כפתור השיתוף ובחר <strong>"הוסף למסך הבית"</strong>. לאחר מכן פתח את האפליקציה ממסך הבית – ורק אז ניתן לאשר התראות. התראות פוש ב-iOS דורשות גרסת Safari עדכנית (iOS 16.4 ומעלה).</p>
         </div>
       </div>
-
-      <h3>הפעל רשאיות</h3>
-      <p>כשתיכנס לרשאיות האפליקציה ממישיר נכון, תופיע בקשה להפעלת התראות. <strong>לחץ "אישור"</strong> כדי לאפשר. ניתן לשנות את ההגדרה בכל עת בהגדרות הדפדפן או בהגדרות האפליקציה.</p>
 
       <div class="callout note">
         <div class="callout-icon">🔔</div>
         <div class="callout-body">
-          <span class="callout-title">לא קיבל התראות?</span>
-          <p>ניתוק שהתראות מאופשרות בהגדרות האחרות בהדפסן עבור saderOT, ושהאפליקציה לא נמצאת בסטטוס השקטה. בהגדרות סוסן ניתן לשמוש צריך להוסיף את האפליקציה לרשימות "אפליקציות מורשות".</p>
+          <span class="callout-title">לא מקבל התראות?</span>
+          <p>בדוק: <strong>(1)</strong> שהתראות מאופשרות בהגדרות המכשיר עבור האפליקציה, <strong>(2)</strong> שהמכשיר לא במצב שקט, <strong>(3)</strong> שהפעלת את ההתראות בהגדרות saderOT (ראה לעיל).</p>
         </div>
       </div>
     </section>
 
-    <!-- 12 הגדרות ושפה -->
+    <!-- 12 הגדרות -->
     <section class="guide-section" id="settings">
       <span class="section-num">12 · פרק</span>
-      <h2 class="section-title">הגדרות ושפה</h2>
-      <p class="section-lead">התאם את האפליקציה לעצמך – עריכת פרופיל, שינוי שפה ועוד.</p>
+      <h2 class="section-title">הגדרות</h2>
+      <p class="section-lead">התאמה מלאה של האפליקציה – שלוש כרטיסיות: General, Profile ו-Export.</p>
 
-      <h3>החלפת שפה</h3>
-      <p>בראש מסך תמצא כפתור שפה <code>EN | עב</code>. ניתן לעבור לשפה אחרת בכל מחיר בדפדפן ועריכת כל מקום – השתמש זה כאשר אתה משתמש באפליקציה בהמישיר שהשתתף.</p>
+      <p>עבור ל<code>תפריט → הגדרות</code> לפתיחת חלון ההגדרות. הוא מחולק לשלוש כרטיסיות.</p>
 
-      <h3>הגדרות השאר</h3>
-      <p>לדוגמה: <code>תפריט</code> → <code>הגדרות</code>. שם תמצא:</p>
+      <h3>כרטיסייה: General (כללי)</h3>
 
-      <ul style="list-style:none; padding:0; margin:16px 0;">
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          עדכון פרטי פרופיל (שם, טלפון, תאריך)
-        </li>
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          שינוי את סיסמה
-        </li>
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          להגדיר תעריף ברירת מחדל לכל שיעור
-        </li>
-        <li style="padding:8px 0; padding-right:28px; position:relative;">
-          <span style="position:absolute; right:0; top:14px; width:6px; height:6px; border-radius:50%; background:var(--orange);"></span>
-          להפעיל או להשבית התראות פוש
-        </li>
+      <p><strong>משך שיעור ברירת מחדל</strong><br>
+      הגדר את משך השיעור הרגיל שלך (15–180 דקות, בקפיצות של 5). ערך זה יהיה ברירת המחדל בכל יצירת חלון חדש.</p>
+
+      <p><strong>פורמט שעה</strong><br>
+      בחר בין <code>24 שעות</code> (14:30) לבין <code>12 שעות AM/PM</code> (2:30 PM). משפיע על כל תצוגות השעה בלוח.</p>
+
+      <p><strong>שפת ממשק</strong><br>
+      בחר בין <strong>עברית</strong> לבין <strong>English</strong>. ניתן לשנות בכל עת.</p>
+
+      <p><strong>רישום תלמידים</strong><br>
+      <code>אישור אוטומטי של תלמידים חדשים</code> – כאשר מופעל, כל תלמיד שמגיש בקשת הצטרפות מתווסף לרשימה שלך אוטומטית. תקבל התראה אבל לא תצטרך לאשר ידנית.</p>
+
+      <p><strong>פיצ'רים</strong></p>
+      <table class="settings-table">
+        <thead>
+          <tr><th>פיצ'ר</th><th>תיאור</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>חשבונות (Billing)</strong></td>
+            <td>הצג/הסתר את עמוד החשבונות בתפריט</td>
+          </tr>
+          <tr>
+            <td><strong>הודעות (Messages)</strong></td>
+            <td>הצג/הסתר את עמוד ההודעות בתפריט</td>
+          </tr>
+          <tr>
+            <td><strong>קבוצות (Groups)</strong></td>
+            <td>הצג/הסתר את כרטיסיית הקבוצות בעמוד תלמידים</td>
+          </tr>
+          <tr>
+            <td><strong>מחברת (Notebook)</strong></td>
+            <td>הפעל מחברת לכל תלמיד/קבוצה – כולל משימות, הערות, משאבים וציונים</td>
+          </tr>
+          <tr>
+            <td><strong>בקשות ביטול מתלמידים</strong></td>
+            <td>אפשר לתלמידים לבקש ביטול שיעור מהפורטל שלהם</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p><strong>העדפות התראות</strong><br>
+      מטריצה של 6 אירועים × 3 ערוצים. סמן/בטל סימון לכל שילוב:</p>
+      <table class="settings-table">
+        <thead>
+          <tr><th>אירוע</th><th>אימייל</th><th>WhatsApp</th><th>התראת פוש</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>בקשת שיעור</td><td>☐</td><td>☐</td><td>☐</td></tr>
+          <tr><td>שיעור אושר</td><td>☐</td><td>☐</td><td>☐</td></tr>
+          <tr><td>שיעור נדחה</td><td>☐</td><td>☐</td><td>☐</td></tr>
+          <tr><td>שיעור בוטל</td><td>☐</td><td>☐</td><td>☐</td></tr>
+          <tr><td>תזכורת שיעור</td><td>☐</td><td>☐</td><td>☐</td></tr>
+          <tr><td>בקשת גישה</td><td>☐</td><td>☐</td><td>☐</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>אימות דו-שלבי (2FA)</strong><br>
+      הוסף שכבת הגנה לחשבונך:</p>
+      <ul class="feature-list">
+        <li><strong>הפעלת 2FA</strong> – לחץ "הפעל 2FA". יוצג קוד QR לסריקה עם Google Authenticator או Authy. לאחר סריקה, הזן את הקוד בן 6 הספרות לאישור</li>
+        <li><strong>ביטול 2FA</strong> – לחץ "בטל 2FA" והזן קוד אימות לאישור</li>
       </ul>
 
-      <h3>הצגת בהישיר</h3>
-      <p>כל תחת התפריט תמצא <code>הצגה</code> ולצאת ממנה. השתמש לבלוד שאם אתה משתמש באפליקציה בהמישיר שהשתתף.</p>
+      <p><strong>סנכרון יומן (Calendar Sync)</strong><br>
+      סנכרן את לוח השיעורים שלך עם יומנים חיצוניים:</p>
+      <ol class="steps">
+        <li>
+          <strong class="step-title">לחץ "צור קישור יומן"</strong>
+          נוצר קישור iCal ייחודי.
+        </li>
+        <li>
+          <strong class="step-title">העתק את הקישור</strong>
+          לחץ "העתק" – מוצגת הודעת אישור "הועתק!".
+        </li>
+        <li>
+          <strong class="step-title">הוסף ליומן החיצוני שלך</strong>
+          ב-Google Calendar: <code>יומנים אחרים → הוסף לפי כתובת URL</code>.<br>
+          ב-Apple Calendar: <code>קובץ → מנוי חדש</code>.<br>
+          ב-Outlook: <code>הוסף לוח שנה → מהאינטרנט</code>.
+        </li>
+        <li>
+          <strong class="step-title">שמור את הקישור בסוד</strong>
+          הקישור כולל את כל פרטי השיעורים. אל תשתף אותו עם אחרים.
+        </li>
+      </ol>
+      <p>ניתן גם <strong>לחדש</strong> את הקישור (יוצר חדש, הישן מפסיק לפעול) או <strong>לבטל</strong> את הסנכרון לחלוטין.</p>
+
+      <h3>כרטיסייה: Profile (פרופיל)</h3>
+      <p>דף הפרופיל מגדיר מה תלמידים רואים כשהם נכנסים לדף שלך.</p>
+
+      <table class="settings-table">
+        <thead>
+          <tr><th>שדה</th><th>תיאור</th><th>גלוי לתלמידים?</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>שם תצוגה</strong></td>
+            <td>השם שמוצג בלוח ובהתראות</td>
+            <td>כן</td>
+          </tr>
+          <tr>
+            <td><strong>אימייל</strong></td>
+            <td>לא ניתן לעריכה (קשור לחשבון)</td>
+            <td>לא</td>
+          </tr>
+          <tr>
+            <td><strong>טלפון</strong></td>
+            <td>מספר ליצירת קשר</td>
+            <td>לא</td>
+          </tr>
+          <tr>
+            <td><strong>תחום הוראה</strong></td>
+            <td>למשל "פסנתר", "מתמטיקה", "אנגלית". מוצג מתחת לשמך בדף התלמיד</td>
+            <td>כן (אם מופעל)</td>
+          </tr>
+          <tr>
+            <td><strong>ציטוט</strong></td>
+            <td>משפט קצר ומעורר השראה</td>
+            <td>כן (אם מופעל)</td>
+          </tr>
+          <tr>
+            <td><strong>תמונת פרופיל</strong></td>
+            <td>JPEG/PNG/WebP/GIF, עד 5MB. תוצג עגולה בדף התלמיד</td>
+            <td>כן (אם מופעל)</td>
+          </tr>
+          <tr>
+            <td><strong>תיאור קצר</strong></td>
+            <td>תיאור קצר – "מורה לפסנתר · 10 שנות ניסיון"</td>
+            <td>כן (אם מופעל)</td>
+          </tr>
+          <tr>
+            <td><strong>ביוגרפיה</strong></td>
+            <td>סיפור ארוך יותר על סגנון ההוראה שלך</td>
+            <td>כן (אם מופעל)</td>
+          </tr>
+          <tr>
+            <td><strong>צבע הדף</strong></td>
+            <td>8 צבעים מוכנים + בוחר צבע חופשי. משפיע על צבע הדף שתלמידים רואים</td>
+            <td>כן</td>
+          </tr>
+        </tbody>
+      </table>
 
       <div class="callout tip">
-        <div class="callout-icon">🌐</div>
+        <div class="callout-icon">🎨</div>
         <div class="callout-body">
-          <span class="callout-title">שפת ברירת מחדל</span>
-          <p>השפה שנבחרה נשמרת בדפדפן שלך ומחייב לא לשנות כל פעם.</p>
+          <span class="callout-title">מה תלמידים רואים?</span>
+          <p>כל שדה שמסומן כ"גלוי לתלמידים" מופיע בדף הכניסה של תלמידיך. דף מלא ומקצועי עם תמונה, ביוגרפיה וצבע מותאם – יוצר רושם טוב ומגדיל אמון.</p>
         </div>
       </div>
+
+      <h3>כרטיסייה: Export (ייצוא)</h3>
+      <p>ייצא את כל הנתונים שלך לקובץ Excel אחד המכיל גיליונות נפרדים:</p>
+      <ul class="feature-list">
+        <li>רשימת תלמידים + פרטים</li>
+        <li>שיעורים וסטטוסים</li>
+        <li>נתוני חיוב ותשלומים</li>
+        <li>נתוני מחברות</li>
+      </ul>
+
+      <p>שני כפתורים:</p>
+      <ul class="feature-list">
+        <li><strong>הורד לאקסל</strong> – שומר קובץ .xlsx ישירות למכשיר</li>
+        <li><strong>הורד ל-Google Sheets</strong> – אותו קובץ, מתאים להעלאה ישירה ל-Google Drive</li>
+      </ul>
     </section>
 
     <!-- 13 שאלות נפוצות -->
     <section class="guide-section" id="faq">
       <span class="section-num">13 · פרק</span>
       <h2 class="section-title">שאלות נפוצות</h2>
-      <p class="section-lead">התשובות לשאלות שחוזרות הכי הרבה שנשמע אצלנו.</p>
+      <p class="section-lead">תשובות לשאלות שעולות לרוב.</p>
 
       <div class="faq">
         <details>
           <summary>איך תלמיד נרשם לאפליקציה?</summary>
-          <p>יש שתי דרכים: <strong>(1)</strong> אתה להוסיף אותם כבר בעצמך לתוך חשבון תלמידים, או <strong>(2)</strong> אתה שלח לו את הקישור הקבוע שלך כדי לבקש <strong>בקשת הצטרפות</strong>. ברגע שתאשרת את הבקשה – הם ייתווסף אוטומטיות ברשימות תלמידים שלך.</p>
+          <p>שתי דרכים: <strong>(1)</strong> אתה מוסיף אותו ידנית ברשימת תלמידים (<code>תפריט → תלמידים</code>), או <strong>(2)</strong> שלח לו את הקישור האישי שלך – הוא ימלא פרטים ויגיש בקשת הצטרפות. לאחר שתאשר, הוא מתווסף אוטומטית.</p>
         </details>
 
         <details>
-          <summary>מה ההבדל בין חלון שבועי לכל-פעמי?</summary>
-          <p><strong>שבועי</strong> מוצר אוטומטיות בכל שבוע בשעה שבחרת – מושלם לתלמידים קבועים. <strong>כל-פעמי</strong> מופיע רק לתאריך שבחרת – השתמש לשיעורים מיוחדים, מחליפים או לא מחסומות.</p>
+          <summary>מה ההבדל בין חלון שבועי לחד-פעמי?</summary>
+          <p><strong>שבועי</strong> – נוצר אוטומטית בכל שבוע באותו יום ושעה. מושלם לתלמידים קבועים. <strong>חד-פעמי</strong> – מופיע רק בתאריך שבחרת. מתאים לשיעורים מיוחדים, החלפות, או שיעורים לא קבועים.</p>
         </details>
 
         <details>
-          <summary>אם ניתן לבטל שיעור שנקבע מאושר?</summary>
-          <p>כן. לחץ על השיעור הממתין, ובחר האפשרויות הדפדפן. ניתן להוסיף לתלמיד הודעה מיידית לביטול. לא ניתן לשלח הודעה – ניתן לבצע בפנייה לשיגור הודעה ידנית דרך מסך ההודעות.</p>
+          <summary>האם תלמידים רואים את כל הלוח שלי?</summary>
+          <p>לא. תלמידים רואים <strong>רק</strong> חלונות בסטטוס "פנוי" (כחול). חלונות חסומים, שיעורים של תלמידים אחרים, ואירועים אישיים – כל אלה אינם מוצגים לתלמידים.</p>
         </details>
 
         <details>
-          <summary>מה קורה אם תלמיד הגיש בקשה לאישור?</summary>
-          <p>ניתן למסך חשבונות, כל שיעור שסטטוסו "הושלם" ואין "שולם" מופיע ברשימות פתיחות ביחס לתשלום. ניתן לסמן כפי שלמיד נוסף כמה מקום כל שיבוצים תאריכים.</p>
+          <summary>כיצד מבטלים שיעור שכבר אושר?</summary>
+          <p>לחץ על השיעור בלוח, ובפאנל שנפתח לחץ "בטל שיעור". לשיעור חוזר (שבועי) – ניתן לקבוע תאריך אחרון ולבטל רק מאותו תאריך והלאה. ניתן להודיע לתלמיד ידנית דרך מסך ההודעות.</p>
         </details>
 
         <details>
-          <summary>האם תלמידים רואים את כל הלוח שלך?</summary>
-          <p>כן. תלמידים רואים רק את החלונות עם סטטוס <strong>פנוי</strong>. חלונות מסוכמים, פגישות פרטיות או שיעורים של תלמידים אחרים – לא מופיעים בתצוגת שלהם.</p>
+          <summary>איך עובד מעקב התשלומים?</summary>
+          <p>לאחר שמסמנים שיעור כ"הושלם", הוא מופיע בדף החשבונות כחוב פתוח. כשמסמנים "שולם" (ידנית לאחר רישום תשלום) – הוא עובר לסגור. ניתן גם לשלוח תזכורת תשלום ישירות מדף החשבונות.</p>
         </details>
 
         <details>
-          <summary>מה אם יש צורך לשנות שיעור מתעריף ספציפי?</summary>
-          <p>תעריף ברירת מחדל מגדיר בהגדרות, אבל כל שיעור ניתן לעקוף אותו עם תעריף אחר. השתמש לשיעורים מיוחדים, אחריים, אם מחיר אחרים לא בהגדרות ולא בגלל.</p>
+          <summary>איך מגדירים תעריף שונה לתלמיד ספציפי?</summary>
+          <p>בדף תלמידים: לחץ על שלוש הנקודות לצד שם התלמיד → <strong>עריכת תלמיד</strong> → שדה "תעריף שעתי". הגדרה זו תגבה על תעריף ברירת המחדל של ההגדרות.</p>
         </details>
 
         <details>
-          <summary>האם ניתן להעתיק חלון ממשתמש לאחרים?</summary>
-          <p>חלונות שבועיות מתווסף אוטומטיות בכל שבוע בשעה שבחרת – אין צורך להעתיק לחזור. רק חלונות כל-פעמיות צריך לייצר חלון חדש כל פעם.</p>
+          <summary>כיצד מסנכרנים את הלוח עם Google Calendar?</summary>
+          <p><code>הגדרות → General → סנכרון יומן → צור קישור</code>. העתק את הקישור ובגוגל Calendar: <code>הגדרות → הוסף יומן → מכתובת URL</code>. הדביק את הקישור ואשר. הסנכרון מתעדכן אוטומטית.</p>
         </details>
 
         <details>
-          <summary>האם ניתן לראות אם לא תישאל בכניסה?</summary>
-          <p>כן. אם לא תנוח שהכניסה בעת עוד ביקר. ניתן למסך להמישיר שנכנס על כולם – תרגם את את כל הלמידים, ותלמידים אין תנוח בלחיצה כמה שלהם.</p>
+          <summary>האם ניתן לנהל שיעורי קבוצה?</summary>
+          <p>כן. ראשית הפעל את פיצ'ר הקבוצות ב<code>הגדרות → General → פיצ'רים</code>. לאחר מכן צור קבוצה ב<code>תלמידים → קבוצות</code>, הוסף חברים, וצור חלון זמן עם מקסימום תלמידים לפי גודל הקבוצה.</p>
         </details>
 
         <details>
-          <summary>האם יש אפליקציה ל-iPhone?</summary>
-          <p>גרסת iOS נתמכת עדיין על מסכים מיוחד. למשתמש iPhone יצטרכו להיכנס לאתר ידי דפדפן (Safari או Chrome) מהיכנס לאתר. גרסת iOS נתמכת להתחיל נתמכת בעתיד.</p>
+          <summary>האם ניתן לייצא את הנתונים שלי?</summary>
+          <p>כן. עבור ל<code>הגדרות → Export</code>. ניתן להוריד קובץ Excel עם כל הנתונים: תלמידים, שיעורים, תשלומים ומחברות. הקובץ תואם לפתיחה ב-Excel וב-Google Sheets.</p>
         </details>
 
         <details>
-          <summary>כיצד ניתן לשלוח שאלות נוספות?</summary>
-          <p>ניתן לפנות לנו בכתובת <a href="mailto:support@saderot.com">support@saderot.com</a> או לפנות לנוסף ידי מסך ההודעות. אם ניתן ענייד על תוך 24 שעות.</p>
+          <summary>האם יש אפליקציה לנייד?</summary>
+          <p><strong>Android:</strong> האפליקציה זמינה להתקנה ישירה. <strong>iPhone:</strong> פתח את saderOT ב-Safari, לחץ "שתף" ו"הוסף למסך הבית". כך תקבל חווית אפליקציה מלאה כולל התראות פוש (מצריך iOS 16.4 ומעלה).</p>
+        </details>
+
+        <details>
+          <summary>כיצד יוצרים קשר עם התמיכה?</summary>
+          <p>ניתן לפנות בכתובת <a href="mailto:support@saderot.com">support@saderot.com</a>. אנו מטרגטים מענה תוך 24 שעות.</p>
         </details>
       </div>
     </section>
@@ -1204,8 +1718,8 @@ footer p.tiny { font-size: 12px; color: var(--gray-500); margin-top: 16px; }
     <span>saderOT</span>
   </a>
   <p>סדר לחיים – האפליקציה שמסדרת את העסק שלך</p>
-  <p>תזמון · תלמידים · תשלומים – האפליקציה שלנו</p>
-  <p class="tiny">© saderOT · מדריך למשתמש</p>
+  <p>תזמון · תלמידים · תשלומים – הכל במקום אחד</p>
+  <p class="tiny">© saderOT · מדריך למשתמש · עודכן יוני 2026</p>
 </footer>
 
 </body>

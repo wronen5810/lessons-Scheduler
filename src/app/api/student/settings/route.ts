@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/lib/supabase-server';
 import { claimsFromRequest, issueStudentToken } from '@/lib/student-token';
 
+// GET /api/student/settings — fetch current student info
+export async function GET(request: NextRequest) {
+  const claims = claimsFromRequest(request);
+  if (!claims) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const supabase = createServiceSupabase();
+  const isEmail = claims.email.includes('@');
+  let q = supabase
+    .from('students')
+    .select('name, email, phone, two_factor_enabled')
+    .eq('teacher_id', claims.teacherId);
+  q = isEmail ? q.ilike('email', claims.email) : q.eq('phone', claims.email);
+  const { data: student, error } = await q.maybeSingle();
+
+  if (error || !student) {
+    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+  }
+
+  return NextResponse.json(student);
+}
+
 // PATCH /api/student/settings
 // Body: { email?, phone?, two_factor_enabled? }
 // Requires valid student JWT. Updates the student record for the teacherId in the token.
@@ -17,14 +38,13 @@ export async function PATCH(request: NextRequest) {
   };
 
   const supabase = createServiceSupabase();
-
-  // Fetch current record to verify it exists
-  const { data: student, error: fetchErr } = await supabase
+  const isEmail = claims.email.includes('@');
+  let q = supabase
     .from('students')
     .select('id, email, phone, two_factor_enabled')
-    .eq('teacher_id', claims.teacherId)
-    .ilike('email', claims.email)
-    .single();
+    .eq('teacher_id', claims.teacherId);
+  q = isEmail ? q.ilike('email', claims.email) : q.eq('phone', claims.email);
+  const { data: student, error: fetchErr } = await q.maybeSingle();
 
   if (fetchErr || !student) {
     return NextResponse.json({ error: 'Student not found' }, { status: 404 });
@@ -53,25 +73,4 @@ export async function PATCH(request: NextRequest) {
   const newToken = issueStudentToken(responseEmail, claims.teacherId);
 
   return NextResponse.json({ ok: true, token: newToken, email: responseEmail });
-}
-
-// GET /api/student/settings — fetch current student info
-export async function GET(request: NextRequest) {
-  const claims = claimsFromRequest(request);
-  if (!claims) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const supabase = createServiceSupabase();
-
-  const { data: student, error } = await supabase
-    .from('students')
-    .select('email, phone, two_factor_enabled')
-    .eq('teacher_id', claims.teacherId)
-    .ilike('email', claims.email)
-    .single();
-
-  if (error || !student) {
-    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
-  }
-
-  return NextResponse.json(student);
 }
