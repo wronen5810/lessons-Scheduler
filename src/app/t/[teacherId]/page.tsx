@@ -244,13 +244,14 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
   })();
 
   // Build date markers
-  const dateMarkers = new Map<string, { available: boolean; booked: boolean }>();
+  const dateMarkers = new Map<string, { available: boolean; booked: boolean; pending: boolean }>();
   for (const slot of slots) {
     if (slot.state === 'unavailable' || slot.state === 'blocked') continue;
-    if (!dateMarkers.has(slot.date)) dateMarkers.set(slot.date, { available: false, booked: false });
+    if (!dateMarkers.has(slot.date)) dateMarkers.set(slot.date, { available: false, booked: false, pending: false });
     const m = dateMarkers.get(slot.date)!;
     if (slot.state === 'available') m.available = true;
-    else m.booked = true;
+    else if (slot.state === 'pending' || slot.state === 'cancellation_requested') m.pending = true;
+    else m.booked = true; // confirmed, completed, paid
   }
 
   // Build event date markers (span full date range for multi-day events)
@@ -533,9 +534,10 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                         const isPast = date < today;
                         const isToday = date === today;
                         const hasAvailable = !isPast && marker?.available;
-                        const hasBooked = marker?.booked;
-                        const hasEventOnly = !isPast && !hasAvailable && !hasBooked && eventDates.has(date);
-                        const isClickable = !isPast && (hasAvailable || hasBooked || hasEventOnly);
+                        const hasBooked = marker?.booked; // confirmed/completed/paid
+                        const hasPending = !hasBooked && !!marker?.pending; // pending style only when no confirmed
+                        const hasEventOnly = !isPast && !hasAvailable && !hasBooked && !hasPending && eventDates.has(date);
+                        const isClickable = !isPast && (hasAvailable || hasBooked || hasPending || hasEventOnly);
                         const dayNum = parseInt(date.slice(8));
 
                         const hasEvent = eventDates.has(date);
@@ -546,12 +548,14 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                               disabled={!isClickable}
                               className={`relative w-9 h-9 flex items-center justify-center rounded-full text-sm font-medium transition-all
                                 ${!isClickable && !isToday ? 'text-gray-300 cursor-default' : ''}
-                                ${isToday && !hasAvailable && !hasBooked ? 'ring-2 ring-blue-400 text-blue-600 font-bold' : ''}
-                                ${hasAvailable && !hasBooked ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold' : ''}
+                                ${isToday && !hasAvailable && !hasBooked && !hasPending ? 'ring-2 ring-blue-400 text-blue-600 font-bold' : ''}
+                                ${hasAvailable && !hasBooked && !hasPending ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold' : ''}
                                 ${hasBooked && !hasAvailable ? 'bg-blue-100 text-blue-900 hover:bg-blue-200 cursor-pointer font-semibold' : ''}
                                 ${hasAvailable && hasBooked ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold ring-2 ring-blue-400 ring-offset-1' : ''}
+                                ${hasPending && !hasAvailable ? 'bg-purple-100 text-purple-900 hover:bg-purple-200 cursor-pointer font-semibold' : ''}
+                                ${hasPending && hasAvailable ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer font-semibold ring-2 ring-purple-400 ring-offset-1' : ''}
                                 ${hasEventOnly ? 'text-gray-700 hover:bg-gray-100 cursor-pointer' : ''}
-                                ${isToday && (hasAvailable || hasBooked) ? 'ring-offset-1' : ''}
+                                ${isToday && (hasAvailable || hasBooked || hasPending) ? 'ring-offset-1' : ''}
                               `}
                             >
                               {dayNum}
@@ -574,14 +578,14 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                   </span>
                   {email && (
                     <span className="flex items-center gap-2 text-xs text-gray-500">
-                      <span className="w-5 h-5 rounded-full bg-blue-100 border border-blue-200 inline-block" />
-                      {t('slot.confirmed')}
+                      <span className="w-5 h-5 rounded-full bg-purple-100 border border-purple-200 inline-block" />
+                      {t('slot.pending')}
                     </span>
                   )}
                   {email && (
                     <span className="flex items-center gap-2 text-xs text-gray-500">
-                      <span className="w-5 h-5 rounded-full bg-amber-100 ring-2 ring-blue-400 ring-offset-1 inline-block" />
-                      {t('slot.both')}
+                      <span className="w-5 h-5 rounded-full bg-blue-100 border border-blue-200 inline-block" />
+                      {t('slot.confirmed')}
                     </span>
                   )}
                   {email && studentEvents.length > 0 && (
@@ -605,7 +609,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                 <div className="divide-y divide-gray-50">
                   {bookings.map(b => {
                     const statusColors: Record<string, string> = {
-                      pending: 'text-amber-700 bg-amber-50',
+                      pending: 'text-purple-700 bg-purple-50',
                       approved: 'text-blue-700 bg-blue-50',
                       cancellation_requested: 'text-rose-700 bg-rose-50',
                     };
@@ -705,7 +709,7 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                       <div className="space-y-2">
                         {bookedSlots.map((slot) => {
                           const statusColors: Record<string, string> = {
-                            pending: 'bg-amber-50 border-amber-200 text-amber-800',
+                            pending: 'bg-purple-50 border-purple-200 text-purple-800',
                             confirmed: 'bg-blue-50 border-blue-200 text-blue-800',
                             completed: 'bg-violet-50 border-violet-200 text-violet-800',
                             paid: 'bg-emerald-50 border-emerald-200 text-emerald-800',
