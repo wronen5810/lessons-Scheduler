@@ -27,42 +27,15 @@ export default function TeacherDashboard() {
     createBrowserSupabase().auth.getUser().then(({ data }) => {
       if (data.user) setTeacherId(data.user.id);
     });
-    fetch('/api/teacher/me/subscription').then(r => r.json()).then(data => {
-      if (data.teacher?.name) setTeacherName(data.teacher.name);
-    }).catch(() => {});
-    fetch('/api/teacher/next-lesson').then(r => r.json()).then(data => {
-      if (data.date) setNextLesson(data);
-    }).catch(() => {});
-    fetch('/api/teacher/requests').then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setPendingCount(data.length);
-    }).catch(() => {});
-    fetch('/api/teacher/students').then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setStudentCount(data.filter((s: { is_active: boolean }) => s.is_active).length);
-    }).catch(() => {});
-    fetch('/api/teacher/messages/inbox')
-      .then(r => r.ok ? r.json() : [])
-      .then((data: Array<{ direction: string; read_at: string | null }>) => {
-        setUnreadCount(data.filter(m => m.direction === 'to_teacher' && !m.read_at).length);
-      }).catch(() => setUnreadCount(0));
-
-    const today = new Date().toISOString().slice(0, 10);
-    const weekStart = getWeekStart(today);
-    fetch(`/api/teacher/slots?week=${weekStart}`).then(r => r.json()).then(slots => {
-      if (Array.isArray(slots)) {
-        const booked = slots.filter((s: { date: string; state: string }) =>
-          s.date === today && ['pending', 'confirmed', 'completed'].includes(s.state)
-        ).length;
-        setTodayCount(booked);
-      }
+    fetch('/api/teacher/dashboard').then(r => r.json()).then(data => {
+      if (data.teacherName) setTeacherName(data.teacherName);
+      if (data.nextLesson) setNextLesson(data.nextLesson);
+      setPendingCount(data.pendingCount ?? 0);
+      setTodayCount(data.todayCount ?? 0);
+      setStudentCount(data.studentCount ?? 0);
+      setUnreadCount(data.unreadCount ?? 0);
     }).catch(() => {});
   }, []);
-
-  function getWeekStart(date: string): string {
-    const d = new Date(date);
-    const day = d.getDay();
-    d.setDate(d.getDate() - day);
-    return d.toISOString().slice(0, 10);
-  }
 
   function copyShareLink() {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://saderot.com';
@@ -100,11 +73,11 @@ export default function TeacherDashboard() {
         {/* Hero: next lesson */}
         {nextLesson ? (
           <div className="bg-blue-600 rounded-2xl p-5 text-white shadow-md">
-            <p className="text-xs font-semibold opacity-70 uppercase tracking-wide">{t('teacher.nextLesson').split('{')[0].trim()}</p>
+            <p className="text-xs font-semibold opacity-70 uppercase tracking-wide">{t('teacher.nextLessonLabel')}</p>
             <p className="text-3xl font-bold mt-1">
               {nextLesson.hours > 0
                 ? translate(lang, 'teacher.nextLesson', { hours: String(nextLesson.hours), minutes: String(nextLesson.minutes) })
-                : `${nextLesson.minutes} min`}
+                : translate(lang, 'teacher.nextLessonMins', { minutes: String(nextLesson.minutes) })}
             </p>
             {nextLesson.student_name && (
               <p className="text-sm opacity-80 mt-1">— {nextLesson.student_name}</p>
@@ -167,8 +140,8 @@ export default function TeacherDashboard() {
 
         {/* Quick action wizards */}
         <QuickActionsWizard onOpenSettings={() => setShowSettings(true)} onRefresh={() => {
-          fetch('/api/teacher/students').then(r => r.json()).then(data => {
-            if (Array.isArray(data)) setStudentCount(data.filter((s: { is_active: boolean }) => s.is_active).length);
+          fetch('/api/teacher/dashboard').then(r => r.json()).then(data => {
+            setStudentCount(data.studentCount ?? 0);
           }).catch(() => {});
         }} />
 

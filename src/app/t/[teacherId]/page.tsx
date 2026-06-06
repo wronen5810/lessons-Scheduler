@@ -9,7 +9,7 @@ import {
   getEndTime, getMonthStr, getMonthWeekStarts,
   nextMonth, prevMonth, todayInIsrael,
 } from '@/lib/dates';
-import { DAY_NAMES_HE, DAY_NAMES_SHORT_HE } from '@/lib/i18n';
+import { DAY_NAMES_HE, DAY_NAMES_SHORT_HE, translate } from '@/lib/i18n';
 import type { ComputedSlot, CalendarEvent } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 import StudentNotebook from '@/components/StudentNotebook';
@@ -499,8 +499,8 @@ function StudentCalendar({ teacherId }: { teacherId: string }) {
                 </svg>
                 <p className="text-sm font-medium text-blue-800">
                   {nextLesson.hours > 0
-                    ? `${t('teacher.nextLesson').split('{')[0].trim()} ${nextLesson.hours}h ${nextLesson.minutes}m`
-                    : `${t('teacher.nextLesson').split('{')[0].trim()} ${nextLesson.minutes}m`}
+                    ? translate(lang, 'teacher.nextLesson', { hours: String(nextLesson.hours), minutes: String(nextLesson.minutes) })
+                    : translate(lang, 'teacher.nextLessonMins', { minutes: String(nextLesson.minutes) })}
                 </p>
               </div>
             )}

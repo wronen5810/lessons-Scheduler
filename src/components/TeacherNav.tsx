@@ -22,12 +22,14 @@ export default function TeacherNav({
   teacherName: teacherNameProp,
   teacherId: teacherIdProp,
   pendingCount: pendingCountProp,
+  profilePhotoUrl: profilePhotoUrlProp,
 }: {
   title?: string;
   nextLesson?: { hours: number; minutes: number } | null;
   teacherName?: string;
   teacherId?: string;
   pendingCount?: number;
+  profilePhotoUrl?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,6 +46,7 @@ export default function TeacherNav({
   const features = settings.features;
   const [teacherId, setTeacherId] = useState(teacherIdProp ?? '');
   const [teacherName, setTeacherName] = useState(teacherNameProp ?? '');
+  const [profilePhotoUrl] = useState(profilePhotoUrlProp ?? '');
   const [showShareLink, setShowShareLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'general' | 'profile'>('general');
@@ -70,6 +73,11 @@ export default function TeacherNav({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Update browser tab title with teacher's name
+  useEffect(() => {
+    if (teacherName) document.title = `${teacherName} · saderot`;
+  }, [teacherName]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -121,7 +129,9 @@ export default function TeacherNav({
           {nextLesson && (
             <span className="text-xs font-medium text-blue-600 min-w-0 text-center leading-tight flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-              {translate(lang, 'teacher.nextLesson', { hours: String(nextLesson.hours), minutes: String(nextLesson.minutes) })}
+              {nextLesson.hours > 0
+                ? translate(lang, 'teacher.nextLessonBanner', { hours: String(nextLesson.hours), minutes: String(nextLesson.minutes) })
+                : translate(lang, 'teacher.nextLessonBannerMins', { minutes: String(nextLesson.minutes) })}
             </span>
           )}
         </div>
@@ -145,9 +155,16 @@ export default function TeacherNav({
           <button
             onClick={() => { setSettingsTab('profile'); setShowSettings(true); }}
             title="Profile"
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 hover:text-blue-700 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 hover:text-blue-700 transition-colors overflow-hidden"
           >
-            <UserCircle className="w-4 h-4" />
+            {profilePhotoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : teacherName ? (
+              <span className="text-xs font-bold text-blue-600">{teacherName.charAt(0).toUpperCase()}</span>
+            ) : (
+              <UserCircle className="w-4 h-4" />
+            )}
           </button>
 
           {/* Menu dropdown */}
@@ -242,7 +259,9 @@ export default function TeacherNav({
         <div className="sm:hidden bg-blue-50 border-b border-blue-100 px-4 py-1.5 text-center">
           <span className="text-xs font-medium text-blue-700 whitespace-nowrap inline-flex items-center gap-1 justify-center">
             <Clock className="w-3 h-3" />
-            {translate(lang, 'teacher.nextLessonBanner', { hours: String(nextLesson.hours), minutes: String(nextLesson.minutes) })}
+            {nextLesson.hours > 0
+              ? translate(lang, 'teacher.nextLessonBanner', { hours: String(nextLesson.hours), minutes: String(nextLesson.minutes) })
+              : translate(lang, 'teacher.nextLessonBannerMins', { minutes: String(nextLesson.minutes) })}
           </span>
         </div>
       )}

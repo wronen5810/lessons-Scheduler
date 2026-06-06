@@ -70,7 +70,7 @@ export default async function TeacherProtectedLayout({ children }: { children: R
     supabase.from('one_time_bookings').select('specific_date, start_time, status')
       .eq('teacher_id', user.id).in('status', ['pending', 'approved'])
       .gte('specific_date', todayStr).order('specific_date').order('start_time').limit(20),
-    supabase.from('profiles').select('display_name').eq('id', user.id).single(),
+    supabase.from('profiles').select('display_name, photo_url').eq('id', user.id).single(),
   ]);
 
   const featuresData = (tSettings?.features ?? {}) as Record<string, unknown>;
@@ -117,6 +117,7 @@ export default async function TeacherProtectedLayout({ children }: { children: R
             teacherName={profile?.display_name ?? ''}
             teacherId={user.id}
             pendingCount={pendingCount}
+            profilePhotoUrl={(profile as { photo_url?: string | null } | null)?.photo_url ?? undefined}
           />
           <AssistantBar />
           <div className="flex-1 pb-14 sm:pb-0">{children}</div>
