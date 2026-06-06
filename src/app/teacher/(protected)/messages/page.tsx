@@ -10,6 +10,7 @@ interface InboxMessage {
   direction: string;
   body: string;
   sent_at: string;
+  read_at: string | null;
 }
 
 interface Student {
@@ -44,6 +45,20 @@ export default function MessagesPage() {
   const [inbox, setInbox] = useState<InboxMessage[]>([]);
   const [inboxLoading, setInboxLoading] = useState(true);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+
+  async function markRead(studentEmail: string) {
+    await fetch('/api/teacher/messages/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_email: studentEmail }),
+    });
+    // Optimistically mark messages as read in local state
+    setInbox(prev => prev.map(m =>
+      m.student_email.toLowerCase() === studentEmail.toLowerCase() && m.direction === 'to_teacher' && !m.read_at
+        ? { ...m, read_at: new Date().toISOString() }
+        : m
+    ));
+  }
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
@@ -123,7 +138,7 @@ export default function MessagesPage() {
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${tab === 'inbox' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               {t('messages.inbox')}
-              {inbox.length > 0 && <span className="ms-1.5 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5">{inbox.length}</span>}
+              {(() => { const c = inbox.filter(m => m.direction === 'to_teacher' && !m.read_at).length; return c > 0 ? <span className="ms-1.5 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5">{c}</span> : null; })()}
             </button>
             <button
               onClick={() => setTab('compose')}
@@ -175,11 +190,11 @@ export default function MessagesPage() {
                 {studentEmails.map(email => {
                   const msgs = inbox.filter(m => m.student_email === email);
                   const last = msgs[msgs.length - 1];
-                  const unread = msgs.filter(m => m.direction === 'to_teacher').length;
+                  const unread = msgs.filter(m => m.direction === 'to_teacher' && !m.read_at).length;
                   return (
                     <button
                       key={email}
-                      onClick={() => setSelectedEmail(email)}
+                      onClick={() => { setSelectedEmail(email); markRead(email); }}
                       className="w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 hover:border-blue-300 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3">

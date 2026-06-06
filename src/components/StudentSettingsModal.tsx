@@ -25,6 +25,12 @@ export default function StudentSettingsModal({ teacherId, email, token, onClose,
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<'ok' | 'err' | null>(null);
 
+  // Calendar sync state
+  const [calToken, setCalToken] = useState<string | null>(null);
+  const [calUrl, setCalUrl] = useState<string | null>(null);
+  const [calLoading, setCalLoading] = useState(false);
+  const [calCopied, setCalCopied] = useState(false);
+
   // 2FA setup flow
   const [mfaStep, setMfaStep] = useState<TwoFAStep>('idle');
   const [qrDataUrl, setQrDataUrl] = useState('');
@@ -49,6 +55,11 @@ export default function StudentSettingsModal({ teacherId, email, token, onClose,
       setLoading(false);
     }
     load();
+    // Load calendar token
+    fetch('/api/student/calendar-token', { headers: authHeaders })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.token) { setCalToken(d.token); setCalUrl(d.url); } })
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,6 +134,32 @@ export default function StudentSettingsModal({ teacherId, email, token, onClose,
     } else {
       setMfaError(t('student.saveError'));
     }
+  }
+
+  async function generateCalToken() {
+    setCalLoading(true);
+    try {
+      const res = await fetch('/api/student/calendar-token', { method: 'POST', headers: authHeaders });
+      const d = await res.json();
+      setCalToken(d.token); setCalUrl(d.url);
+    } finally { setCalLoading(false); }
+  }
+
+  async function revokeCalToken() {
+    if (!confirm(t('student.calRevokeConfirm'))) return;
+    setCalLoading(true);
+    try {
+      await fetch('/api/student/calendar-token', { method: 'DELETE', headers: authHeaders });
+      setCalToken(null); setCalUrl(null);
+    } finally { setCalLoading(false); }
+  }
+
+  function copyCalUrl() {
+    if (!calUrl) return;
+    navigator.clipboard.writeText(calUrl).then(() => {
+      setCalCopied(true);
+      setTimeout(() => setCalCopied(false), 2000);
+    });
   }
 
   return (
@@ -283,6 +320,60 @@ export default function StudentSettingsModal({ teacherId, email, token, onClose,
                   >
                     {t('common.back')}
                   </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Calendar Sync ── */}
+            <div className="border-t border-gray-100 pt-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('student.calSync')}</p>
+                {calToken && (
+                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{t('student.calActive')}</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mb-3">{t('student.calSyncDesc')}</p>
+
+              {!calToken ? (
+                <button
+                  onClick={generateCalToken}
+                  disabled={calLoading}
+                  className="w-full bg-blue-600 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {calLoading ? t('student.calGenerating') : t('student.calGenerate')}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={calUrl ?? ''}
+                      className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-600 bg-gray-50 font-mono truncate focus:outline-none"
+                    />
+                    <button
+                      onClick={copyCalUrl}
+                      className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
+                      {calCopied ? t('student.calCopied') : t('common.copy')}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={generateCalToken}
+                      disabled={calLoading}
+                      className="flex-1 text-xs py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      {calLoading ? t('student.calWorking') : t('student.calRegenerate')}
+                    </button>
+                    <button
+                      onClick={revokeCalToken}
+                      disabled={calLoading}
+                      className="flex-1 text-xs py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    >
+                      {t('student.calRevoke')}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400">{t('student.calPrivacyNote')}</p>
                 </div>
               )}
             </div>

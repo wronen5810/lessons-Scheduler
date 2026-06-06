@@ -12,7 +12,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('messages')
-    .select('id, student_email, direction, body, sent_at')
+    .select('id, student_email, direction, body, sent_at, read_at')
     .eq('teacher_id', auth.user.id)
     .order('sent_at', { ascending: true });
 

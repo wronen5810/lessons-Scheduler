@@ -17,19 +17,10 @@ interface Props {
   onClose: () => void;
 }
 
-const NOTIFICATION_ROWS: { key: NotificationKey; label: string; direction: string }[] = [
-  { key: 'lesson_request',   label: 'New lesson request',   direction: '→ you' },
-  { key: 'lesson_approved',  label: 'Lesson approved',      direction: '→ student' },
-  { key: 'lesson_rejected',  label: 'Lesson rejected',      direction: '→ student' },
-  { key: 'lesson_cancelled', label: 'Lesson cancelled',     direction: '→ student' },
-  { key: 'lesson_reminder',  label: 'Lesson reminder',      direction: '→ student' },
-  { key: 'access_request',   label: 'New student request',  direction: '→ you' },
-];
-
 type Tab = 'general' | 'profile' | 'export';
 
 export default function TeacherSettingsModal({ settings, onSave, onClose, initialTab = 'general' }: Props & { initialTab?: Tab }) {
-  const { setLang } = useLanguage();
+  const { t, lang, isRTL, setLang } = useLanguage();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [exportLoading, setExportLoading] = useState(false);
   const [exportError, setExportError] = useState('');
@@ -91,6 +82,16 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
   const [twoFAError, setTwoFAError] = useState('');
   const [twoFALoading, setTwoFALoading] = useState(false);
 
+  // ── Notification rows (translated) ──
+  const NOTIFICATION_ROWS: { key: NotificationKey; label: string; direction: string }[] = [
+    { key: 'lesson_request',   label: t('settings.notifLessonRequest'),   direction: t('settings.notifDirToYou') },
+    { key: 'lesson_approved',  label: t('settings.notifLessonApproved'),  direction: t('settings.notifDirToStudent') },
+    { key: 'lesson_rejected',  label: t('settings.notifLessonRejected'),  direction: t('settings.notifDirToStudent') },
+    { key: 'lesson_cancelled', label: t('settings.notifLessonCancelled'), direction: t('settings.notifDirToStudent') },
+    { key: 'lesson_reminder',  label: t('settings.notifLessonReminder'),  direction: t('settings.notifDirToStudent') },
+    { key: 'access_request',   label: t('settings.notifAccessRequest'),   direction: t('settings.notifDirToYou') },
+  ];
+
   useEffect(() => {
     fetch('/api/teacher/calendar-token')
       .then((r) => r.ok ? r.json() : null)
@@ -108,7 +109,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
   }
 
   async function revokeCalToken() {
-    if (!confirm('Revoke calendar link? Anyone using the current URL will lose access.')) return;
+    if (!confirm(t('settings.calRevokeConfirm'))) return;
     setCalLoading(true);
     try {
       await fetch('/api/teacher/calendar-token', { method: 'DELETE' });
@@ -167,7 +168,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
     const res = await fetch('/api/teacher/2fa/setup', { method: 'POST' });
     const data = await res.json();
     setTwoFALoading(false);
-    if (!res.ok) { setTwoFAError(data.error || 'Setup failed'); return; }
+    if (!res.ok) { setTwoFAError(data.error || t('settings.twoFASetupFailed')); return; }
     setTwoFAQr(data.qr);
     setTwoFASecret(data.secret);
     setTwoFACode('');
@@ -175,7 +176,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
   }
 
   async function confirmTwoFAEnable() {
-    if (!twoFACode) { setTwoFAError('Enter the 6-digit code'); return; }
+    if (!twoFACode) { setTwoFAError(t('settings.twoFAEnterCode')); return; }
     setTwoFALoading(true);
     setTwoFAError('');
     const res = await fetch('/api/teacher/2fa/enable', {
@@ -185,14 +186,14 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
     });
     const data = await res.json();
     setTwoFALoading(false);
-    if (!res.ok) { setTwoFAError(data.error || 'Verification failed'); return; }
+    if (!res.ok) { setTwoFAError(data.error || t('settings.twoFAVerifyFailed')); return; }
     setTwoFAEnabled(true);
     setTwoFAStep('idle');
     setTwoFACode('');
   }
 
   async function confirmTwoFADisable() {
-    if (!twoFACode) { setTwoFAError('Enter the 6-digit code'); return; }
+    if (!twoFACode) { setTwoFAError(t('settings.twoFAEnterCode')); return; }
     setTwoFALoading(true);
     setTwoFAError('');
     const res = await fetch('/api/teacher/2fa/disable', {
@@ -202,7 +203,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
     });
     const data = await res.json();
     setTwoFALoading(false);
-    if (!res.ok) { setTwoFAError(data.error || 'Verification failed'); return; }
+    if (!res.ok) { setTwoFAError(data.error || t('settings.twoFAVerifyFailed')); return; }
     setTwoFAEnabled(false);
     setTwoFAStep('idle');
     setTwoFACode('');
@@ -251,7 +252,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
       } else {
         const d = await res.json().catch(() => ({}));
         setSaving(false);
-        setError(d.error || 'Photo upload failed');
+        setError(d.error || t('settings.errorPhotoUpload'));
         return;
       }
     }
@@ -278,7 +279,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
       onClose();
     } else {
       const d = await res.json().catch(() => ({}));
-      setError(d.error || 'Failed to save profile');
+      setError(d.error || t('settings.errorProfileSave'));
     }
   }
 
@@ -286,22 +287,22 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
 
   return (
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-gray-900">Settings</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t('common.settings')}</h2>
           <div className="flex items-center gap-2">
             <button onClick={onClose}
               className="text-xs text-gray-500 hover:text-gray-700 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-              Cancel
+              {t('common.cancel')}
             </button>
             {activeTab !== 'export' && (
             <button
               onClick={activeTab === 'profile' ? handleProfileSave : handleGeneralSave}
               disabled={saving}
               className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
           )}
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none ms-1">&times;</button>
@@ -314,13 +315,13 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setError(''); setExportError(''); }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
                 activeTab === tab
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab === 'general' ? 'General' : tab === 'profile' ? 'Profile' : 'Export'}
+              {tab === 'general' ? t('settings.tabGeneral') : tab === 'profile' ? t('settings.tabProfile') : t('settings.tabExport')}
             </button>
           ))}
         </div>
@@ -330,7 +331,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
           <>
             {/* Default lesson duration */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default lesson duration</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.defaultDuration')}</label>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -341,29 +342,29 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   onChange={(e) => setDuration(Number(e.target.value))}
                   className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-500">minutes</span>
+                <span className="text-sm text-gray-500">{t('settings.minutes')}</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Used when creating new slots.</p>
+              <p className="text-xs text-gray-400 mt-1">{t('settings.defaultDurationDesc')}</p>
             </div>
 
             {/* Time format */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Time format</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.timeFormat')}</label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" name="timeFormat" value="24h" checked={timeFormat === '24h'} onChange={() => setTimeFormat('24h')} className="accent-blue-600" />
-                  <span className="text-sm text-gray-700">24-hour <span className="text-gray-400">(14:30)</span></span>
+                  <span className="text-sm text-gray-700">{t('settings.24h')} <span className="text-gray-400">(14:30)</span></span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" name="timeFormat" value="12h" checked={timeFormat === '12h'} onChange={() => setTimeFormat('12h')} className="accent-blue-600" />
-                  <span className="text-sm text-gray-700">12-hour <span className="text-gray-400">(2:30 PM)</span></span>
+                  <span className="text-sm text-gray-700">{t('settings.12h')} <span className="text-gray-400">(2:30 PM)</span></span>
                 </label>
               </div>
             </div>
 
             {/* Interface language */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Interface language</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.interfaceLang')}</label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" name="uiLang" value="he" checked={uiLang === 'he'} onChange={() => setUiLang('he')} className="accent-blue-600" />
@@ -374,12 +375,12 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   <span className="text-sm text-gray-700">English</span>
                 </label>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Sets the default language for your interface.</p>
+              <p className="text-xs text-gray-400 mt-1">{t('settings.interfaceLangDesc')}</p>
             </div>
 
             {/* Student enrollment */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Student enrollment</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.enrollment')}</label>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -388,9 +389,9 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   className="w-4 h-4 accent-blue-600 cursor-pointer mt-0.5"
                 />
                 <span className="text-sm text-gray-800">
-                  Automatic approval
+                  {t('settings.autoApprove')}
                   <span className="block text-xs text-gray-400 mt-0.5">
-                    Students who request access are added automatically without waiting for your approval. You will be notified when a new student joins.
+                    {t('settings.autoApproveDesc')}
                   </span>
                 </span>
               </label>
@@ -398,15 +399,15 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
 
             {/* Features */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Features</label>
-              <p className="text-xs text-gray-400 mb-3">Hide features you don't need from the menu and student screen.</p>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.features')}</label>
+              <p className="text-xs text-gray-400 mb-3">{t('settings.featuresDesc')}</p>
               <div className="space-y-2">
                 {([
-                  { key: 'billing',            label: 'Billing',                      desc: 'Billing page in menu' },
-                  { key: 'messages',           label: 'Messages',                     desc: 'Messages page in menu' },
-                  { key: 'groups',             label: 'Groups',                       desc: 'Groups tab in student screen' },
-                  { key: 'notebook',           label: 'Notebook',                     desc: 'Student notebook (tasks, notes, resources, grades)' },
-                  { key: 'allow_cancellation', label: 'Student cancellation requests', desc: 'Students can request lesson cancellation' },
+                  { key: 'billing',            label: t('settings.featureBilling'),      desc: t('settings.featureBillingDesc') },
+                  { key: 'messages',           label: t('settings.featureMessages'),     desc: t('settings.featureMessagesDesc') },
+                  { key: 'groups',             label: t('settings.featureGroups'),       desc: t('settings.featureGroupsDesc') },
+                  { key: 'notebook',           label: t('settings.featureNotebook'),     desc: t('settings.featureNotebookDesc') },
+                  { key: 'allow_cancellation', label: t('settings.featureCancellation'), desc: t('settings.featureCancellationDesc') },
                 ] as { key: keyof TeacherFeatures; label: string; desc: string }[]).map(({ key, label, desc }) => (
                   <label key={key} className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -423,12 +424,12 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
 
             {/* Notification preferences */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notifications</label>
-              <p className="text-xs text-gray-400 mb-3">WhatsApp/push to student requires their phone or app install.</p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.notifications')}</label>
+              <p className="text-xs text-gray-400 mb-3">{t('settings.notifDesc')}</p>
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="grid grid-cols-[1fr_48px_64px_48px] bg-gray-50 px-3 py-2 border-b border-gray-200 gap-2">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Event</span>
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide text-center">Email</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('settings.notifEvent')}</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide text-center">{t('common.email')}</span>
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide text-center">WhatsApp</span>
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide text-center">Push</span>
                 </div>
@@ -459,16 +460,16 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
             {/* Two-Factor Authentication */}
             <div className="border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm font-medium text-gray-700">Two-Factor Authentication</label>
+                <label className="text-sm font-medium text-gray-700">{t('settings.twoFA')}</label>
                 {twoFAEnabled === null ? (
-                  <span className="text-xs text-gray-400">Loading…</span>
+                  <span className="text-xs text-gray-400">{t('settings.twoFALoading')}</span>
                 ) : twoFAEnabled ? (
-                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Enabled</span>
+                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{t('settings.twoFAEnabled')}</span>
                 ) : (
-                  <span className="text-xs text-gray-400">Not enabled</span>
+                  <span className="text-xs text-gray-400">{t('settings.twoFANotEnabled')}</span>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mb-3">Use Google Authenticator to require a one-time code at every login.</p>
+              <p className="text-xs text-gray-400 mb-3">{t('settings.twoFADesc')}</p>
 
               {twoFAStep === 'idle' && twoFAEnabled === false && (
                 <button
@@ -477,7 +478,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   disabled={twoFALoading}
                   className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {twoFALoading ? 'Loading…' : 'Enable 2FA'}
+                  {twoFALoading ? t('settings.twoFALoading') : t('settings.twoFAEnable')}
                 </button>
               )}
 
@@ -487,16 +488,26 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   onClick={() => { setTwoFAStep('disabling'); setTwoFACode(''); setTwoFAError(''); }}
                   className="text-sm px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  Disable 2FA
+                  {t('settings.twoFADisable')}
                 </button>
               )}
 
               {twoFAStep === 'setup' && (
                 <div className="space-y-3">
                   <p className="text-xs text-gray-600">
-                    1. Open <strong>Google Authenticator</strong> and tap the <strong>+</strong> button.<br />
-                    2. Choose <strong>Scan a QR code</strong> and point your camera at the image below.<br />
-                    3. Enter the 6-digit code shown in the app.
+                    {lang === 'he' ? (
+                      <>
+                        1. פתח/י את <strong>Google Authenticator</strong> ולחץ/י על כפתור ה-<strong>+</strong>.<br />
+                        2. בחר/י <strong>סרוק קוד QR</strong> והצבע/י את המצלמה על התמונה למטה.<br />
+                        3. הכנס/י את הקוד בן 6 הספרות המוצג באפליקציה.
+                      </>
+                    ) : (
+                      <>
+                        1. Open <strong>Google Authenticator</strong> and tap the <strong>+</strong> button.<br />
+                        2. Choose <strong>Scan a QR code</strong> and point your camera at the image below.<br />
+                        3. Enter the 6-digit code shown in the app.
+                      </>
+                    )}
                   </p>
                   {twoFAQr && (
                     <div className="flex justify-center">
@@ -505,7 +516,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                     </div>
                   )}
                   <details className="text-xs text-gray-400">
-                    <summary className="cursor-pointer select-none">Can&apos;t scan? Enter key manually</summary>
+                    <summary className="cursor-pointer select-none">{t('settings.twoFACantScan')}</summary>
                     <p className="mt-1 font-mono break-all select-all bg-gray-50 border border-gray-200 rounded p-2">{twoFASecret}</p>
                   </details>
                   <div className="flex gap-2">
@@ -513,7 +524,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                       type="text"
                       inputMode="numeric"
                       maxLength={6}
-                      placeholder="6-digit code"
+                      placeholder={t('settings.twoFACodePlaceholder')}
                       value={twoFACode}
                       onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
                       className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 tracking-widest"
@@ -524,14 +535,14 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                       disabled={twoFALoading || twoFACode.length < 6}
                       className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
                     >
-                      {twoFALoading ? 'Verifying…' : 'Activate'}
+                      {twoFALoading ? t('settings.twoFAVerifying') : t('settings.twoFAActivate')}
                     </button>
                     <button
                       type="button"
                       onClick={() => { setTwoFAStep('idle'); setTwoFAError(''); }}
                       className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
@@ -539,13 +550,13 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
 
               {twoFAStep === 'disabling' && (
                 <div className="space-y-2">
-                  <p className="text-xs text-gray-600">Enter your current authenticator code to confirm disabling 2FA.</p>
+                  <p className="text-xs text-gray-600">{t('settings.twoFAConfirmDisableDesc')}</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       inputMode="numeric"
                       maxLength={6}
-                      placeholder="6-digit code"
+                      placeholder={t('settings.twoFACodePlaceholder')}
                       value={twoFACode}
                       onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
                       className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 tracking-widest"
@@ -556,14 +567,14 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                       disabled={twoFALoading || twoFACode.length < 6}
                       className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
                     >
-                      {twoFALoading ? 'Verifying…' : 'Confirm'}
+                      {twoFALoading ? t('settings.twoFAVerifying') : t('settings.twoFAConfirm')}
                     </button>
                     <button
                       type="button"
                       onClick={() => { setTwoFAStep('idle'); setTwoFAError(''); }}
                       className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
@@ -575,14 +586,14 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
             {/* ── Calendar Sync ── */}
             <div className="border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-sm font-medium text-gray-700">Calendar Sync</label>
+                <label className="text-sm font-medium text-gray-700">{t('settings.calSync')}</label>
                 {calToken && (
-                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
+                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{t('settings.calActive')}</span>
                 )}
               </div>
               <p className="text-xs text-gray-400 mb-3">
-                Subscribe to your lesson schedule in Google Calendar, Apple Calendar, or Outlook.{' '}
-                <a href="/teacher/calendar-help" target="_blank" className="text-blue-500 hover:underline">How to set up →</a>
+                {t('settings.calSyncDesc')}{' '}
+                <a href="/teacher/calendar-help" target="_blank" className="text-blue-500 hover:underline">{t('settings.calHowTo')}</a>
               </p>
 
               {!calToken ? (
@@ -592,7 +603,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   disabled={calLoading}
                   className="text-sm px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {calLoading ? 'Generating…' : 'Generate calendar link'}
+                  {calLoading ? t('settings.calGenerating') : t('settings.calGenerate')}
                 </button>
               ) : (
                 <div className="space-y-2">
@@ -607,7 +618,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                       onClick={copyCalUrl}
                       className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                     >
-                      {calCopied ? '✓ Copied' : 'Copy'}
+                      {calCopied ? t('settings.calCopied') : t('common.copy')}
                     </button>
                   </div>
                   <div className="flex gap-2">
@@ -617,7 +628,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                       disabled={calLoading}
                       className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
                     >
-                      {calLoading ? 'Working…' : 'Regenerate'}
+                      {calLoading ? t('settings.calWorking') : t('settings.calRegenerate')}
                     </button>
                     <button
                       type="button"
@@ -625,10 +636,10 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                       disabled={calLoading}
                       className="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
                     >
-                      Revoke
+                      {t('settings.calRevoke')}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400">Keep this URL private — it gives read access to your schedule.</p>
+                  <p className="text-xs text-gray-400">{t('settings.calPrivacyNote')}</p>
                 </div>
               )}
             </div>
@@ -639,24 +650,24 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
         {activeTab === 'profile' && (
           <div className="space-y-5">
             {profileLoading ? (
-              <p className="text-sm text-gray-400 text-center py-4">Loading…</p>
+              <p className="text-sm text-gray-400 text-center py-4">{t('common.loading')}</p>
             ) : (
               <>
                 {/* Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profileName')}</label>
                   <input
                     type="text"
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
-                    placeholder="Your display name"
+                    placeholder={t('settings.profileNamePlaceholder')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 {/* Email (read-only) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.email')}</label>
                   <input
                     type="email"
                     value={profileEmail}
@@ -667,37 +678,37 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
 
                 {/* Phone */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.phone')}</label>
                   <input
                     type="tel"
                     value={profilePhone}
                     onChange={(e) => setProfilePhone(e.target.value)}
-                    placeholder="+1 555 000 0000"
+                    placeholder={t('settings.profilePhonePlaceholder')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 {/* Tutoring area */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Area of tutoring</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.tutoringArea')}</label>
                   <input
                     type="text"
                     value={tutoringArea}
                     onChange={(e) => setTutoringArea(e.target.value)}
-                    placeholder="e.g. English, Piano, Math, Literature…"
+                    placeholder={t('settings.tutoringAreaPlaceholder')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-gray-400 mt-1">Shown below your name on the student login page.</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('settings.tutoringAreaDesc')}</p>
                 </div>
 
                 {/* Quote */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quote</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.quote')}</label>
                   <textarea
                     rows={2}
                     value={profileQuote}
                     onChange={(e) => setProfileQuote(e.target.value)}
-                    placeholder="A short inspiring quote shown on your login page…"
+                    placeholder={t('settings.quotePlaceholder')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
@@ -705,9 +716,9 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                 {/* Photo */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">Photo</label>
+                    <label className="text-sm font-medium text-gray-700">{t('settings.photo')}</label>
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <span className="text-xs text-gray-500">Show on page</span>
+                      <span className="text-xs text-gray-500">{t('settings.showOnPage')}</span>
                       <input
                         type="checkbox"
                         checked={showPhoto}
@@ -737,7 +748,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                         onClick={() => fileInputRef.current?.click()}
                         className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                       >
-                        {currentPhotoSrc ? 'Change photo' : 'Upload photo'}
+                        {currentPhotoSrc ? t('settings.changePhoto') : t('settings.uploadPhoto')}
                       </button>
                       {currentPhotoSrc && (
                         <button
@@ -745,10 +756,10 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                           onClick={() => { setPhotoFile(null); setPhotoPreview(''); setProfilePhotoUrl(''); }}
                           className="text-xs text-red-500 hover:text-red-700"
                         >
-                          Remove
+                          {t('common.remove')}
                         </button>
                       )}
-                      <p className="text-xs text-gray-400">JPEG, PNG or WebP · max 5 MB</p>
+                      <p className="text-xs text-gray-400">{t('settings.photoFormats')}</p>
                     </div>
                   </div>
                   <input
@@ -763,9 +774,9 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                 {/* Description */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">Description</label>
+                    <label className="text-sm font-medium text-gray-700">{t('settings.description')}</label>
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <span className="text-xs text-gray-500">Show on page</span>
+                      <span className="text-xs text-gray-500">{t('settings.showOnPage')}</span>
                       <input
                         type="checkbox"
                         checked={showDescription}
@@ -778,7 +789,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                     rows={2}
                     value={profileDescription}
                     onChange={(e) => setProfileDescription(e.target.value)}
-                    placeholder="A short tagline or intro (e.g. Piano teacher · 10 years experience)"
+                    placeholder={t('settings.descriptionPlaceholder')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
@@ -786,9 +797,9 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                 {/* Bio */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">Bio</label>
+                    <label className="text-sm font-medium text-gray-700">{t('settings.bio')}</label>
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <span className="text-xs text-gray-500">Show on page</span>
+                      <span className="text-xs text-gray-500">{t('settings.showOnPage')}</span>
                       <input
                         type="checkbox"
                         checked={showBio}
@@ -801,15 +812,15 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                     rows={4}
                     value={profileBio}
                     onChange={(e) => setProfileBio(e.target.value)}
-                    placeholder="Tell students more about yourself, your teaching style, background…"
+                    placeholder={t('settings.bioPlaceholder')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
 
                 {/* Page color */}
                 <div className="border-t border-gray-100 pt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Page color</label>
-                  <p className="text-xs text-gray-400 mb-3">Used for your avatar and button on the student login page.</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.pageColor')}</label>
+                  <p className="text-xs text-gray-400 mb-3">{t('settings.pageColorDesc')}</p>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {[
                       { label: 'Teal',    value: '#4A9E8A' },
@@ -842,7 +853,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                     {/* Custom color */}
                     <button
                       type="button"
-                      title="Custom color"
+                      title={t('settings.customColor')}
                       onClick={() => colorInputRef.current?.click()}
                       className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 hover:border-gray-400 flex items-center justify-center transition-colors"
                       style={
@@ -867,7 +878,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                   </div>
                   {/* Preview */}
                   <div>
-                    <p className="text-xs text-gray-400 mb-1.5">Preview</p>
+                    <p className="text-xs text-gray-400 mb-1.5">{t('settings.colorPreview')}</p>
                     <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-lg border border-gray-100">
                       <div
                         className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
@@ -893,7 +904,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
         {activeTab === 'export' && (
           <div className="space-y-5">
             <p className="text-sm text-gray-600">
-              Download all your data as a spreadsheet with separate tabs for students, lessons, billing, notebook and more.
+              {t('settings.exportDesc')}
             </p>
 
             <div className="space-y-3">
@@ -907,7 +918,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                     const data = await res.json();
                     exportToExcel(data);
                   } catch {
-                    setExportError('Export failed. Please try again.');
+                    setExportError(t('settings.exportFailed'));
                   } finally {
                     setExportLoading(false);
                   }
@@ -916,8 +927,8 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">Download for Excel</p>
-                  <p className="text-xs text-gray-400">Saves a .xlsx file to your device</p>
+                  <p className="text-sm font-medium text-gray-900">{t('settings.exportExcel')}</p>
+                  <p className="text-xs text-gray-400">{t('settings.exportExcelDesc')}</p>
                 </div>
                 <span className="text-lg">⬇</span>
               </button>
@@ -932,7 +943,7 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                     const data = await res.json();
                     exportToExcel(data);
                   } catch {
-                    setExportError('Export failed. Please try again.');
+                    setExportError(t('settings.exportFailed'));
                   } finally {
                     setExportLoading(false);
                   }
@@ -941,14 +952,14 @@ export default function TeacherSettingsModal({ settings, onSave, onClose, initia
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">Download for Google Sheets</p>
-                  <p className="text-xs text-gray-400">Same file — upload to Google Drive to open in Sheets</p>
+                  <p className="text-sm font-medium text-gray-900">{t('settings.exportSheets')}</p>
+                  <p className="text-xs text-gray-400">{t('settings.exportSheetsDesc')}</p>
                 </div>
                 <span className="text-lg">⬇</span>
               </button>
             </div>
 
-            {exportLoading && <p className="text-xs text-gray-500 text-center">Preparing export…</p>}
+            {exportLoading && <p className="text-xs text-gray-500 text-center">{t('settings.exportPreparing')}</p>}
             {exportError && <p className="text-sm text-red-600">{exportError}</p>}
           </div>
         )}

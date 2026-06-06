@@ -41,8 +41,8 @@ export default function TeacherDashboard() {
     }).catch(() => {});
     fetch('/api/teacher/messages/inbox')
       .then(r => r.ok ? r.json() : [])
-      .then((data: Array<{ direction: string }>) => {
-        setUnreadCount(data.filter(m => m.direction === 'to_teacher').length);
+      .then((data: Array<{ direction: string; read_at: string | null }>) => {
+        setUnreadCount(data.filter(m => m.direction === 'to_teacher' && !m.read_at).length);
       }).catch(() => setUnreadCount(0));
 
     const today = new Date().toISOString().slice(0, 10);
