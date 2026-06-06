@@ -20,6 +20,7 @@ export default function TeacherDashboard() {
   const [todayCount, setTodayCount] = useState<number | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [studentCount, setStudentCount] = useState<number | null>(null);
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
@@ -38,6 +39,11 @@ export default function TeacherDashboard() {
     fetch('/api/teacher/students').then(r => r.json()).then(data => {
       if (Array.isArray(data)) setStudentCount(data.filter((s: { is_active: boolean }) => s.is_active).length);
     }).catch(() => {});
+    fetch('/api/teacher/messages/inbox')
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{ direction: string }>) => {
+        setUnreadCount(data.filter(m => m.direction === 'to_teacher').length);
+      }).catch(() => setUnreadCount(0));
 
     const today = new Date().toISOString().slice(0, 10);
     const weekStart = getWeekStart(today);
@@ -127,31 +133,36 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Summary rows — 3 across × 2 rows */}
-        <div className="grid grid-cols-3 gap-3">
-          {/* Row 1: stats */}
+        {/* Summary stats — 2×2 on mobile, 4-across on sm+ */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Link href="/teacher/schedule" className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center transition-colors hover:border-blue-300">
             {todayCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className="text-2xl font-bold text-blue-600">{todayCount}</p>
             }
-            <p className="text-sm text-gray-500 mt-0.5 leading-tight">{t('teacher.todayLessons')}</p>
+            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.todayLessons')}</p>
           </Link>
           <Link href="/teacher/schedule" className={`bg-white rounded-xl border shadow-sm p-3 text-center transition-colors hover:border-amber-300 ${pendingCount ? 'border-amber-200' : 'border-gray-100'}`}>
             {pendingCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className={`text-2xl font-bold ${pendingCount ? 'text-amber-500' : 'text-gray-400'}`}>{pendingCount}</p>
             }
-            <p className="text-sm text-gray-500 mt-0.5 leading-tight">{t('teacher.pendingRequests')}</p>
+            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('teacher.pendingRequests')}</p>
           </Link>
           <Link href="/teacher/students" className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center transition-colors hover:border-blue-300">
             {studentCount === null
               ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
               : <p className="text-2xl font-bold text-gray-800">{studentCount}</p>
             }
-            <p className="text-sm text-gray-500 mt-0.5 leading-tight">{t('common.students')}</p>
+            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('common.students')}</p>
           </Link>
-
+          <Link href="/teacher/messages" className={`bg-white rounded-xl border shadow-sm p-3 text-center transition-colors hover:border-blue-300 ${unreadCount ? 'border-blue-200' : 'border-gray-100'}`}>
+            {unreadCount === null
+              ? <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse mx-auto" />
+              : <p className={`text-2xl font-bold ${unreadCount ? 'text-blue-600' : 'text-gray-400'}`}>{unreadCount}</p>
+            }
+            <p className="text-xs text-gray-500 mt-0.5 leading-tight">{t('messages.unread')}</p>
+          </Link>
         </div>
 
         {/* Quick action wizards */}

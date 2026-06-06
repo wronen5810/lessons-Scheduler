@@ -149,12 +149,15 @@ export default function MessagesPage() {
               <p className="text-center text-sm text-gray-400 py-12">{t('messages.noInbox')}</p>
             ) : selectedEmail ? (
               <div className="space-y-3">
-                <button
-                  onClick={() => setSelectedEmail(null)}
-                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-1"
-                >
-                  ‹ {studentName}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedEmail(null)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    ‹ {t('messages.backToInbox')}
+                  </button>
+                  <h2 className="text-base font-semibold text-gray-900">{studentName}</h2>
+                </div>
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
                   {threadMessages.map(msg => (
                     <div key={msg.id} className={`px-4 py-3 ${msg.direction === 'to_student' ? 'bg-blue-50' : ''}`}>

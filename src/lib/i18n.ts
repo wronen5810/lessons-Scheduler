@@ -109,6 +109,8 @@ const en = {
   'messages.notification': 'Notification',
   'messages.whatsappTab': 'WhatsApp links will open in a new tab',
   'messages.noPhoneNumbers': 'No recipients with a phone number.',
+  'messages.unread': 'New Messages',
+  'messages.backToInbox': 'Back to Inbox',
   // ── Days ────────────────────────────────────────────────
   'days.sun': 'Sun',
   'days.mon': 'Mon',
@@ -570,6 +572,8 @@ const he: typeof en = {
   'messages.notification': 'התראה',
   'messages.whatsappTab': 'קישורי WhatsApp ייפתחו בלשונית חדשה',
   'messages.noPhoneNumbers': 'אין נמענים עם מספר טלפון.',
+  'messages.unread': 'הודעות חדשות',
+  'messages.backToInbox': 'חזרה לתיבת דואר',
   // ── Days ────────────────────────────────────────────────
   'days.sun': "א'",
   'days.mon': "ב'",
