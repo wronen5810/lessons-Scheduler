@@ -15,6 +15,7 @@ interface Student {
   email: string | null;
   phone: string | null;
   is_active: boolean;
+  is_waitlisted?: boolean;
 }
 
 interface Group {
@@ -280,7 +281,7 @@ const MINUTE_OPTIONS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) =>
 
 export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () => void; onDone: () => void; initialDate?: string }) {
   type SlotType = 'one-time' | 'weekly';
-  type Step = 'type' | 'when' | 'time' | 'enddate' | 'assign' | 'pickStudent' | 'done';
+  type Step = 'type' | 'when' | 'time' | 'enddate' | 'assign' | 'pickStudent' | 'notify' | 'done';
 
   const { t, lang } = useLanguage();
   const today = new Date().toISOString().slice(0, 10);
@@ -301,6 +302,17 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
   const [loading, setLoading] = useState(false);
 
   const [prepaid, setPrepaid] = useState(false);
+
+  // ── Notify step state ──────────────────────────────────────────────
+  const [notifyStudents, setNotifyStudents] = useState<Student[]>([]);
+  const [notifyGroups, setNotifyGroups] = useState<Group[]>([]);
+  const [notifyStudentIds, setNotifyStudentIds] = useState<Set<string>>(new Set());
+  const [notifyGroupIds, setNotifyGroupIds] = useState<Set<string>>(new Set());
+  const [notifyChannels, setNotifyChannels] = useState({ email: true, notification: false, whatsapp: false });
+  const [notifyMessage, setNotifyMessage] = useState('');
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifyError, setNotifyError] = useState('');
+  const [notifySent, setNotifySent] = useState(false);
 
   // Inline new-student form (inside pickStudent step)
   const [showNewStudent, setShowNewStudent] = useState(false);
@@ -338,8 +350,8 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
   }
 
   const isWeekly = slotType === 'weekly';
-  // When initialDate provided: time(1)→assign(2) = 2 steps
-  const totalSteps = initialDate ? 2 : (isWeekly ? 4 : 3);
+  // When initialDate provided: time(1)→assign(2)→notify(3) = 3 steps
+  const totalSteps = initialDate ? 3 : (isWeekly ? 5 : 4);
   const title = t('wizard.addSlot');
 
   // Day names via translation
@@ -350,15 +362,16 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
 
   function getStepNum(): number {
     if (initialDate) {
-      // Compressed flow: time(1), assign/pickStudent(2)
+      // Compressed flow: time(1), assign/pickStudent(2), notify(3)
       const map: Partial<Record<Step, number>> = {
-        time: 1, assign: 2, pickStudent: 2,
+        time: 1, assign: 2, pickStudent: 2, notify: 3,
       };
       return map[step] ?? 1;
     }
     const map: Partial<Record<Step, number>> = {
       type: 1, when: 2, time: 3,
       enddate: 4, assign: isWeekly ? 4 : 3, pickStudent: isWeekly ? 4 : 3,
+      notify: isWeekly ? 5 : 4,
     };
     return map[step] ?? 1;
   }
@@ -370,6 +383,7 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
       enddate: 'time',
       assign: isWeekly ? 'enddate' : 'time',
       pickStudent: 'assign',
+      // No back from notify — slot is already created/assigned
     } as Partial<Record<Step, Step>>;
     const p = prev[step];
     if (p) setStep(p);
@@ -439,13 +453,100 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
       setError(d.error || 'Failed to assign student');
       return;
     }
-    onDone();
-    setStep('done');
+    await goToNotify();
   }
 
-  function saveAndLeaveOpen() {
-    onDone();
-    setStep('done');
+  async function saveAndLeaveOpen() {
+    await goToNotify();
+  }
+
+  // ── Notify helpers ────────────────────────────────────────────────
+
+  function buildNotifyMessage(): string {
+    const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    if (isWeekly) {
+      const dayName = dayNames[dayOfWeek];
+      return lang === 'he'
+        ? `שיעור חדש! כל ${dayName} בשעה ${time} (${duration} דקות). ניתן לבקש תור דרך האפליקציה.`
+        : `New slot! Every ${dayName} at ${time} (${duration} min). You can request a booking via the app.`;
+    }
+    const parts = date.split('-');
+    const displayDate = lang === 'he'
+      ? `${parts[2]}/${parts[1]}/${parts[0]}`
+      : new Date(date + 'T12:00').toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+    return lang === 'he'
+      ? `שיעור חדש! ${displayDate} בשעה ${time} (${duration} דקות). ניתן לבקש תור דרך האפליקציה.`
+      : `New slot! ${displayDate} at ${time} (${duration} min). You can request a booking via the app.`;
+  }
+
+  async function goToNotify() {
+    setLoading(true);
+    const [sr, gr] = await Promise.all([
+      fetch('/api/teacher/students').then((r) => r.json()).catch(() => []),
+      fetch('/api/teacher/groups').then((r) => r.json()).catch(() => []),
+    ]);
+    setLoading(false);
+
+    const allStudents: Student[] = Array.isArray(sr) ? sr : [];
+    const allGroups: Group[] = Array.isArray(gr) ? gr : [];
+
+    setNotifyStudents(allStudents);
+    setNotifyGroups(allGroups);
+
+    // Pre-select all waitlisted students
+    const waitlistedIds = new Set(
+      allStudents.filter((s) => s.is_waitlisted).map((s) => s.id)
+    );
+    setNotifyStudentIds(waitlistedIds);
+    setNotifyGroupIds(new Set());
+    setNotifyMessage(buildNotifyMessage());
+    setStep('notify');
+  }
+
+  async function sendNotification() {
+    setNotifySending(true);
+    setNotifyError('');
+    try {
+      const res = await fetch('/api/teacher/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: notifyMessage,
+          studentIds: Array.from(notifyStudentIds),
+          groupIds: Array.from(notifyGroupIds),
+          channels: notifyChannels,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setNotifyError((d as { error?: string }).error || 'Failed to send');
+        setNotifySending(false);
+        return;
+      }
+      setNotifySending(false);
+      setNotifySent(true);
+    } catch {
+      setNotifyError(lang === 'he' ? 'שגיאת רשת, נסה שוב' : 'Network error, please try again');
+      setNotifySending(false);
+    }
+  }
+
+  function toggleNotifyStudent(id: string) {
+    setNotifyStudentIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  function toggleNotifyGroup(id: string) {
+    setNotifyGroupIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  function toggleNotifyChannel(key: keyof typeof notifyChannels) {
+    setNotifyChannels((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+  function selectAllNotify() {
+    setNotifyStudentIds(new Set(notifyStudents.map((s) => s.id)));
+    setNotifyGroupIds(new Set(notifyGroups.map((g) => g.id)));
+  }
+  function clearAllNotify() {
+    setNotifyStudentIds(new Set());
+    setNotifyGroupIds(new Set());
   }
 
   if (step === 'done') {
@@ -574,15 +675,17 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
           <div className="space-y-3">
             <button
               onClick={() => setStep('pickStudent')}
-              className="w-full border-2 border-blue-200 rounded-xl py-3.5 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-50 transition-all"
+              disabled={loading}
+              className="w-full border-2 border-blue-200 rounded-xl py-3.5 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-50 disabled:opacity-50 transition-all"
             >
               {t('wizard.yesAssignStudent')}
             </button>
             <button
               onClick={saveAndLeaveOpen}
-              className="w-full border-2 border-gray-200 rounded-xl py-3.5 text-sm font-medium text-gray-600 hover:border-gray-300 hover:bg-gray-50 transition-all"
+              disabled={loading}
+              className="w-full border-2 border-gray-200 rounded-xl py-3.5 text-sm font-medium text-gray-600 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-all"
             >
-              {t('wizard.leaveOpen')}
+              {loading ? t('common.loading') : t('wizard.leaveOpen')}
             </button>
           </div>
           {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
@@ -690,6 +793,130 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
             disabled={!selectedStudent || showNewStudent}
             loading={loading}
           />
+        </>
+      )}
+
+      {step === 'notify' && (
+        <>
+          {notifySent ? (
+            <div className="text-center py-2">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-base font-semibold text-gray-900">{t('wizard.notificationSent')}</p>
+              <button
+                onClick={onDone}
+                className="mt-5 w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                {t('common.done')}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-gray-700">{t('wizard.notifyNewSlot')}</p>
+              </div>
+
+              {/* Message */}
+              <label className="block text-xs text-gray-500 mb-1">{t('wizard.notifyMessage')}</label>
+              <textarea
+                value={notifyMessage}
+                onChange={(e) => setNotifyMessage(e.target.value)}
+                rows={2}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-3"
+              />
+
+              {/* Recipients */}
+              {notifyStudents.length === 0 && notifyGroups.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-3">{t('wizard.notifyNoStudents')}</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-medium text-gray-500">{lang === 'he' ? 'נמענים' : 'Recipients'}</p>
+                    <div className="flex gap-2">
+                      <button onClick={selectAllNotify} className="text-xs text-blue-600 hover:text-blue-800">{t('wizard.notifySelectAll')}</button>
+                      <span className="text-gray-300">·</span>
+                      <button onClick={clearAllNotify} className="text-xs text-gray-400 hover:text-gray-600">{t('wizard.notifyClear')}</button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-36 overflow-y-auto space-y-1 -mx-1 px-1 mb-3">
+                    {/* Waitlisted students first */}
+                    {notifyStudents.filter((s) => s.is_waitlisted).map((s) => (
+                      <button key={s.id} onClick={() => toggleNotifyStudent(s.id)}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all ${
+                          notifyStudentIds.has(s.id) ? 'bg-blue-50 border-2 border-blue-400 text-blue-800 font-medium' : 'border border-gray-100 hover:border-blue-200'
+                        }`}
+                      >
+                        <CheckBox checked={notifyStudentIds.has(s.id)} />
+                        <span className="flex-1 truncate">{s.name}</span>
+                        <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">{t('wizard.waitlistedBadge')}</span>
+                      </button>
+                    ))}
+                    {/* Active students */}
+                    {notifyStudents.filter((s) => !s.is_waitlisted && s.is_active).map((s) => (
+                      <button key={s.id} onClick={() => toggleNotifyStudent(s.id)}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all ${
+                          notifyStudentIds.has(s.id) ? 'bg-blue-50 border-2 border-blue-400 text-blue-800 font-medium' : 'border border-gray-100 hover:border-blue-200'
+                        }`}
+                      >
+                        <CheckBox checked={notifyStudentIds.has(s.id)} />
+                        <span className="flex-1 truncate">{s.name}</span>
+                        {s.email && <span className="text-xs text-gray-400 truncate max-w-[90px]">{s.email}</span>}
+                      </button>
+                    ))}
+                    {/* Groups */}
+                    {notifyGroups.map((g) => (
+                      <button key={g.id} onClick={() => toggleNotifyGroup(g.id)}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-all ${
+                          notifyGroupIds.has(g.id) ? 'bg-blue-50 border-2 border-blue-400 text-blue-800 font-medium' : 'border border-gray-100 hover:border-blue-200'
+                        }`}
+                      >
+                        <CheckBox checked={notifyGroupIds.has(g.id)} />
+                        <span className="flex-1 truncate">{g.name}</span>
+                        <span className="text-xs text-gray-400 flex-shrink-0">
+                          {translate(lang, 'wizard.studentsCountLabel', { count: String(g.members.length) })}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Channels */}
+              <div className="flex gap-2 mb-3">
+                {([
+                  { key: 'email' as const, label: t('common.email') },
+                  { key: 'notification' as const, label: t('wizard.pushNotif') },
+                  { key: 'whatsapp' as const, label: 'WhatsApp' },
+                ]).map(({ key, label }) => (
+                  <button key={key} onClick={() => toggleNotifyChannel(key)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      notifyChannels[key] ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:border-blue-300'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {notifyError && <p className="text-xs text-red-600 mb-2">{notifyError}</p>}
+
+              <WizardActions
+                onNext={sendNotification}
+                onSkip={onDone}
+                nextLabel={t('wizard.sendNotification')}
+                disabled={
+                  (notifyStudentIds.size === 0 && notifyGroupIds.size === 0) ||
+                  !notifyMessage.trim() ||
+                  !Object.values(notifyChannels).some(Boolean)
+                }
+                loading={notifySending}
+              />
+            </>
+          )}
         </>
       )}
     </WizardShell>
