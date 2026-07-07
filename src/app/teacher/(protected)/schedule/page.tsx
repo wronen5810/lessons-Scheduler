@@ -53,6 +53,7 @@ export default function SchedulePage() {
   }, []);
 
   const [addSlotDate, setAddSlotDate] = useState<string | null>(null);
+  const [addForDate, setAddForDate] = useState<string | null>(null);
   const { settings, save: saveSettings } = useTeacherSettings();
 
   const [slots, setSlots] = useState<ComputedSlot[]>([]);
@@ -351,6 +352,13 @@ export default function SchedulePage() {
             </div>
           )}
 
+          {/* Center: hint text (month view only) */}
+          {view === 'month' && (
+            <span className="hidden sm:block text-xs text-gray-400 italic">
+              {isRTL ? 'בחר תאריך להוספת שיעור / אירוע' : 'Pick a date to add a slot / event'}
+            </span>
+          )}
+
           {/* Right: controls */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Events toggle */}
@@ -508,8 +516,7 @@ export default function SchedulePage() {
                             {format(d, 'd')}
                           </div>
                           <div className="flex items-center justify-center gap-1 mt-1">
-                            <button onClick={() => setAddSlotDate(date)} className="text-base font-bold text-gray-400 hover:text-blue-500 transition-colors leading-none" title="Add slot">+</button>
-                            <button onClick={() => openAddEvent(date)} className="text-xs text-gray-300 hover:text-orange-500 transition-colors leading-none" title={t('events.addEvent')}>📅</button>
+                            <button onClick={() => setAddForDate(date)} className="text-base font-bold text-gray-400 hover:text-blue-500 transition-colors leading-none" title="Add">+</button>
                           </div>
                         </div>
 
@@ -537,9 +544,9 @@ export default function SchedulePage() {
                             <EventCell key={ev.id} event={ev} compact onClick={() => setEditingEvent(ev)} />
                           ))}
                           {colSlots.length === 0 && colEvents.length === 0 && (
-                            <button onClick={() => setAddSlotDate(date)}
+                            <button onClick={() => setAddForDate(date)}
                               className="w-full py-6 flex items-center justify-center text-gray-300 hover:text-blue-400 transition-colors text-4xl font-bold"
-                              title="Add slot">+</button>
+                              title="Add">+</button>
                           )}
                         </div>
                       </div>
@@ -589,14 +596,9 @@ export default function SchedulePage() {
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <span className="text-4xl">📭</span>
                   <p className="text-sm text-gray-400">{t('teacher.noLessonsDay')}</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setAddSlotDate(selectedDate)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
-                      + {t('schedule.addSlot')}
-                    </button>
-                    <button onClick={() => openAddEvent(selectedDate)} className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition-colors">
-                      📅 {t('events.addEvent')}
-                    </button>
-                  </div>
+                  <button onClick={() => setAddForDate(selectedDate)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
+                    + {t('schedule.addSlot')}
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-2 mt-2">
@@ -628,16 +630,10 @@ export default function SchedulePage() {
                   {dayEvents.map((ev) => (
                     <EventCell key={ev.id} event={ev} onClick={() => setEditingEvent(ev)} />
                   ))}
-                  <div className="flex gap-2">
-                    <button onClick={() => setAddSlotDate(selectedDate)}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-sm font-medium hover:border-blue-300 hover:text-blue-500 transition-colors">
-                      + {t('schedule.addSlot')}
-                    </button>
-                    <button onClick={() => openAddEvent(selectedDate)}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-orange-200 rounded-2xl text-orange-400 text-sm font-medium hover:border-orange-300 hover:text-orange-500 transition-colors">
-                      📅 {t('events.addEvent')}
-                    </button>
-                  </div>
+                  <button onClick={() => setAddForDate(selectedDate)}
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 text-sm font-medium hover:border-blue-300 hover:text-blue-500 transition-colors">
+                    + {t('schedule.addSlot')}
+                  </button>
                 </div>
               )}
             </div>
@@ -680,8 +676,7 @@ export default function SchedulePage() {
                   weekStarts={getMonthWeekStarts(month)}
                   today={today}
                   onSelectSlot={(slot) => { setSelected(slot); setSelectedDate(slot.date); }}
-                  onAddSlot={(date) => setAddSlotDate(date)}
-                  onAddEvent={openAddEvent}
+                  onAddDate={setAddForDate}
                   timeFormat={settings.time_format}
                   events={filteredEvents}
                   showEvents={showEvents}
@@ -728,6 +723,31 @@ export default function SchedulePage() {
 
       {showSettings && (
         <TeacherSettingsModal settings={settings} onSave={saveSettings} onClose={() => setShowSettings(false)} />
+      )}
+
+      {addForDate && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center px-4" onClick={() => setAddForDate(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-gray-700 text-center">{addForDate}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setAddSlotDate(addForDate); setAddForDate(null); }}
+                className="flex-1 bg-blue-600 text-white rounded-xl py-3 text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                + {t('schedule.addSlot')}
+              </button>
+              <button
+                onClick={() => { openAddEvent(addForDate); setAddForDate(null); }}
+                className="flex-1 bg-orange-500 text-white rounded-xl py-3 text-sm font-medium hover:bg-orange-600 transition-colors"
+              >
+                📅 {t('events.addEvent')}
+              </button>
+            </div>
+            <button onClick={() => setAddForDate(null)} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors">
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
       )}
 
       {addSlotDate && (

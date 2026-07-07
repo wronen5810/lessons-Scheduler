@@ -11,26 +11,24 @@ interface Props {
   weekStarts: string[];
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
-  onAddSlot?: (date: string) => void;
+  onAddDate?: (date: string) => void;
   timeFormat?: '24h' | '12h';
   events?: CalendarEvent[];
   showEvents?: boolean;
   onSelectEvent?: (event: CalendarEvent) => void;
-  onAddEvent?: (date: string) => void;
 }
 
-function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat = '24h', showDayNames = true, events = [], showEvents = true, onSelectEvent, onAddEvent }: {
+function WeekRow({ weekStart, slots, today, onSelectSlot, onAddDate, timeFormat = '24h', showDayNames = true, events = [], showEvents = true, onSelectEvent }: {
   weekStart: string;
   slots: ComputedSlot[];
   today: string;
   onSelectSlot: (slot: ComputedSlot) => void;
-  onAddSlot?: (date: string) => void;
+  onAddDate?: (date: string) => void;
   timeFormat?: '24h' | '12h';
   showDayNames?: boolean;
   events?: CalendarEvent[];
   showEvents?: boolean;
   onSelectEvent?: (event: CalendarEvent) => void;
-  onAddEvent?: (date: string) => void;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => formatDate(addDays(parseISO(weekStart), i)));
   const slotsByDay = (date: string) => slots.filter((s) => s.date === date);
@@ -57,19 +55,12 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
                   ${isToday ? 'bg-blue-600 text-white' : isPast ? 'text-gray-400' : 'text-gray-700'}`}>
                   {dayNum}
                 </span>
-                {onAddSlot && (
+                {onAddDate && (
                   <button
-                    onClick={() => onAddSlot(date)}
+                    onClick={() => onAddDate(date)}
                     className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-blue-500 text-sm leading-none transition-colors"
-                    title="Add slot"
+                    title="Add"
                   >+</button>
-                )}
-                {onAddEvent && (
-                  <button
-                    onClick={() => onAddEvent(date)}
-                    className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-orange-500 text-xs leading-none transition-colors"
-                    title="Add event"
-                  >📅</button>
                 )}
               </div>
             </div>
@@ -102,7 +93,7 @@ function WeekRow({ weekStart, slots, today, onSelectSlot, onAddSlot, timeFormat 
   );
 }
 
-export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, onAddSlot, timeFormat = '24h', events = [], showEvents = true, onSelectEvent, onAddEvent }: Props) {
+export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot, onAddDate, timeFormat = '24h', events = [], showEvents = true, onSelectEvent }: Props) {
   return (
     <div className="space-y-2">
       {weekStarts.map((weekStart, index) => (
@@ -112,13 +103,12 @@ export default function TeacherCalendar({ slots, weekStarts, today, onSelectSlot
             slots={slots}
             today={today}
             onSelectSlot={onSelectSlot}
-            onAddSlot={onAddSlot}
+            onAddDate={onAddDate}
             timeFormat={timeFormat}
             showDayNames={index === 0}
             events={events}
             showEvents={showEvents}
             onSelectEvent={onSelectEvent}
-            onAddEvent={onAddEvent}
           />
         </div>
       ))}
