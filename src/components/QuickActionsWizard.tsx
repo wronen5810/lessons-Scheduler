@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { UserPlus, CalendarPlus, Users2, MessageSquare, X, ArrowLeft, UserPlus2, CreditCard } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { translate } from '@/lib/i18n';
+import { toSlug } from '@/lib/slug';
 import VoiceMicButton from '@/components/VoiceMicButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -462,28 +463,36 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
 
   // ── Notify helpers ────────────────────────────────────────────────
 
-  function buildNotifyMessage(): string {
+  function buildNotifyMessage(shareUrl: string): string {
     const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    const linkSuffix = shareUrl
+      ? (lang === 'he'
+          ? ` ניתן לבקש תור דרך האפליקציה או האתר: ${shareUrl}`
+          : ` You can request a booking via the app or website: ${shareUrl}`)
+      : (lang === 'he'
+          ? ' ניתן לבקש תור דרך האפליקציה.'
+          : ' You can request a booking via the app.');
     if (isWeekly) {
       const dayName = dayNames[dayOfWeek];
       return lang === 'he'
-        ? `שיעור חדש! כל ${dayName} בשעה ${time} (${duration} דקות). ניתן לבקש תור דרך האפליקציה.`
-        : `New slot! Every ${dayName} at ${time} (${duration} min). You can request a booking via the app.`;
+        ? `שיעור חדש! כל ${dayName} בשעה ${time} (${duration} דקות).${linkSuffix}`
+        : `New slot! Every ${dayName} at ${time} (${duration} min).${linkSuffix}`;
     }
     const parts = date.split('-');
     const displayDate = lang === 'he'
       ? `${parts[2]}/${parts[1]}/${parts[0]}`
       : new Date(date + 'T12:00').toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
     return lang === 'he'
-      ? `שיעור חדש! ${displayDate} בשעה ${time} (${duration} דקות). ניתן לבקש תור דרך האפליקציה.`
-      : `New slot! ${displayDate} at ${time} (${duration} min). You can request a booking via the app.`;
+      ? `שיעור חדש! ${displayDate} בשעה ${time} (${duration} דקות).${linkSuffix}`
+      : `New slot! ${displayDate} at ${time} (${duration} min).${linkSuffix}`;
   }
 
   async function goToNotify() {
     setLoading(true);
-    const [sr, gr] = await Promise.all([
+    const [sr, gr, dash] = await Promise.all([
       fetch('/api/teacher/students').then((r) => r.json()).catch(() => []),
       fetch('/api/teacher/groups').then((r) => r.json()).catch(() => []),
+      fetch('/api/teacher/dashboard').then((r) => r.json()).catch(() => ({})),
     ]);
     setLoading(false);
 
@@ -493,13 +502,16 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
     setNotifyStudents(allStudents);
     setNotifyGroups(allGroups);
 
-    // Pre-select all waitlisted students
-    const waitlistedIds = new Set(
-      allStudents.filter((s) => s.is_waitlisted).map((s) => s.id)
-    );
-    setNotifyStudentIds(waitlistedIds);
+    // Build teacher share URL for the pre-filled message
+    const teacherName = (dash as { teacherName?: string }).teacherName ?? '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const slug = toSlug(teacherName);
+    const shareUrl = slug && origin ? `${origin}/${slug}` : '';
+
+    // No default selection — teacher picks who to notify
+    setNotifyStudentIds(new Set());
     setNotifyGroupIds(new Set());
-    setNotifyMessage(buildNotifyMessage());
+    setNotifyMessage(buildNotifyMessage(shareUrl));
     setStep('notify');
   }
 
