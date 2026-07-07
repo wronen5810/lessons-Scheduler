@@ -311,6 +311,7 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
   const [notifyGroupIds, setNotifyGroupIds] = useState<Set<string>>(new Set());
   const [notifyChannels, setNotifyChannels] = useState({ email: true, notification: false, whatsapp: false });
   const [notifyMessage, setNotifyMessage] = useState('');
+  const [notifyShareUrl, setNotifyShareUrl] = useState('');
   const [notifySending, setNotifySending] = useState(false);
   const [notifyError, setNotifyError] = useState('');
   const [notifySent, setNotifySent] = useState(false);
@@ -511,6 +512,7 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
     // No default selection — teacher picks who to notify
     setNotifyStudentIds(new Set());
     setNotifyGroupIds(new Set());
+    setNotifyShareUrl(shareUrl);
     setNotifyMessage(buildNotifyMessage(shareUrl));
     setStep('notify');
   }
@@ -837,8 +839,18 @@ export function AddSlotWizard({ onClose, onDone, initialDate }: { onClose: () =>
                 value={notifyMessage}
                 onChange={(e) => setNotifyMessage(e.target.value)}
                 rows={2}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-3"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-1"
               />
+              {notifyShareUrl && (
+                <a
+                  href={notifyShareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-xs text-blue-500 hover:text-blue-700 hover:underline break-all mb-3"
+                >
+                  {notifyShareUrl}
+                </a>
+              )}
 
               {/* Recipients */}
               {notifyStudents.length === 0 && notifyGroups.length === 0 ? (

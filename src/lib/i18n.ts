@@ -832,7 +832,7 @@ const he: typeof en = {
   'wizard.addAndSelect': 'הוסף ובחר',
   'wizard.newStudentLabel': 'תלמיד/ה חדש/ה',
   'wizard.addNewStudentHeader': 'הוסף תלמיד/ה חדש/ה',
-  'wizard.notifyNewSlot': 'האם להודיע לתלמידים על החריץ החדש?',
+  'wizard.notifyNewSlot': 'האם להודיע לתלמידים על השיעור החדש?',
   'wizard.notifyMessage': 'הודעה',
   'wizard.waitlistedBadge': 'רשימת המתנה',
   'wizard.sendNotification': 'שלח הודעה',
