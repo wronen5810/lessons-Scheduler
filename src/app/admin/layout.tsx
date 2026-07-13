@@ -44,7 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <SessionGuard loginPath="/admin/login">
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50" dir="ltr">
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-semibold text-gray-900">Admin</span>
