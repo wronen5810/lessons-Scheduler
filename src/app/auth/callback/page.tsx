@@ -3,6 +3,7 @@
 import { useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
+import { markSessionActive } from '@/components/SessionGuard';
 
 function CallbackHandler() {
   const router = useRouter();
@@ -27,6 +28,7 @@ function CallbackHandler() {
             method: 'POST',
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           }).catch(() => {});
+          markSessionActive(true);
           router.replace(next); return;
         }
       }
@@ -44,6 +46,7 @@ function CallbackHandler() {
               method: 'POST',
               headers: { Authorization: `Bearer ${access_token}` },
             }).catch(() => {});
+            markSessionActive(true);
             router.replace(next); return;
           }
         }

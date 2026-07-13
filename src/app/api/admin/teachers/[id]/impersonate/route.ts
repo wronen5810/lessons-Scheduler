@@ -3,33 +3,41 @@ import { requireAdmin } from '@/lib/auth';
 import { createServiceSupabase } from '@/lib/supabase-server';
 
 // POST /api/admin/teachers/[id]/impersonate
-// Creates a session for the teacher and returns a URL that logs the admin
-// in as that teacher via the existing /auth/callback implicit-flow handler.
+// Generates a one-time magic link for the teacher and returns the Supabase
+// action_link. Opening it causes Supabase to verify the OTP and redirect to
+// /auth/callback with tokens in the hash, which Case 2 of that page handles.
+// Note: admin.generateLink does NOT email the user — we use the link directly.
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
 
   const { id } = await params;
   const supabase = createServiceSupabase();
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://saderot.com';
 
-  // Create a session directly — avoids the PKCE magic-link roundtrip which
-  // fails because the new tab has no stored PKCE code verifier.
-  const { data, error } = await supabase.auth.admin.createSession({ userId: id });
-
-  if (error || !data?.session) {
-    return NextResponse.json({ error: error?.message ?? 'Failed to create session' }, { status: 500 });
+  // 1. Get teacher's email
+  const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(id);
+  if (userError || !user?.email) {
+    return NextResponse.json({ error: 'Teacher not found' }, { status: 404 });
   }
 
-  const { access_token, refresh_token } = data.session;
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+  // 2. Generate a magic link pointing to /auth/callback.
+  //    Supabase will verify the OTP and redirect the browser to
+  //    /auth/callback#access_token=...&refresh_token=... (implicit flow).
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email: user.email,
+    options: {
+      redirectTo: `${base}/auth/callback`,
+    },
+  });
 
-  // Pass tokens in the hash so /auth/callback's implicit-flow branch sets
-  // the session and redirects to /teacher.
-  const url =
-    `${base}/auth/callback` +
-    `#access_token=${encodeURIComponent(access_token)}` +
-    `&refresh_token=${encodeURIComponent(refresh_token)}` +
-    `&token_type=bearer`;
+  if (linkError || !linkData?.properties?.action_link) {
+    return NextResponse.json(
+      { error: linkError?.message ?? 'Failed to generate link' },
+      { status: 500 }
+    );
+  }
 
-  return NextResponse.json({ url });
+  return NextResponse.json({ url: linkData.properties.action_link });
 }

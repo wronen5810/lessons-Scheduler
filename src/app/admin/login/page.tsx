@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserSupabase } from '@/lib/supabase-browser';
 import { markSessionActive } from '@/components/SessionGuard';
@@ -13,6 +13,12 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'credentials' | 'totp'>('credentials');
   const [totpCode, setTotpCode] = useState('');
+
+  // Always clear any existing session when the login page loads,
+  // so the admin must enter credentials every time.
+  useEffect(() => {
+    createBrowserSupabase().auth.signOut();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
