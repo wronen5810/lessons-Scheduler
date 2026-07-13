@@ -74,14 +74,19 @@ export default function AdminTeachersPage() {
   const [defaultMonthlyCharge, setDefaultMonthlyCharge] = useState('20');
   const [savingDefault, setSavingDefault] = useState(false);
 
-  async function handleImpersonate(teacher: Teacher) {
+  async function handleImpersonate(teacher: Teacher, tab: Window | null) {
     setImpersonating(teacher.id);
     const res = await fetch(`/api/admin/teachers/${teacher.id}/impersonate`, { method: 'POST' });
     const data = await res.json();
     setImpersonating(null);
     if (res.ok && data.url) {
-      window.open(data.url, '_blank');
+      if (tab) {
+        tab.location.href = data.url;
+      } else {
+        window.open(data.url, '_blank');
+      }
     } else {
+      tab?.close();
       alert(data.error ?? 'Failed to generate login link');
     }
   }
@@ -352,7 +357,7 @@ export default function AdminTeachersPage() {
               {openMenuId === teacher.id && (
                 <div className="absolute end-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-30 py-1 overflow-hidden">
                   <button
-                    onClick={() => { setOpenMenuId(null); handleImpersonate(teacher); }}
+                    onClick={() => { setOpenMenuId(null); const tab = window.open('', '_blank'); handleImpersonate(teacher, tab); }}
                     disabled={impersonating === teacher.id}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors text-start"
                   >
