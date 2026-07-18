@@ -46,9 +46,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/teacher', request.url));
   }
 
-  if (pathname === '/admin/login' && user) {
-    return NextResponse.redirect(new URL('/admin', request.url));
-  }
+  // Admin login is intentionally NOT auto-redirected here.
+  // The login page clears any existing session on mount so the admin
+  // must always enter credentials, regardless of cookie state.
 
   return supabaseResponse;
 }
