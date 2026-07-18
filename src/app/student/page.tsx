@@ -139,7 +139,12 @@ export default function StudentEntryPage() {
         <div className="flex items-center justify-between mb-6">
           <SaderotLogo size="sm" />
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">{t('common.back')}</Link>
+            <button
+              onClick={() => { sessionStorage.setItem('showLanding', '1'); router.push('/'); }}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              {t('common.back')}
+            </button>
             <LanguageToggle />
           </div>
         </div>

@@ -35,6 +35,14 @@ export default function LandingPage() {
 
   useEffect(() => {
     async function checkSession() {
+      // 0. If the user navigated here via the student page's "back" button,
+      //    skip all auto-redirects and show the landing page directly.
+      if (sessionStorage.getItem('showLanding')) {
+        sessionStorage.removeItem('showLanding');
+        setReady(true);
+        return;
+      }
+
       // 1. Handle magic link token in URL hash (teacher impersonation / password reset)
       const hash = window.location.hash.slice(1);
       if (hash) {
