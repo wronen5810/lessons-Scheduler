@@ -336,7 +336,7 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
                   Block this slot
                 </button>
               )}
-              {(slot.one_time_slot_id || slot.template_id) && (
+              {!isPast && (slot.one_time_slot_id || slot.template_id) && (
                 <button onClick={deleteSlot} disabled={loading}
                   className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
                   {isRecurring ? 'מחק שיעור חוזר' : 'מחק שיעור'}
@@ -556,10 +556,13 @@ export default function SlotPanel({ slot, onClose, onAction, timeFormat = '24h' 
                 className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors">
                 Edit slot
               </button>
+              {/* Delete only allowed on unbooked future slots */}
+              {['available', 'blocked'].includes(slot.state) && (
               <button onClick={deleteSlot} disabled={loading}
                 className="w-full py-2.5 px-4 rounded-xl border border-red-200 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50 transition-colors">
                 {isRecurring ? 'Delete recurring slot' : 'Delete slot'}
               </button>
+              )}
             </div>
           )}
 
